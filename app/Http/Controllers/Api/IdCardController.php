@@ -142,15 +142,82 @@ class IdCardController extends Controller
         $pdf->SetXY(4, 40);
         $pdf->Cell(34, 0, $contact !== '' ? $contact : 'N/A', 0, 1, 'C');
 
-        // FRONT: Photo — look for .png first (canonical upload format), fallback .jpg
+        // FRONT: Photo — look for .png first (canonical), fallback .jpg
         $photoPath = public_path('school/' . $student->student_number . '.png');
         if (!is_file($photoPath)) {
             $photoPath = public_path('school/' . $student->student_number . '.jpg');
+            if (!is_file($photoPath)) {
+                $photoPath = null;
+            }
         }
-        if (is_file($photoPath)) {
-            $imgType = strtolower(pathinfo($photoPath, PATHINFO_EXTENSION)) === 'png' ? 'PNG' : 'JPEG';
-            $pdf->Image($photoPath, 50.0, 14.0, 21.0, 21.0, $imgType, '', '', false, 300, '', false, false, 0, 'CT');
+
+        if ($photoPath) {
+            // Use GD to remove white/near-white background so photo blends with ID template
+            $ext = strtolower(pathinfo($photoPath, PATHINFO_EXTENSION));
+            $srcImg = null;
+            if ($ext === 'png' && function_exists('imagecreatefrompng')) {
+                $srcImg = @imagecreatefrompng($photoPath);
+            } elseif (in_array($ext, ['jpg', 'jpeg']) && function_exists('imagecreatefromjpeg')) {
+                $srcImg = @imagecreatefromjpeg($photoPath);
+            }
+
+            $finalPhotoPath = $photoPath; // fallback: use original
+            $tempFile = null;
+
+            if ($srcImg) {
+                $w = imagesx($srcImg);
+                $h = imagesy($srcImg);
+                // Create output canvas with alpha support
+                $outImg = imagecreatetruecolor($w, $h);
+                imagealphablending($outImg, false);
+                imagesavealpha($outImg, true);
+                $transparent = imagecolorallocatealpha($outImg, 255, 255, 255, 127);
+                imagefill($outImg, 0, 0, $transparent);
+                imagealphablending($outImg, true);
+
+                // Copy source, then flood-fill near-white pixels with transparency
+                imagecopy($outImg, $srcImg, 0, 0, 0, 0, $w, $h);
+
+                // Remove near-white background: scan edges + flood-fill
+                $threshold = 30; // tolerance: pixels within 30 of white (225-255 per channel) become transparent
+                for ($y = 0; $y < $h; $y++) {
+                    for ($x = 0; $x < $w; $x++) {
+                        $rgb = imagecolorat($outImg, $x, $y);
+                        $r = ($rgb >> 16) & 0xFF;
+                        $g = ($rgb >> 8) & 0xFF;
+                        $b = $rgb & 0xFF;
+                        $a = ($rgb >> 24) & 0x7F;
+                        // Skip already transparent pixels
+                        if ($a > 100) continue;
+                        // If near-white, make transparent
+                        if ($r >= (255 - $threshold) && $g >= (255 - $threshold) && $b >= (255 - $threshold)) {
+                            imagesetpixel($outImg, $x, $y, $transparent);
+                        }
+                    }
+                }
+
+                imagealphablending($outImg, false);
+                imagesavealpha($outImg, true);
+
+                // Save cleaned image to temp file
+                $tempFile = sys_get_temp_dir() . '/id_photo_' . $student->student_number . '_' . time() . '.png';
+                if (imagepng($outImg, $tempFile)) {
+                    $finalPhotoPath = $tempFile;
+                }
+                imagedestroy($srcImg);
+                imagedestroy($outImg);
+            }
+
+            // Place photo: adjusted position & size to match reference layout
+            // x=41, y=3.5 → width=22mm, height=27mm (portrait photo over the ribbon area)
+            $pdf->Image($finalPhotoPath, 41.0, 3.5, 22.0, 27.0, 'PNG', '', '', false, 300, '', false, false, 0, 'CT');
+
+            // Clean up temp file after PDF is built
+            if ($tempFile && is_file($tempFile)) {
+                @unlink($tempFile);
+            }
         }
+
 
         // FRONT: Student Name
         $lastNamePart = mb_strtoupper(trim((string) ($student->last_name ?? ''))) . ',';
