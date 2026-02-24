@@ -16,8 +16,13 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/attendance/scan', [AttendanceController::class, 'scanPublic']);
 Route::get('/attendance/public/recent', [AttendanceController::class, 'publicRecent']);
 
-Route::get('/teacher/students/{id}/id', [IdCardController::class, 'generate'])
+Route::get('/teacher/students/{id}/id-url', [IdCardController::class, 'getSignedUrl'])
     ->middleware(['auth:sanctum', 'role:Teacher']);
+
+// Secure signed route without auth middleware since it's signed with expiration
+Route::get('/media/id/{hash}', [IdCardController::class, 'generateSecure'])
+    ->name('id.download')
+    ->middleware('signed');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -37,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/students', [StudentController::class, 'index']);
         Route::post('/students', [StudentController::class, 'store']);
         Route::put('/students/{id}', [StudentController::class, 'update']);
+        Route::post('/students/{id}', [StudentController::class, 'update']); // for _method=PUT spoofing with FormData
         Route::post('/students/{id}/photo', [StudentController::class, 'uploadPhoto']);
     });
 

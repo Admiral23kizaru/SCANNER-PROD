@@ -38,7 +38,10 @@ export async function updateStudent(id, payload) {
 }
 
 export async function updateStudentWithFormData(id, formData) {
-    const { data } = await axios.put(base + '/students/' + id, formData, {
+    // Laravel doesn't support multipart/form-data via PUT.
+    // Use POST with _method=PUT (method spoofing) so file uploads work.
+    formData.append('_method', 'PUT');
+    const { data } = await axios.post(base + '/students/' + id, formData, {
         headers: { ...getAuthHeaders(), Accept: 'application/json' },
     });
     return data;

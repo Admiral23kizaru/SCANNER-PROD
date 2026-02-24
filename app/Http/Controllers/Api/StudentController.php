@@ -78,7 +78,7 @@ class StudentController extends Controller
             'section' => ['nullable', 'string', 'max:32'],
             'guardian' => ['nullable', 'string', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
-            'photo' => ['nullable', 'file', 'image', 'max:5120'],
+            'photo' => ['nullable', 'file', 'mimes:png', 'max:5120'],
         ], [
             'student_number.unique' => 'LRN already exists.',
         ]);
@@ -147,7 +147,7 @@ class StudentController extends Controller
             'section' => ['nullable', 'string', 'max:32'],
             'guardian' => ['nullable', 'string', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
-            'photo' => ['nullable', 'file', 'image', 'max:5120'],
+            'photo' => ['nullable', 'file', 'mimes:png', 'max:5120'],
         ], [
             'student_number.unique' => 'LRN already exists.',
         ]);
@@ -202,7 +202,7 @@ class StudentController extends Controller
                 return response()->json(['message' => 'Forbidden.'], 403);
             }
         }
-        $request->validate(['photo' => ['required', 'file', 'image', 'max:5120']]);
+        $request->validate(['photo' => ['required', 'file', 'mimes:png', 'max:5120']]);
         $this->saveStudentPhoto($request->file('photo'), $student->student_number);
         return response()->json(['message' => 'Photo updated.']);
     }
@@ -213,8 +213,16 @@ class StudentController extends Controller
         if (!File::isDirectory($dir)) {
             File::makeDirectory($dir, 0755, true);
         }
-        $path = $dir . '/' . $studentNumber . '.jpg';
-        $file->move($dir, basename($path));
+        // Always save as .png so IdCardController can find and render it correctly
+        $path = $dir . '/' . $studentNumber . '.png';
+        // Remove old jpg/png versions first
+        foreach (['.jpg', '.jpeg', '.png'] as $ext) {
+            $old = $dir . '/' . $studentNumber . $ext;
+            if (file_exists($old)) {
+                @unlink($old);
+            }
+        }
+        $file->move($dir, $studentNumber . '.png');
     }
 
     private function studentToArray(Student $student, ?string $fullName = null): array

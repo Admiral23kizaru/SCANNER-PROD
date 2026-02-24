@@ -7,19 +7,47 @@ use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Http\JsonResponse;
 
 class IdCardController extends Controller
 {
-    public function generate(Request $request, int $id): Response
+    public function getSignedUrl(Request $request, int $id): JsonResponse
     {
         $student = Student::findOrFail($id);
-
         $user = $request->user();
+
         if ($user?->role?->name === 'Teacher') {
             $allowed = ($student->teacher_id === $user->id || $student->created_by === $user->id);
             if (!$allowed) {
                 return response()->json(['message' => 'Forbidden.'], 403);
             }
+        }
+
+        $hash = md5($student->student_number . config('app.key'));
+        
+        // Generate a signed URL that expires in 5 minutes (300 seconds)
+        $url = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'id.download',
+            now()->addMinutes(5),
+            ['hash' => $hash, 'id' => $student->id]
+        );
+
+        return response()->json(['url' => $url]);
+    }
+
+    public function generateSecure(Request $request, string $hash): Response
+    {
+        // Require valid signature
+        if (!$request->hasValidSignature()) {
+            abort(401, 'Invalid or expired signature.');
+        }
+
+        $id = $request->query('id');
+        $student = Student::findOrFail($id);
+
+        $expectedHash = md5($student->student_number . config('app.key'));
+        if ($hash !== $expectedHash) {
+            abort(403, 'Invalid file reference.');
         }
 
         $hasGdPng = function_exists('imagecreatefrompng') && function_exists('imagepng');
@@ -97,31 +125,31 @@ class IdCardController extends Controller
         $pdf->AddPage();
         $pdf->Image($frontTemplate, 0, 0, $cardW, $cardH, 'PNG', '', '', false, 300);
 
-        // FRONT: QR Code (Optimized: ECC 'M', smaller size, centered vertically)
-        // 18x18 limits the size to about 180px in 300dpi. Vertically centered around y=10.
-        $pdf->write2DBarcode($qrPayload, 'QRCODE,M', 11, 10, 18, 18, $qrStyle, 'N');
+        // FRONT: QR Code (Optimized: ECC 'M', 16x16mm which is ~189px max limit, higher contrast)
+        $pdf->write2DBarcode($qrPayload, 'QRCODE,M', 11, 12, 16, 16, $qrStyle, 'N');
 
         // FRONT: Emergency Contact
         $pdf->SetTextColor(0, 0, 0);
-        $pdf->SetFont('helvetica', 'B', 8);
+        $pdf->SetFont('helvetica', 'B', 6);
         $pdf->SetXY(4, 32);
         $pdf->Cell(34, 0, 'In case of emergency, contact:', 0, 1, 'C');
         
-        $pdf->SetFont('helvetica', 'B', 9);
+        $pdf->SetFont('helvetica', 'B', 7);
         $pdf->SetXY(4, 36);
         $pdf->Cell(34, 0, $guardian !== '' ? mb_strtoupper($guardian) : 'N/A', 0, 1, 'C');
         
-        $pdf->SetFont('helvetica', 'B', 9);
+        $pdf->SetFont('helvetica', '', 7);
         $pdf->SetXY(4, 40);
         $pdf->Cell(34, 0, $contact !== '' ? $contact : 'N/A', 0, 1, 'C');
 
-        // FRONT: Photo
-        $photoPath = public_path('school/' . $student->student_number . '.jpg');
+        // FRONT: Photo — look for .png first (canonical upload format), fallback .jpg
+        $photoPath = public_path('school/' . $student->student_number . '.png');
         if (!is_file($photoPath)) {
-            $photoPath = public_path('school/' . $student->student_number . '.png');
+            $photoPath = public_path('school/' . $student->student_number . '.jpg');
         }
         if (is_file($photoPath)) {
-            $pdf->Image($photoPath, 50.0, 14.0, 21.0, 21.0, '', '', '', false, 300, '', false, false, 0, 'CT');
+            $imgType = strtolower(pathinfo($photoPath, PATHINFO_EXTENSION)) === 'png' ? 'PNG' : 'JPEG';
+            $pdf->Image($photoPath, 50.0, 14.0, 21.0, 21.0, $imgType, '', '', false, 300, '', false, false, 0, 'CT');
         }
 
         // FRONT: Student Name
@@ -149,32 +177,9 @@ class IdCardController extends Controller
         $pdf->Cell($cardW - 4, 0, 'LRN: ' . $lrn, 0, 1, 'R');
 
         // ---------------- PAGE 2 (BACK) ----------------
+        // Completely clean block: just the blank template with no text, QR, or values.
         $pdf->AddPage();
         $pdf->Image($backTemplate, 0, 0, $cardW, $cardH, 'PNG', '', '', false, 300);
-
-        // BACK: Guardian Details
-        // Center vertically on the page and use left alignment.
-        $pdf->SetTextColor(0, 0, 0);
-        
-        $pdf->SetFont('helvetica', '', 9);
-        $pdf->SetXY(15, 15);
-        $pdf->MultiCell(55, 5, "In case of emergency,\nplease contact:", 0, 'L', false, 1);
-        
-        $pdf->SetFont('helvetica', 'B', 10);
-        $pdf->SetXY(15, 26);
-        $pdf->Cell(55, 5, 'Guardian:', 0, 1, 'L');
-        
-        $pdf->SetFont('helvetica', '', 10);
-        $pdf->SetXY(15, 31);
-        $pdf->Cell(55, 5, $guardian !== '' ? $guardian : 'N/A', 0, 1, 'L');
-        
-        $pdf->SetFont('helvetica', 'B', 10);
-        $pdf->SetXY(15, 38);
-        $pdf->Cell(55, 5, 'Contact No:', 0, 1, 'L');
-        
-        $pdf->SetFont('helvetica', '', 10);
-        $pdf->SetXY(15, 43);
-        $pdf->Cell(55, 5, $contact !== '' ? $contact : 'N/A', 0, 1, 'L');
 
         if (ob_get_length()) {
             ob_end_clean();

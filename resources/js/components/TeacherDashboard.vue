@@ -251,7 +251,7 @@
               />
             </div>
             <div class="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50/80 p-4">
-              <label class="block text-sm font-medium text-slate-700 mb-2">Photo</label>
+              <label class="block text-sm font-medium text-slate-700 mb-2">Photo <span class="text-xs text-slate-400 font-normal">(PNG only)</span></label>
               <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                 <label class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50 transition shrink-0">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -261,13 +261,14 @@
                   <input
                     ref="photoInputRef"
                     type="file"
-                    accept="image/jpeg,image/jpg,image/png"
+                    accept="image/png,.png"
                     class="sr-only"
                     @change="onPhotoChange"
                   />
                 </label>
                 <span class="text-sm text-slate-500">{{ photoFileName || 'No file chosen' }}</span>
               </div>
+              <p v-if="photoError" class="mt-1 text-xs text-red-500">{{ photoError }}</p>
             </div>
           </div>
           <div v-if="formError" class="mt-2 text-sm text-red-600">{{ formError }}</div>
@@ -393,6 +394,7 @@ const qrDataUrl = ref('');
 const photoInputRef = ref(null);
 const photoFile = ref(null);
 const photoFileName = ref('');
+const photoError = ref('');
 
 let debounceTimer = null;
 
@@ -432,6 +434,16 @@ function goToPage(page) {
 
 function onPhotoChange(e) {
   const file = e.target.files?.[0];
+  photoError.value = '';
+  if (file) {
+    if (file.type !== 'image/png') {
+      photoError.value = 'Only PNG images are accepted.';
+      photoFile.value = null;
+      photoFileName.value = '';
+      if (photoInputRef.value) photoInputRef.value.value = '';
+      return;
+    }
+  }
   photoFile.value = file || null;
   photoFileName.value = file ? file.name : '';
 }
@@ -445,6 +457,7 @@ function openAddModal() {
   formError.value = '';
   photoFile.value = null;
   photoFileName.value = '';
+  photoError.value = '';
   if (photoInputRef.value) photoInputRef.value.value = '';
   showFormModal.value = true;
 }
@@ -578,12 +591,20 @@ watch([showQrModal, qrModalStudent], async () => {
   }
 });
 
-function downloadId(id) {
+async function downloadId(id) {
   const token = getStoredToken();
-  const url = token
-    ? `/api/teacher/students/${encodeURIComponent(id)}/id?token=${encodeURIComponent(token)}`
-    : `/api/teacher/students/${encodeURIComponent(id)}/id`;
-  window.open(url, '_blank', 'noopener,noreferrer');
+  if (token) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  }
+  try {
+    const res = await axios.get(`/api/teacher/students/${encodeURIComponent(id)}/id-url`);
+    if (res.data?.url) {
+      window.open(res.data.url, '_blank', 'noopener,noreferrer');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Failed to generate secure ID link.');
+  }
 }
 
 async function logout() {
