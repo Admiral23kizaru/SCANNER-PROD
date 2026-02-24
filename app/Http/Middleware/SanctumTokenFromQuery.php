@@ -18,6 +18,10 @@ class SanctumTokenFromQuery
                 $_SERVER['HTTP_AUTHORIZATION'] = $value;
             }
         }
+        
+        if ($request->is('api/*')) {
+            $request->headers->set('Accept', 'application/json');
+        }
 
         return $next($request);
     }

@@ -53,24 +53,29 @@ class IdCardController extends Controller
         $cardW = 85.6;
         $cardH = 54.0;
 
-        // Page 1 (Front)
-        $pdf->AddPage();
-        $pdf->Image($frontTemplate, 0, 0, $cardW, $cardH, 'PNG', '', '', false, 300);
-
+        // Prepare Data
         $fullName = trim(implode(' ', array_filter([
             $student->first_name ?? null,
             $student->middle_name ?? null,
             $student->last_name ?? null,
         ])));
         $fullName = $fullName !== '' ? $fullName : '—';
-
         $lrn = (string) ($student->student_number ?? '');
+        $guardian = (string) ($student->guardian ?? '');
+        $contact = (string) ($student->contact_number ?? '');
 
-        $pdf->SetTextColor(0, 0, 0);
-        $pdf->SetFont('helvetica', 'B', 9);
-        $pdf->SetXY(0, 35);
-        $pdf->Cell($cardW, 0, mb_strtoupper($fullName), 0, 1, 'C', false, '', 0, false, 'T', 'M');
-
+        $qrPayload = $lrn; // Minimal payload: numeric ID only
+        
+        $qrStyle = [
+            'border' => 0,
+            'vpadding' => 0,
+            'hpadding' => 0,
+            'fgcolor' => [0, 0, 0],
+            'bgcolor' => false,
+            'module_width' => 1,
+            'module_height' => 1,
+        ];
+        
         $barcodeStyle = [
             'position' => '',
             'align' => 'C',
@@ -88,39 +93,88 @@ class IdCardController extends Controller
             'stretchtext' => 4,
         ];
 
-        $barcodeW = 60.0;
-        $barcodeX = ($cardW - $barcodeW) / 2.0;
-        $pdf->write1DBarcode($lrn, 'C128', $barcodeX, 40.5, $barcodeW, 8.0, 0.4, $barcodeStyle, 'N');
+        // ---------------- PAGE 1 (FRONT) ----------------
+        $pdf->AddPage();
+        $pdf->Image($frontTemplate, 0, 0, $cardW, $cardH, 'PNG', '', '', false, 300);
 
-        $pdf->SetFont('helvetica', '', 7);
-        $pdf->SetXY(0, 50);
-        $pdf->Cell($cardW, 0, 'LRN: ' . $lrn, 0, 1, 'C');
+        // FRONT: QR Code (Optimized: ECC 'M', smaller size, centered vertically)
+        // 18x18 limits the size to about 180px in 300dpi. Vertically centered around y=10.
+        $pdf->write2DBarcode($qrPayload, 'QRCODE,M', 11, 10, 18, 18, $qrStyle, 'N');
 
-        // Page 2 (Back)
+        // FRONT: Emergency Contact
+        $pdf->SetTextColor(0, 0, 0);
+        $pdf->SetFont('helvetica', 'B', 8);
+        $pdf->SetXY(4, 32);
+        $pdf->Cell(34, 0, 'In case of emergency, contact:', 0, 1, 'C');
+        
+        $pdf->SetFont('helvetica', 'B', 9);
+        $pdf->SetXY(4, 36);
+        $pdf->Cell(34, 0, $guardian !== '' ? mb_strtoupper($guardian) : 'N/A', 0, 1, 'C');
+        
+        $pdf->SetFont('helvetica', 'B', 9);
+        $pdf->SetXY(4, 40);
+        $pdf->Cell(34, 0, $contact !== '' ? $contact : 'N/A', 0, 1, 'C');
+
+        // FRONT: Photo
+        $photoPath = public_path('school/' . $student->student_number . '.jpg');
+        if (!is_file($photoPath)) {
+            $photoPath = public_path('school/' . $student->student_number . '.png');
+        }
+        if (is_file($photoPath)) {
+            $pdf->Image($photoPath, 50.0, 14.0, 21.0, 21.0, '', '', '', false, 300, '', false, false, 0, 'CT');
+        }
+
+        // FRONT: Student Name
+        $lastNamePart = mb_strtoupper(trim((string) ($student->last_name ?? ''))) . ',';
+        $firstMiddlePart = mb_strtoupper(trim(implode(' ', array_filter([$student->first_name ?? null, $student->middle_name ?? null]))));
+        
+        $pdf->SetTextColor(0, 0, 0);
+        $pdf->SetFont('helvetica', 'B', 10);
+        $pdf->SetXY(40, 36);
+        $pdf->Cell(44, 0, $lastNamePart, 0, 1, 'C');
+        
+        $pdf->SetFont('helvetica', 'B', 9);
+        $pdf->SetXY(40, 40);
+        $pdf->Cell(44, 0, $firstMiddlePart, 0, 1, 'C');
+
+        // FRONT: Barcode
+        $barcodeW = 34.0;
+        $barcodeX = 40 + ((44 - $barcodeW) / 2.0);
+        $pdf->write1DBarcode($lrn, 'C128', $barcodeX, 44.5, $barcodeW, 5.0, 0.4, $barcodeStyle, 'N');
+
+        // FRONT: LRN Strip
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('helvetica', 'B', 9);
+        $pdf->SetXY(0, 50.5);
+        $pdf->Cell($cardW - 4, 0, 'LRN: ' . $lrn, 0, 1, 'R');
+
+        // ---------------- PAGE 2 (BACK) ----------------
         $pdf->AddPage();
         $pdf->Image($backTemplate, 0, 0, $cardW, $cardH, 'PNG', '', '', false, 300);
 
-        $guardian = (string) ($student->guardian ?? '');
-        $contact = (string) ($student->contact_number ?? '');
-
-        $qrPayload = "Name: " . $fullName . "\nLRN: " . $lrn . "\nGrade/Section: " . ($student->grade ?? '') . " " . ($student->section ?? '') . "\nGuardian: " . $guardian . "\nContact: " . $contact;
-        $qrStyle = [
-            'border' => 0,
-            'vpadding' => 0,
-            'hpadding' => 0,
-            'fgcolor' => [0, 0, 0],
-            'bgcolor' => false,
-            'module_width' => 1,
-            'module_height' => 1,
-        ];
-        $pdf->write2DBarcode($qrPayload, 'QRCODE,H', 60.5, 8.5, 22.0, 22.0, $qrStyle, 'N');
-
+        // BACK: Guardian Details
+        // Center vertically on the page and use left alignment.
         $pdf->SetTextColor(0, 0, 0);
-        $pdf->SetFont('helvetica', '', 7);
-        $pdf->SetXY(6, 32);
-        $pdf->MultiCell(54, 0, "Guardian:\n" . ($guardian !== '' ? $guardian : '—'), 0, 'L', false, 1);
-        $pdf->SetXY(6, 43);
-        $pdf->MultiCell(54, 0, "Contact:\n" . ($contact !== '' ? $contact : '—'), 0, 'L', false, 1);
+        
+        $pdf->SetFont('helvetica', '', 9);
+        $pdf->SetXY(15, 15);
+        $pdf->MultiCell(55, 5, "In case of emergency,\nplease contact:", 0, 'L', false, 1);
+        
+        $pdf->SetFont('helvetica', 'B', 10);
+        $pdf->SetXY(15, 26);
+        $pdf->Cell(55, 5, 'Guardian:', 0, 1, 'L');
+        
+        $pdf->SetFont('helvetica', '', 10);
+        $pdf->SetXY(15, 31);
+        $pdf->Cell(55, 5, $guardian !== '' ? $guardian : 'N/A', 0, 1, 'L');
+        
+        $pdf->SetFont('helvetica', 'B', 10);
+        $pdf->SetXY(15, 38);
+        $pdf->Cell(55, 5, 'Contact No:', 0, 1, 'L');
+        
+        $pdf->SetFont('helvetica', '', 10);
+        $pdf->SetXY(15, 43);
+        $pdf->Cell(55, 5, $contact !== '' ? $contact : 'N/A', 0, 1, 'L');
 
         if (ob_get_length()) {
             ob_end_clean();

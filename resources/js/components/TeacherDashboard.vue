@@ -99,7 +99,7 @@
                       type="button"
                       class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-sm"
                       title="Make ID"
-                      @click="openPdfPreview(row.id)"
+                      @click="downloadId(row.id)"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -348,54 +348,6 @@
         </div>
       </div>
     </div>
-    <div
-      v-if="showPdfPreview"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      @click.self="showPdfPreview = false"
-    >
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-slate-200" @click.stop>
-        <div class="p-4 border-b border-slate-200 flex justify-between items-center">
-          <h2 class="text-lg font-semibold text-slate-800">ID Card Preview</h2>
-          <button @click="showPdfPreview = false" class="text-slate-500 hover:text-slate-700">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div class="p-4 flex-1 overflow-hidden h-96 bg-slate-100">
-          <iframe
-            v-if="pdfPreviewUrl"
-            :src="pdfPreviewUrl"
-            class="w-full h-full border-0 rounded"
-            title="PDF Preview"
-          ></iframe>
-          <div v-else class="flex h-full items-center justify-center text-slate-500">
-            Loading preview...
-          </div>
-        </div>
-        <div class="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50">
-          <button
-            type="button"
-            class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-white transition"
-            @click="showPdfPreview = false"
-          >
-            Cancel
-          </button>
-          <a
-            v-if="pdfPreviewUrl"
-            :href="pdfPreviewUrl"
-            download="student_id.pdf"
-            target="_blank"
-            class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition shadow-sm"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Download ID
-          </a>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -421,8 +373,6 @@ const searchInput = ref('');
 const showFormModal = ref(false);
 const showViewModal = ref(false);
 const showQrModal = ref(false);
-const showPdfPreview = ref(false);
-const pdfPreviewUrl = ref('');
 const viewModalStudent = ref(null);
 const editingId = ref(null);
 const form = ref({
@@ -628,14 +578,12 @@ watch([showQrModal, qrModalStudent], async () => {
   }
 });
 
-function openPdfPreview(id) {
+function downloadId(id) {
   const token = getStoredToken();
   const url = token
     ? `/api/teacher/students/${encodeURIComponent(id)}/id?token=${encodeURIComponent(token)}`
     : `/api/teacher/students/${encodeURIComponent(id)}/id`;
-  
-  pdfPreviewUrl.value = url;
-  showPdfPreview.value = true;
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 async function logout() {

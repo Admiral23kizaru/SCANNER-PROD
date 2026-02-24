@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => RoleMiddleware::class,
         ]);
+        $middleware->prependToGroup('api', \App\Http\Middleware\SanctumTokenFromQuery::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

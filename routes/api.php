@@ -17,7 +17,7 @@ Route::post('/attendance/scan', [AttendanceController::class, 'scanPublic']);
 Route::get('/attendance/public/recent', [AttendanceController::class, 'publicRecent']);
 
 Route::get('/teacher/students/{id}/id', [IdCardController::class, 'generate'])
-    ->middleware([SanctumTokenFromQuery::class, 'auth:sanctum', 'role:Teacher']);
+    ->middleware(['auth:sanctum', 'role:Teacher']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
