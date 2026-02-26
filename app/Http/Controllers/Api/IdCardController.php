@@ -121,28 +121,7 @@ class IdCardController extends Controller
             'stretchtext' => 4,
         ];
 
-        // ---------------- PAGE 1 (FRONT) ----------------
-        $pdf->AddPage();
-        $pdf->Image($frontTemplate, 0, 0, $cardW, $cardH, 'PNG', '', '', false, 300);
-
-        // FRONT: QR Code (Optimized: ECC 'M', 16x16mm which is ~189px max limit, higher contrast)
-        $pdf->write2DBarcode($qrPayload, 'QRCODE,M', 11, 12, 16, 16, $qrStyle, 'N');
-
-        // FRONT: Emergency Contact
-        $pdf->SetTextColor(0, 0, 0);
-        $pdf->SetFont('helvetica', 'B', 6);
-        $pdf->SetXY(4, 32);
-        $pdf->Cell(34, 0, 'In case of emergency, contact:', 0, 1, 'C');
-        
-        $pdf->SetFont('helvetica', 'B', 7);
-        $pdf->SetXY(4, 36);
-        $pdf->Cell(34, 0, $guardian !== '' ? mb_strtoupper($guardian) : 'N/A', 0, 1, 'C');
-        
-        $pdf->SetFont('helvetica', '', 7);
-        $pdf->SetXY(4, 40);
-        $pdf->Cell(34, 0, $contact !== '' ? $contact : 'N/A', 0, 1, 'C');
-
-        // FRONT: Photo — look for .png first (canonical), fallback .jpg
+        // ── Locate student photo ──────────────────────────────────────────────
         $photoPath = public_path('school/' . $student->student_number . '.png');
         if (!is_file($photoPath)) {
             $photoPath = public_path('school/' . $student->student_number . '.jpg');
@@ -151,97 +130,68 @@ class IdCardController extends Controller
             }
         }
 
+        // ================================================================
+        // PAGE 1 (FRONT) — All elements use strict absolute positioning.
+        // No Ln(), no MultiCell(), no auto line breaks.
+        // Card: 85.6mm wide × 54mm tall (landscape).
+        // Left section (0–38mm): QR code, emergency contact
+        // Right section (40–84mm): photo, name, barcode, LRN
+        // ================================================================
+        $pdf->AddPage();
+        $pdf->Image($frontTemplate, 0, 0, $cardW, $cardH, 'PNG', '', '', false, 300);
+
+        // ── QR Code ──────────────────────────────────────────────────────
+        $pdf->write2DBarcode($qrPayload, 'QRCODE,M', 11, 12, 16, 16, $qrStyle, 'N');
+
+        // ── Emergency Contact (left column) ──────────────────────────────
+        $pdf->SetTextColor(0, 0, 0);
+
+        $pdf->SetFont('helvetica', 'B', 6);
+        $pdf->SetXY(4, 32);
+        $pdf->Cell(34, 3, 'In case of emergency, contact:', 0, 0, 'C');
+
+        $pdf->SetFont('helvetica', 'B', 7);
+        $pdf->SetXY(4, 36);
+        $pdf->Cell(34, 3, $guardian !== '' ? mb_strtoupper($guardian) : 'N/A', 0, 0, 'C');
+
+        $pdf->SetFont('helvetica', '', 7);
+        $pdf->SetXY(4, 40);
+        $pdf->Cell(34, 3, $contact !== '' ? $contact : 'N/A', 0, 0, 'C');
+
+       
         if ($photoPath) {
-            // Use GD to remove white/near-white background so photo blends with ID template
-            $ext = strtolower(pathinfo($photoPath, PATHINFO_EXTENSION));
-            $srcImg = null;
-            if ($ext === 'png' && function_exists('imagecreatefrompng')) {
-                $srcImg = @imagecreatefrompng($photoPath);
-            } elseif (in_array($ext, ['jpg', 'jpeg']) && function_exists('imagecreatefromjpeg')) {
-                $srcImg = @imagecreatefromjpeg($photoPath);
-            }
-
-            $finalPhotoPath = $photoPath; // fallback: use original
-            $tempFile = null;
-
-            if ($srcImg) {
-                $w = imagesx($srcImg);
-                $h = imagesy($srcImg);
-                // Create output canvas with alpha support
-                $outImg = imagecreatetruecolor($w, $h);
-                imagealphablending($outImg, false);
-                imagesavealpha($outImg, true);
-                $transparent = imagecolorallocatealpha($outImg, 255, 255, 255, 127);
-                imagefill($outImg, 0, 0, $transparent);
-                imagealphablending($outImg, true);
-
-                // Copy source, then flood-fill near-white pixels with transparency
-                imagecopy($outImg, $srcImg, 0, 0, 0, 0, $w, $h);
-
-                // Remove near-white background: scan edges + flood-fill
-                $threshold = 30; // tolerance: pixels within 30 of white (225-255 per channel) become transparent
-                for ($y = 0; $y < $h; $y++) {
-                    for ($x = 0; $x < $w; $x++) {
-                        $rgb = imagecolorat($outImg, $x, $y);
-                        $r = ($rgb >> 16) & 0xFF;
-                        $g = ($rgb >> 8) & 0xFF;
-                        $b = $rgb & 0xFF;
-                        $a = ($rgb >> 24) & 0x7F;
-                        // Skip already transparent pixels
-                        if ($a > 100) continue;
-                        // If near-white, make transparent
-                        if ($r >= (255 - $threshold) && $g >= (255 - $threshold) && $b >= (255 - $threshold)) {
-                            imagesetpixel($outImg, $x, $y, $transparent);
-                        }
-                    }
-                }
-
-                imagealphablending($outImg, false);
-                imagesavealpha($outImg, true);
-
-                // Save cleaned image to temp file
-                $tempFile = sys_get_temp_dir() . '/id_photo_' . $student->student_number . '_' . time() . '.png';
-                if (imagepng($outImg, $tempFile)) {
-                    $finalPhotoPath = $tempFile;
-                }
-                imagedestroy($srcImg);
-                imagedestroy($outImg);
-            }
-
-            // Place photo: adjusted position & size to match reference layout
-            // x=41, y=3.5 → width=22mm, height=27mm (portrait photo over the ribbon area)
-            $pdf->Image($finalPhotoPath, 41.0, 3.5, 22.0, 27.0, 'PNG', '', '', false, 300, '', false, false, 0, 'CT');
-
-            // Clean up temp file after PDF is built
-            if ($tempFile && is_file($tempFile)) {
-                @unlink($tempFile);
-            }
+            $imgType = (strtolower(pathinfo($photoPath, PATHINFO_EXTENSION)) === 'png') ? 'PNG' : 'JPEG';
+            $pdf->Image($photoPath, 49.0, 15.0, 15.0, 17.0, $imgType,
+                        '', '', false, 300, '', false, false, 0, 'CT');
         }
 
+        // ── Student Name (below photo, right column) ─────────────────────
+        $lastNamePart    = mb_strtoupper(trim((string) ($student->last_name ?? ''))) . ',';
+        $firstMiddlePart = mb_strtoupper(trim(implode(' ', array_filter([
+            $student->first_name ?? null,
+            $student->middle_name ?? null,
+        ]))));
 
-        // FRONT: Student Name
-        $lastNamePart = mb_strtoupper(trim((string) ($student->last_name ?? ''))) . ',';
-        $firstMiddlePart = mb_strtoupper(trim(implode(' ', array_filter([$student->first_name ?? null, $student->middle_name ?? null]))));
-        
         $pdf->SetTextColor(0, 0, 0);
-        $pdf->SetFont('helvetica', 'B', 10);
-        $pdf->SetXY(40, 36);
-        $pdf->Cell(44, 0, $lastNamePart, 0, 1, 'C');
-        
-        $pdf->SetFont('helvetica', 'B', 9);
-        $pdf->SetXY(40, 40);
-        $pdf->Cell(44, 0, $firstMiddlePart, 0, 1, 'C');
+        $pdf->SetFont('helvetica', 'B', 8);
+        $pdf->SetXY(40, 35);
+        $pdf->Cell(44, 4, $lastNamePart, 0, 0, 'C');
 
-        // FRONT: Barcode
+        $pdf->SetFont('helvetica', 'B', 7);
+        $pdf->SetXY(40, 39);
+        $pdf->Cell(43, 4, $firstMiddlePart, 0, 0, 'C');
+
+        // ── Barcode (right column, below name) ───────────────────────────
         $barcodeW = 34.0;
-        $barcodeX = 40 + ((44 - $barcodeW) / 2.0);
+        $barcodeX = 40.0 + ((44.0 - $barcodeW) / 2.0);
         $pdf->write1DBarcode($lrn, 'C128', $barcodeX, 44.5, $barcodeW, 5.0, 0.4, $barcodeStyle, 'N');
 
-        // FRONT: LRN Strip
+        // ── LRN text on bottom strip ─────────────────────────────────────
         $pdf->SetTextColor(255, 255, 255);
-        $pdf->SetFont('helvetica', 'B', 9);
+        $pdf->SetFont('helvetica', 'B', 8);
         $pdf->SetXY(0, 50.5);
-        $pdf->Cell($cardW - 4, 0, 'LRN: ' . $lrn, 0, 1, 'R');
+        $pdf->Cell($cardW - 4, 3, 'LRN: ' . $lrn, 0, 0, 'R');
+
 
         // ---------------- PAGE 2 (BACK) ----------------
         // Completely clean block: just the blank template with no text, QR, or values.
@@ -253,6 +203,9 @@ class IdCardController extends Controller
         }
 
         $content = $pdf->Output('student_id.pdf', 'S');
+
+
+
 
         return response($content)
             ->header('Content-Type', 'application/pdf')
