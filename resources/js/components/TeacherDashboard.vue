@@ -240,6 +240,15 @@
               />
             </div>
             <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Guardian Email</label>
+              <input
+                v-model="form.guardian_email"
+                type="email"
+                placeholder="For notifications"
+                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">LRN</label>
               <input
                 v-model="form.student_number"
@@ -384,6 +393,7 @@ const form = ref({
   section: '',
   grade_section: '',
   guardian: '',
+  guardian_email: '',
   contact_number: '',
   student_number: '',
 });
@@ -452,7 +462,7 @@ function openAddModal() {
   editingId.value = null;
   form.value = {
     first_name: '', last_name: '', middle_name: '', grade: '', section: '',
-    grade_section: '', guardian: '', contact_number: '', student_number: '',
+    grade_section: '', guardian: '', guardian_email: '', contact_number: '', student_number: '',
   };
   formError.value = '';
   photoFile.value = null;
@@ -472,6 +482,7 @@ function openEditModal(row) {
     section: row.section ?? '',
     grade_section: row.grade_section ?? '',
     guardian: row.guardian ?? '',
+    guardian_email: row.guardian_email ?? '',
     contact_number: row.contact_number ?? '',
     student_number: row.student_number ?? '',
   };
@@ -491,6 +502,7 @@ function buildFormData() {
   fd.append('grade', form.value.grade || '');
   fd.append('section', form.value.section || '');
   fd.append('guardian', form.value.guardian || '');
+  fd.append('guardian_email', form.value.guardian_email || '');
   fd.append('contact_number', form.value.contact_number || '');
   if (photoFile.value) fd.append('photo', photoFile.value);
   return fd;
@@ -512,6 +524,7 @@ async function submitForm() {
           grade: form.value.grade || '',
           section: form.value.section || '',
           guardian: form.value.guardian || '',
+          guardian_email: form.value.guardian_email || '',
           contact_number: form.value.contact_number || '',
         };
         res = await updateStudent(editingId.value, payload);
@@ -537,6 +550,7 @@ async function submitForm() {
           grade: form.value.grade || '',
           section: form.value.section || '',
           guardian: form.value.guardian || '',
+          guardian_email: form.value.guardian_email || '',
           contact_number: form.value.contact_number || '',
         });
         students.value = [res.student, ...students.value];
@@ -567,13 +581,7 @@ watch([showQrModal, qrModalStudent], async () => {
   const canvas = qrCanvas.value;
   if (!canvas) return;
   const lrn = String(qrModalStudent.value.student_number ?? '').trim();
-  const fullName = qrModalStudent.value.full_name || '';
-  const grade = qrModalStudent.value.grade || '';
-  const section = qrModalStudent.value.section || '';
-  const guardian = qrModalStudent.value.guardian || '';
-  const contact = qrModalStudent.value.contact_number || '';
-  
-  const qrData = `Name: ${fullName}\nLRN: ${lrn}\nGrade/Section: ${grade} ${section}\nGuardian: ${guardian}\nContact: ${contact}`;
+  const qrData = lrn;
   
   try {
     await QRCode.toCanvas(canvas, qrData, {

@@ -21,6 +21,7 @@ class Student extends Model
         'grade',
         'section',
         'guardian',
+        'guardian_email',
         'contact_number',
         'emergency_contact',
     ];

@@ -26,7 +26,7 @@ class AttendanceController extends Controller
                 'status' => 'invalid',
                 'message' => 'Invalid QR code.',
                 'errors' => $validator->errors(),
-            ], 422);
+            ], 200);
         }
 
         $input = trim((string) $request->student_id);
@@ -43,7 +43,7 @@ class AttendanceController extends Controller
             return response()->json([
                 'status' => 'invalid',
                 'message' => 'Student not found.',
-            ], 404);
+            ], 200);
         }
 
         $todayStart = now()->startOfDay();
@@ -56,7 +56,7 @@ class AttendanceController extends Controller
             return response()->json([
                 'status' => 'duplicate',
                 'message' => 'Attendance already recorded today.',
-            ], 422);
+            ], 200);
         }
 
         $guardUser = $this->getDefaultGuardUser();
@@ -64,7 +64,7 @@ class AttendanceController extends Controller
             return response()->json([
                 'status' => 'invalid',
                 'message' => 'Guard terminal not configured.',
-            ], 500);
+            ], 200);
         }
 
         $attendance = Attendance::create([
@@ -72,6 +72,42 @@ class AttendanceController extends Controller
             'scanned_by' => $guardUser->id,
             'scanned_at' => now(),
         ]);
+
+        if (!empty($student->guardian_email)) {
+            try {
+                $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+                $mail->isSMTP();
+                $mail->Host       = env('MAIL_HOST', 'smtp.gmail.com');
+                $mail->SMTPAuth   = true;
+                $mail->Username   = env('MAIL_USERNAME');
+                $mail->Password   = env('MAIL_PASSWORD');
+                $mail->SMTPSecure = env('MAIL_ENCRYPTION', 'tls');
+                $mail->Port       = env('MAIL_PORT', 587);
+
+                $mail->setFrom(env('MAIL_FROM_ADDRESS', 'noreply@school.edu'), 'Student Safety Notifications');
+                $mail->addAddress($student->guardian_email);
+
+                $mail->isHTML(false);
+                $schoolName = env('APP_NAME', 'School');
+                $mail->Subject = "{$schoolName} – Campus Entry Notification";
+                
+                $fullName = trim($student->first_name . ' ' . ($student->middle_name ?? '') . ' ' . $student->last_name);
+                $gradeSection = $student->grade_section ?? 'N/A';
+                $date = now()->format('F j, Y');
+                $time = now()->format('g:i A');
+                
+                $mail->Body = "Automated Message\n\nThis is to notify you of a campus entry event.\n\n" .
+                              "Student: {$fullName}\n" .
+                              "Grade/Section: {$gradeSection}\n" .
+                              "Date: {$date}\n" .
+                              "Time: {$time}\n" .
+                              "Location: Main Gate\n\n" .
+                              "This is an automated message. Do not reply to this email.";
+                $mail->send();
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('PHPMailer Error: ' . $e->getMessage());
+            }
+        }
 
         return response()->json([
             'status' => 'success',

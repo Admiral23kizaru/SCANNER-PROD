@@ -52,6 +52,7 @@ class StudentController extends Controller
                 'grade' => $s->grade,
                 'section' => $s->section,
                 'guardian' => $s->guardian,
+                'guardian_email' => $s->guardian_email,
                 'contact_number' => $s->contact_number,
                 'created_at' => $s->created_at?->toIso8601String(),
             ];
@@ -77,6 +78,7 @@ class StudentController extends Controller
             'grade' => ['nullable', 'string', 'max:32'],
             'section' => ['nullable', 'string', 'max:32'],
             'guardian' => ['nullable', 'string', 'max:255'],
+            'guardian_email' => ['nullable', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
             'photo' => ['nullable', 'file', 'mimes:png', 'max:5120'],
         ], [
@@ -104,6 +106,7 @@ class StudentController extends Controller
             'grade' => $request->grade ?: null,
             'section' => $request->section ?: null,
             'guardian' => $request->guardian ?: null,
+            'guardian_email' => $request->guardian_email ?: null,
             'contact_number' => $request->contact_number ?: null,
             'emergency_contact' => $request->contact_number ?: null,
             'teacher_id' => $user->role->name === 'Teacher' ? $user->id : null,
@@ -146,6 +149,7 @@ class StudentController extends Controller
             'grade' => ['nullable', 'string', 'max:32'],
             'section' => ['nullable', 'string', 'max:32'],
             'guardian' => ['nullable', 'string', 'max:255'],
+            'guardian_email' => ['nullable', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
             'photo' => ['nullable', 'file', 'mimes:png', 'max:5120'],
         ], [
@@ -161,7 +165,7 @@ class StudentController extends Controller
 
         $data = $request->only([
             'first_name', 'last_name', 'middle_name', 'student_number',
-            'grade_section', 'grade', 'section', 'guardian', 'contact_number',
+            'grade_section', 'grade', 'section', 'guardian', 'guardian_email', 'contact_number',
         ]);
         if ($request->has('grade_section') && $request->grade_section === '') {
             $data['grade_section'] = null;
@@ -239,6 +243,7 @@ class StudentController extends Controller
             'grade' => $student->grade,
             'section' => $student->section,
             'guardian' => $student->guardian,
+            'guardian_email' => $student->guardian_email,
             'contact_number' => $student->contact_number,
             'created_at' => $student->created_at?->toIso8601String(),
         ];

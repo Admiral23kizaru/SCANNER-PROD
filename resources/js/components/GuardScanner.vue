@@ -214,8 +214,19 @@ function prependAttendance(student, attendance) {
 // ─── Scan handler ─────────────────────────────────────────────────────────────
 
 async function onScanSuccess(decodedText) {
-  const raw = String(decodedText).trim();
+  let raw = String(decodedText).trim();
   if (!raw) return;
+  
+  // Robustly extract LRN out of legacy QR string formats if printed on card
+  const lrnMatch = raw.match(/LRN:\s*([\w\d-]+)/i);
+  if (lrnMatch && lrnMatch[1]) {
+    raw = lrnMatch[1];
+  } else if (raw.includes('\n')) {
+    // Grab the first line or try to find a number if the QR code is bloated
+    const numericMatch = raw.match(/\d{5,}/);
+    if (numericMatch) raw = numericMatch[0];
+  }
+
   if (isDebounceLocked(raw)) {
     showMessage('Duplicate scan — please wait.', true);
     return;
@@ -224,6 +235,13 @@ async function onScanSuccess(decodedText) {
   lastScannedAt.value = Date.now();
   try {
     const res = await scanAttendancePublic(raw);
+    
+    // Check if the server explicitly returned an error/duplicate status (but HTTP 200)
+    if (res && res.status && res.status !== 'success') {
+      showMessage(res.message || 'Scan failed.', true);
+      return;
+    }
+    
     const student = res && res.student;
     const attendance = res && res.attendance;
     triggerSuccessPulse();
@@ -371,11 +389,15 @@ async function startCamera() {
   scanner.value = html5Qr;
 
   const config = {
-    fps: 15,
-    qrbox: { width: 250, height: 250 },
+    fps: 15, // Reverted to 15 to prevent CPU throttling on low-end devices
+    // Removed qrbox entirely to scan the ENTIRE viewport instantly
     aspectRatio: 1.0,
-    disableFlip: false,
-    rememberLastUsedCamera: false,
+    disableFlip: false, // Allows reading inverted codes
+    useBarCodeDetectorIfSupported: true,
+    videoConstraints: {
+      width: { ideal: 640 },
+      height: { ideal: 480 },
+    }
   };
 
   const onSuccess = (text) => onScanSuccess(text);
