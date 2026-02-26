@@ -37,6 +37,7 @@ CREATE TABLE students (
   grade VARCHAR(32) NULL DEFAULT NULL,
   section VARCHAR(32) NULL DEFAULT NULL,
   guardian VARCHAR(255) NULL DEFAULT NULL,
+  parent_email VARCHAR(255) NULL DEFAULT NULL,
   contact_number VARCHAR(64) NULL DEFAULT NULL,
   emergency_contact VARCHAR(255) NULL DEFAULT NULL,
   created_at TIMESTAMP NULL DEFAULT NULL,
@@ -106,7 +107,7 @@ INSERT INTO users (id, role_id, name, email, password, created_at, updated_at) V
 (2, 2, 'Jane Teacher', 'teacher@scanup.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NOW(), NOW()),
 (3, 3, 'Guard Post One', 'guard@scanup.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NOW(), NOW());
 
-INSERT INTO students (id, teacher_id, created_by, student_number, first_name, last_name, middle_name, grade_section, grade, section, guardian, contact_number, emergency_contact, created_at, updated_at) VALUES
-(1, 2, 2, 'STU-2024-001', 'Juan', 'Dela Cruz', NULL, '7-A', '7', 'A', 'Parent', '09171234567', '09171234567', NOW(), NOW()),
-(2, 2, 2, 'STU-2024-002', 'Maria', 'Santos', NULL, '7-B', '7', 'B', 'Guardian', '09187654321', '09187654321', NOW(), NOW()),
-(3, 2, 1, 'STU-2024-003', 'Pedro', 'Reyes', NULL, '8-A', '8', 'A', NULL, NULL, NULL, NOW(), NOW());
+INSERT INTO students (id, teacher_id, created_by, student_number, first_name, last_name, middle_name, grade_section, grade, section, guardian, parent_email, contact_number, emergency_contact, created_at, updated_at) VALUES
+(1, 2, 2, 'STU-2024-001', 'Juan', 'Dela Cruz', NULL, '7-A', '7', 'A', 'Parent', 'parent1@gmail.com', '09171234567', '09171234567', NOW(), NOW()),
+(2, 2, 2, 'STU-2024-002', 'Maria', 'Santos', NULL, '7-B', '7', 'B', 'Guardian', 'parent2@gmail.com', '09187654321', '09187654321', NOW(), NOW()),
+(3, 2, 1, 'STU-2024-003', 'Pedro', 'Reyes', NULL, '8-A', '8', 'A', NULL, NULL, NULL, NULL, NOW(), NOW());

@@ -231,11 +231,11 @@
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Contact Number</label>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Parent Email (Gmail)</label>
               <input
-                v-model="form.contact_number"
-                type="text"
-                placeholder="e.g. 09XXXXXXXXX"
+                v-model="form.parent_email"
+                type="email"
+                placeholder="e.g. parent@gmail.com"
                 class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               />
             </div>
@@ -306,7 +306,7 @@
           <div class="flex justify-between gap-4"><dt class="text-slate-500">Section</dt><dd class="text-slate-700">{{ viewModalStudent?.section || '—' }}</dd></div>
           <div class="flex justify-between gap-4"><dt class="text-slate-500">LRN</dt><dd class="tabular-nums text-slate-700">{{ viewModalStudent?.student_number }}</dd></div>
           <div class="flex justify-between gap-4"><dt class="text-slate-500">Guardian</dt><dd class="text-slate-700">{{ viewModalStudent?.guardian || '—' }}</dd></div>
-          <div class="flex justify-between gap-4"><dt class="text-slate-500">Contact</dt><dd class="text-slate-700">{{ viewModalStudent?.contact_number || '—' }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-slate-500">Parent Email</dt><dd class="text-slate-700">{{ viewModalStudent?.parent_email || '—' }}</dd></div>
         </dl>
         <div class="mt-4 flex flex-wrap gap-2">
           <button
@@ -384,6 +384,7 @@ const form = ref({
   section: '',
   grade_section: '',
   guardian: '',
+  parent_email: '',
   contact_number: '',
   student_number: '',
 });
@@ -452,7 +453,7 @@ function openAddModal() {
   editingId.value = null;
   form.value = {
     first_name: '', last_name: '', middle_name: '', grade: '', section: '',
-    grade_section: '', guardian: '', contact_number: '', student_number: '',
+    grade_section: '', guardian: '', parent_email: '', contact_number: '', student_number: '',
   };
   formError.value = '';
   photoFile.value = null;
@@ -472,6 +473,7 @@ function openEditModal(row) {
     section: row.section ?? '',
     grade_section: row.grade_section ?? '',
     guardian: row.guardian ?? '',
+    parent_email: row.parent_email ?? '',
     contact_number: row.contact_number ?? '',
     student_number: row.student_number ?? '',
   };
@@ -491,6 +493,7 @@ function buildFormData() {
   fd.append('grade', form.value.grade || '');
   fd.append('section', form.value.section || '');
   fd.append('guardian', form.value.guardian || '');
+   fd.append('parent_email', form.value.parent_email || '');
   fd.append('contact_number', form.value.contact_number || '');
   if (photoFile.value) fd.append('photo', photoFile.value);
   return fd;
@@ -512,6 +515,7 @@ async function submitForm() {
           grade: form.value.grade || '',
           section: form.value.section || '',
           guardian: form.value.guardian || '',
+          parent_email: form.value.parent_email || '',
           contact_number: form.value.contact_number || '',
         };
         res = await updateStudent(editingId.value, payload);
@@ -537,6 +541,7 @@ async function submitForm() {
           grade: form.value.grade || '',
           section: form.value.section || '',
           guardian: form.value.guardian || '',
+          parent_email: form.value.parent_email || '',
           contact_number: form.value.contact_number || '',
         });
         students.value = [res.student, ...students.value];
@@ -571,9 +576,9 @@ watch([showQrModal, qrModalStudent], async () => {
   const grade = qrModalStudent.value.grade || '';
   const section = qrModalStudent.value.section || '';
   const guardian = qrModalStudent.value.guardian || '';
-  const contact = qrModalStudent.value.contact_number || '';
+  const email = qrModalStudent.value.parent_email || '';
   
-  const qrData = `Name: ${fullName}\nLRN: ${lrn}\nGrade/Section: ${grade} ${section}\nGuardian: ${guardian}\nContact: ${contact}`;
+  const qrData = `Name: ${fullName}\nLRN: ${lrn}\nGrade/Section: ${grade} ${section}\nGuardian: ${guardian}\nParent Email: ${email}`;
   
   try {
     await QRCode.toCanvas(canvas, qrData, {

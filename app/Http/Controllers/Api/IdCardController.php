@@ -91,8 +91,22 @@ class IdCardController extends Controller
         $lrn = (string) ($student->student_number ?? '');
         $guardian = (string) ($student->guardian ?? '');
         $contact = (string) ($student->contact_number ?? '');
+        $parentEmail = (string) ($student->parent_email ?? '');
 
-        $qrPayload = $lrn; // Minimal payload: numeric ID only
+        // Encode a rich text payload so scanning the QR shows full learner info
+        $gradeSection = $student->grade_section
+            ?? ($student->grade ? ($student->grade . ($student->section ? ('-' . $student->section) : '')) : 'N/A');
+
+        $qrLines = [
+            'Name: ' . $fullName,
+            'LRN: ' . $lrn,
+            'Grade/Section: ' . $gradeSection,
+            'Guardian: ' . ($guardian !== '' ? $guardian : 'N/A'),
+            'Contact: ' . ($contact !== '' ? $contact : 'N/A'),
+            'Parent Email: ' . ($parentEmail !== '' ? $parentEmail : 'N/A'),
+        ];
+
+        $qrPayload = implode("\n", $qrLines);
         
         $qrStyle = [
             'border' => 0,

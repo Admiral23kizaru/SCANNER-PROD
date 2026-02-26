@@ -7,12 +7,21 @@ use App\Models\Attendance;
 use App\Models\Role;
 use App\Models\Student;
 use App\Models\User;
+use App\Services\MailerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class AttendanceController extends Controller
 {
+    protected MailerService $mailer;
+
+    public function __construct(MailerService $mailer)
+    {
+        $this->mailer = $mailer;
+    }
+
     public function scanPublic(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -72,6 +81,43 @@ class AttendanceController extends Controller
             'scanned_by' => $guardUser->id,
             'scanned_at' => now(),
         ]);
+
+        // Attempt to notify parent/guardian via email (non-blocking for API response)
+        // Prefer explicit parent_email; fall back to emergency_contact for older data.
+        $parentEmail = $student->parent_email ?: $student->emergency_contact;
+        if ($parentEmail && filter_var($parentEmail, FILTER_VALIDATE_EMAIL)) {
+            try {
+                $scannedAt = $attendance->scanned_at->timezone(config('app.timezone'));
+                $formattedTime = $scannedAt->format('M d, Y h:i A');
+
+                $guardianName = $student->guardian ?: 'Parent/Guardian';
+                $studentName = trim($student->first_name . ' ' . $student->last_name);
+                $gradeSection = $student->grade_section ?? 'N/A';
+
+                $subject = 'Attendance notification for ' . $studentName;
+
+                $bodyLines = [
+                    'Good day ' . $guardianName . ',',
+                    '',
+                    $studentName . ' has been recorded as present at the school gate.',
+                    '',
+                    'Details:',
+                    ' - Time in: ' . $formattedTime,
+                    ' - Grade/Section: ' . $gradeSection,
+                    ' - Student number: ' . $student->student_number,
+                    '',
+                    'This is an automated message generated when the QR code was scanned at the school entrance.',
+                ];
+
+                $this->mailer->sendEmail($parentEmail, $subject, implode("\n", $bodyLines));
+            } catch (\Throwable $e) {
+                Log::error('Failed to send attendance email', [
+                    'student_id' => $student->id,
+                    'attendance_id' => $attendance->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         return response()->json([
             'status' => 'success',

@@ -49,7 +49,8 @@ class ResetAdminPasswordCommand extends Command
             return self::FAILURE;
         }
 
-        $user->password = $password;
+        // Always store the password using Laravel's default bcrypt hashing.
+        $user->password = Hash::make($password);
         $user->save();
 
         $this->info("Password updated for user [{$email}] (bcrypt hashed).");

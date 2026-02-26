@@ -115,6 +115,10 @@
                 <dd>{{ $student->guardian ?? '—' }}</dd>
             </div>
             <div>
+                <dt>Parent email</dt>
+                <dd>{{ $student->parent_email ?? '—' }}</dd>
+            </div>
+            <div>
                 <dt>Contact number</dt>
                 <dd>{{ $student->contact_number ?? '—' }}</dd>
             </div>
