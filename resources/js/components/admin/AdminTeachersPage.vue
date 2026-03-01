@@ -35,7 +35,7 @@
               <td class="py-3 px-4 text-stone-500 tabular-nums">{{ idx + 1 }}</td>
               <td class="py-3 px-4">
                 <div class="flex items-center gap-3">
-                  <div
+                  <div v-if="t.profile_photo || t.name"
                     class="w-8 h-8 rounded-full overflow-hidden bg-stone-200 flex items-center justify-center text-xs font-medium text-stone-600 shrink-0"
                   >
                     <img
