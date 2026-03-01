@@ -20,6 +20,7 @@
             <tr>
               <th class="py-3 px-4 font-semibold">#</th>
               <th class="py-3 px-4 font-semibold">Name</th>
+              <th class="py-3 px-4 font-semibold">Designation</th>
               <th class="py-3 px-4 font-semibold">Email</th>
               <th class="py-3 px-4 font-semibold">Created</th>
               <th class="py-3 px-4 font-semibold text-right">Actions</th>
@@ -32,7 +33,25 @@
               class="border-b border-stone-200 hover:bg-stone-50/70 transition"
             >
               <td class="py-3 px-4 text-stone-500 tabular-nums">{{ idx + 1 }}</td>
-              <td class="py-3 px-4 font-medium text-stone-800">{{ t.name }}</td>
+              <td class="py-3 px-4">
+                <div class="flex items-center gap-3">
+                  <div
+                    v-if="t.profile_photo"
+                    class="w-8 h-8 rounded-full overflow-hidden bg-stone-200 flex items-center justify-center text-xs font-medium text-stone-600"
+                  >
+                    <img :src="t.profile_photo" alt="" class="w-full h-full object-cover" />
+                  </div>
+                  <div v-else class="w-8 h-8 rounded-full bg-blue-900/10 flex items-center justify-center text-xs font-medium text-blue-900">
+                    {{ t.name?.charAt(0) || 'T' }}
+                  </div>
+                  <div class="min-w-0">
+                    <div class="font-medium text-stone-800 truncate">{{ t.name }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3 px-4 text-stone-700 whitespace-nowrap">
+                {{ t.designation || '—' }}
+              </td>
               <td class="py-3 px-4 text-stone-700">{{ t.email }}</td>
               <td class="py-3 px-4 text-stone-600">{{ formatDate(t.created_at) }}</td>
               <td class="py-3 px-4 text-right">
@@ -104,6 +123,15 @@
               />
             </div>
             <div>
+              <label class="block text-sm font-medium text-stone-700 mb-1">School designation</label>
+              <input
+                v-model="form.designation"
+                type="text"
+                placeholder="e.g. Adviser, Principal"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">Password</label>
               <input
                 v-model="form.password"
@@ -121,6 +149,28 @@
                 required
                 class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
               />
+            </div>
+            <div class="rounded-lg border border-stone-200 bg-stone-50 p-3">
+              <label class="block text-sm font-medium text-stone-700 mb-2">
+                Profile photo
+                <span class="text-xs text-stone-500 font-normal">(optional, JPG/PNG, max 2&nbsp;MB)</span>
+              </label>
+              <div class="flex items-center gap-3">
+                <label class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-stone-300 text-sm font-medium text-stone-700 cursor-pointer hover:bg-stone-50">
+                  Choose file
+                  <input
+                    ref="createPhotoInput"
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    class="sr-only"
+                    @change="onCreatePhotoChange"
+                  />
+                </label>
+                <span class="text-xs text-stone-600 truncate">
+                  {{ createPhotoFileName || 'No file chosen' }}
+                </span>
+              </div>
+              <p v-if="createPhotoError" class="mt-1 text-xs text-red-600">{{ createPhotoError }}</p>
             </div>
           </div>
           <div v-if="formError" class="mt-2 text-sm text-red-600">{{ formError }}</div>
@@ -160,6 +210,15 @@
               <label class="block text-sm font-medium text-stone-700 mb-1">Email</label>
               <input v-model="editForm.email" type="email" required class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
+            <div>
+              <label class="block text-sm font-medium text-stone-700 mb-1">School designation</label>
+              <input
+                v-model="editForm.designation"
+                type="text"
+                placeholder="e.g. Adviser, Principal"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
+              />
+            </div>
             <div class="rounded-lg border border-stone-200 bg-stone-50 p-3">
               <p class="text-xs text-stone-500 mb-2">Optional: set a new password for this teacher.</p>
               <div class="space-y-2">
@@ -172,6 +231,28 @@
                   <input v-model="editForm.password_confirmation" type="password" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
                 </div>
               </div>
+            </div>
+            <div class="rounded-lg border border-stone-200 bg-stone-50 p-3">
+              <label class="block text-sm font-medium text-stone-700 mb-2">
+                Profile photo
+                <span class="text-xs text-stone-500 font-normal">(optional, JPG/PNG, max 2&nbsp;MB)</span>
+              </label>
+              <div class="flex items-center gap-3">
+                <label class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-stone-300 text-sm font-medium text-stone-700 cursor-pointer hover:bg-stone-50">
+                  Choose file
+                  <input
+                    ref="editPhotoInput"
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    class="sr-only"
+                    @change="onEditPhotoChange"
+                  />
+                </label>
+                <span class="text-xs text-stone-600 truncate">
+                  {{ editPhotoFileName || 'No file chosen' }}
+                </span>
+              </div>
+              <p v-if="editPhotoError" class="mt-1 text-xs text-red-600">{{ editPhotoError }}</p>
             </div>
           </div>
           <div v-if="editError" class="mt-2 text-sm text-red-600">{{ editError }}</div>
@@ -207,7 +288,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher } from '../../services/adminService';
+import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto } from '../../services/adminService';
 
 const teachers = ref([]);
 const loading = ref(false);
@@ -221,14 +302,25 @@ const deleteError = ref('');
 const form = ref({
   name: '',
   email: '',
+  designation: '',
   password: '',
   password_confirmation: '',
 });
 const formError = ref('');
 
 const editTargetId = ref(null);
-const editForm = ref({ name: '', email: '', password: '', password_confirmation: '' });
+const editForm = ref({ name: '', email: '', designation: '', password: '', password_confirmation: '' });
 const editError = ref('');
+
+const createPhotoFile = ref(null);
+const createPhotoFileName = ref('');
+const createPhotoError = ref('');
+const createPhotoInput = ref(null);
+
+const editPhotoFile = ref(null);
+const editPhotoFileName = ref('');
+const editPhotoError = ref('');
+const editPhotoInput = ref(null);
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -236,15 +328,33 @@ function formatDate(iso) {
 }
 
 function openCreateModal() {
-  form.value = { name: '', email: '', password: '', password_confirmation: '' };
+  form.value = { name: '', email: '', designation: '', password: '', password_confirmation: '' };
   formError.value = '';
+  createPhotoFile.value = null;
+  createPhotoFileName.value = '';
+  createPhotoError.value = '';
+  if (createPhotoInput.value) {
+    createPhotoInput.value.value = '';
+  }
   showCreateModal.value = true;
 }
 
 function openEditModal(t) {
   editTargetId.value = t.id;
-  editForm.value = { name: t.name || '', email: t.email || '', password: '', password_confirmation: '' };
+  editForm.value = {
+    name: t.name || '',
+    email: t.email || '',
+    designation: t.designation || '',
+    password: '',
+    password_confirmation: '',
+  };
   editError.value = '';
+  editPhotoFile.value = null;
+  editPhotoFileName.value = '';
+  editPhotoError.value = '';
+  if (editPhotoInput.value) {
+    editPhotoInput.value.value = '';
+  }
   showEditModal.value = true;
 }
 
@@ -273,7 +383,25 @@ async function submitCreate() {
     return;
   }
   try {
-    await createTeacher(form.value);
+    const payload = {
+      name: form.value.name,
+      email: form.value.email,
+      password: form.value.password,
+      password_confirmation: form.value.password_confirmation,
+      designation: form.value.designation || null,
+    };
+
+    const res = await createTeacher(payload);
+    const createdId = res?.teacher?.id;
+
+    if (createdId && createPhotoFile.value) {
+      try {
+        await uploadTeacherPhoto(createdId, createPhotoFile.value);
+      } catch (err) {
+        createPhotoError.value = err.response?.data?.message || 'Photo upload failed.';
+      }
+    }
+
     showCreateModal.value = false;
     await load();
   } catch (err) {
@@ -300,9 +428,21 @@ async function submitEdit() {
     payload.password = editForm.value.password;
     payload.password_confirmation = editForm.value.password_confirmation;
   }
+  if (editForm.value.designation !== undefined) {
+    payload.designation = editForm.value.designation || null;
+  }
 
   try {
     await updateTeacher(editTargetId.value, payload);
+
+    if (editTargetId.value && editPhotoFile.value) {
+      try {
+        await uploadTeacherPhoto(editTargetId.value, editPhotoFile.value);
+      } catch (err) {
+        editPhotoError.value = err.response?.data?.message || 'Photo upload failed.';
+      }
+    }
+
     showEditModal.value = false;
     editTargetId.value = null;
     await load();
@@ -326,6 +466,44 @@ async function executeDelete() {
     deleteError.value = err.response?.data?.message || 'Delete failed.';
   } finally {
     deleting.value = false;
+  }
+}
+
+function onCreatePhotoChange(e) {
+  const file = e.target.files?.[0];
+  createPhotoError.value = '';
+  if (file) {
+    if (!['image/png', 'image/jpeg'].includes(file.type)) {
+      createPhotoError.value = 'Only JPG or PNG images are accepted.';
+      createPhotoFile.value = null;
+      createPhotoFileName.value = '';
+      if (createPhotoInput.value) createPhotoInput.value.value = '';
+      return;
+    }
+    createPhotoFile.value = file;
+    createPhotoFileName.value = file.name;
+  } else {
+    createPhotoFile.value = null;
+    createPhotoFileName.value = '';
+  }
+}
+
+function onEditPhotoChange(e) {
+  const file = e.target.files?.[0];
+  editPhotoError.value = '';
+  if (file) {
+    if (!['image/png', 'image/jpeg'].includes(file.type)) {
+      editPhotoError.value = 'Only JPG or PNG images are accepted.';
+      editPhotoFile.value = null;
+      editPhotoFileName.value = '';
+      if (editPhotoInput.value) editPhotoInput.value.value = '';
+      return;
+    }
+    editPhotoFile.value = file;
+    editPhotoFileName.value = file.name;
+  } else {
+    editPhotoFile.value = null;
+    editPhotoFileName.value = '';
   }
 }
 

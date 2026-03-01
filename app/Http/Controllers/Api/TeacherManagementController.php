@@ -21,13 +21,15 @@ class TeacherManagementController extends Controller
 
         $teachers = User::where('role_id', $teacherRole->id)
             ->orderBy('name')
-            ->get(['id', 'name', 'email', 'created_at']);
+            ->get(['id', 'name', 'email', 'designation', 'profile_photo', 'created_at']);
 
         $data = $teachers->map(function (User $u) {
             return [
                 'id' => $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
+                'designation' => $u->designation,
+                'profile_photo' => $u->profile_photo ? asset($u->profile_photo) : null,
                 'created_at' => $u->created_at?->toIso8601String(),
             ];
         });
@@ -41,6 +43,7 @@ class TeacherManagementController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'designation' => ['nullable', 'string', 'max:255'],
         ], [
             'email.unique' => 'A teacher with this email already exists.',
             'password.min' => 'Password must be at least 8 characters.',
@@ -63,6 +66,7 @@ class TeacherManagementController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => $request->password,
+            'designation' => $request->input('designation'),
         ]);
 
         return response()->json([
@@ -71,6 +75,8 @@ class TeacherManagementController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'designation' => $user->designation,
+                'profile_photo' => $user->profile_photo ? asset($user->profile_photo) : null,
                 'created_at' => $user->created_at?->toIso8601String(),
             ],
         ], 201);
@@ -92,6 +98,7 @@ class TeacherManagementController extends Controller
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'email' => ['sometimes', 'required', 'string', 'email', 'max:255', 'unique:users,email,' . $teacher->id],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'designation' => ['sometimes', 'nullable', 'string', 'max:255'],
         ], [
             'email.unique' => 'A teacher with this email already exists.',
             'password.min' => 'Password must be at least 8 characters.',
@@ -110,6 +117,9 @@ class TeacherManagementController extends Controller
         if ($request->has('email')) {
             $teacher->email = $request->email;
         }
+        if ($request->has('designation')) {
+            $teacher->designation = $request->input('designation');
+        }
         if ($request->filled('password')) {
             $teacher->password = $request->password;
         }
@@ -121,6 +131,8 @@ class TeacherManagementController extends Controller
                 'id' => $teacher->id,
                 'name' => $teacher->name,
                 'email' => $teacher->email,
+                'designation' => $teacher->designation,
+                'profile_photo' => $teacher->profile_photo ? asset($teacher->profile_photo) : null,
                 'created_at' => $teacher->created_at?->toIso8601String(),
             ],
         ], 200);
@@ -149,5 +161,38 @@ class TeacherManagementController extends Controller
         $teacher->delete();
 
         return response()->json(['message' => 'Teacher deleted.'], 200);
+    }
+
+    public function uploadPhoto(Request $request, int $id): JsonResponse
+    {
+        $teacherRole = Role::where('name', 'Teacher')->first();
+        if (!$teacherRole) {
+            return response()->json(['message' => 'Teacher role not found.'], 500);
+        }
+
+        $teacher = User::where('id', $id)->where('role_id', $teacherRole->id)->first();
+        if (!$teacher) {
+            return response()->json(['message' => 'Teacher not found.'], 404);
+        }
+
+        $validated = $request->validate([
+            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+        ]);
+
+        $file = $validated['photo'];
+
+        $path = $file->storeAs(
+            'teachers',
+            'teacher_' . $teacher->id . '.' . $file->getClientOriginalExtension(),
+            'public'
+        );
+
+        $teacher->profile_photo = 'storage/' . $path;
+        $teacher->save();
+
+        return response()->json([
+            'message' => 'Profile photo updated.',
+            'profile_photo' => asset($teacher->profile_photo),
+        ]);
     }
 }

@@ -42,6 +42,16 @@ export async function deleteTeacher(id) {
     return data;
 }
 
+export async function uploadTeacherPhoto(id, file) {
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    const { data } = await axios.post(base + '/teachers/' + id + '/photo', formData, {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data;
+}
+
 export async function fetchAdminStudents(params = {}) {
     const { data } = await axios.get(base + '/students', {
         params: { page: params.page, per_page: params.per_page, search: params.search },
