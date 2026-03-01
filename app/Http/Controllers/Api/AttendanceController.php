@@ -83,18 +83,23 @@ class AttendanceController extends Controller
                 $mail->Password   = env('MAIL_PASSWORD');
                 $mail->SMTPSecure = env('MAIL_ENCRYPTION', 'tls');
                 $mail->Port       = env('MAIL_PORT', 587);
+                $mail->CharSet    = 'UTF-8';
 
                 $mail->setFrom(env('MAIL_FROM_ADDRESS', 'noreply@school.edu'), 'Student Safety Notifications');
                 $mail->addAddress($student->guardian_email);
 
                 $mail->isHTML(false);
                 $schoolName = env('APP_NAME', 'School');
-                $mail->Subject = "{$schoolName} – Campus Entry Notification";
+                // Use a plain ASCII dash in the subject to avoid encoding issues.
+                $mail->Subject = "{$schoolName} - Campus Entry Notification";
                 
                 $fullName = trim($student->first_name . ' ' . ($student->middle_name ?? '') . ' ' . $student->last_name);
                 $gradeSection = $student->grade_section ?? 'N/A';
-                $date = now()->format('F j, Y');
-                $time = now()->format('g:i A');
+
+                // Use the actual scan time, converted to the app timezone
+                $scanTime = $attendance->scanned_at->clone()->setTimezone(config('app.timezone', 'UTC'));
+                $date = $scanTime->format('F j, Y');
+                $time = $scanTime->format('g:i A');
                 
                 $mail->Body = "Automated Message\n\nThis is to notify you of a campus entry event.\n\n" .
                               "Student: {$fullName}\n" .
