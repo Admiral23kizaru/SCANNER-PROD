@@ -1,11 +1,11 @@
 <template>
   <div>
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
-        <h1 class="text-lg font-semibold text-slate-800">Manage Teachers</h1>
+    <div class="bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden">
+      <div class="p-4 sm:p-5 border-b border-stone-200 bg-stone-50/50 flex flex-wrap items-center justify-between gap-4">
+        <h1 class="text-lg font-semibold text-stone-800">Manage Teachers</h1>
         <button
           type="button"
-          class="rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-800 shadow-sm transition inline-flex items-center gap-2"
+          class="rounded-lg bg-blue-800 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-900 shadow-sm transition inline-flex items-center gap-2"
           @click="openCreateModal"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -16,7 +16,7 @@
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm text-left">
-          <thead class="bg-slate-700 text-white">
+          <thead class="bg-blue-800 text-white">
             <tr>
               <th class="py-3 px-4 font-semibold">#</th>
               <th class="py-3 px-4 font-semibold">Name</th>
@@ -29,17 +29,17 @@
             <tr
               v-for="(t, idx) in teachers"
               :key="t.id"
-              class="border-b border-slate-200 hover:bg-slate-50 transition"
+              class="border-b border-stone-200 hover:bg-stone-50/70 transition"
             >
-              <td class="py-3 px-4 text-slate-500 tabular-nums">{{ idx + 1 }}</td>
-              <td class="py-3 px-4 font-medium text-slate-800">{{ t.name }}</td>
-              <td class="py-3 px-4 text-slate-700">{{ t.email }}</td>
-              <td class="py-3 px-4 text-slate-600">{{ formatDate(t.created_at) }}</td>
+              <td class="py-3 px-4 text-stone-500 tabular-nums">{{ idx + 1 }}</td>
+              <td class="py-3 px-4 font-medium text-stone-800">{{ t.name }}</td>
+              <td class="py-3 px-4 text-stone-700">{{ t.email }}</td>
+              <td class="py-3 px-4 text-stone-600">{{ formatDate(t.created_at) }}</td>
               <td class="py-3 px-4 text-right">
                 <span class="inline-flex items-center justify-end gap-2">
                   <button
                     type="button"
-                    class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition shadow-sm"
+                    class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-blue-800 text-white hover:bg-blue-900 transition shadow-sm"
                     title="Edit teacher"
                     @click="openEditModal(t)"
                   >
@@ -61,16 +61,16 @@
               </td>
             </tr>
             <tr v-if="loading && teachers.length === 0">
-              <td colspan="5" class="py-12 text-center text-slate-500">Loading…</td>
+              <td colspan="5" class="py-12 text-center text-stone-500">Loading…</td>
             </tr>
             <tr v-if="!loading && teachers.length === 0">
-              <td colspan="5" class="py-12 text-center text-slate-500">No teachers yet.</td>
+              <td colspan="5" class="py-12 text-center text-stone-500">No teachers yet.</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div class="p-4 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3 bg-slate-50/30">
-        <span class="text-sm text-slate-600">
+      <div class="p-4 border-t border-stone-200 flex items-center justify-between flex-wrap gap-3 bg-stone-50/30">
+        <span class="text-sm text-stone-600">
           Showing {{ teachers.length }} of {{ teachers.length }} entries
         </span>
       </div>
@@ -81,45 +81,45 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       @click.self="showCreateModal = false"
     >
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-slate-200" @click.stop>
+      <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 border border-stone-200" @click.stop>
         <h2 class="text-lg font-semibold mb-4">Create Teacher Account</h2>
         <form @submit.prevent="submitCreate">
           <div class="space-y-3">
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Name</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Name</label>
               <input
                 v-model="form.name"
                 type="text"
                 required
-                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Email (Username)</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Email (Username)</label>
               <input
                 v-model="form.email"
                 type="email"
                 required
-                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Password</label>
               <input
                 v-model="form.password"
                 type="password"
                 required
                 minlength="8"
-                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Confirm Password</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Confirm Password</label>
               <input
                 v-model="form.password_confirmation"
                 type="password"
                 required
-                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
               />
             </div>
           </div>
@@ -127,14 +127,14 @@
           <div class="mt-4 flex justify-end gap-2">
             <button
               type="button"
-              class="rounded-md border border-slate-300 px-4 py-2 text-sm"
+              class="rounded-md border border-stone-300 px-4 py-2 text-sm"
               @click="showCreateModal = false"
             >
               Cancel
             </button>
             <button
               type="submit"
-              class="rounded-md bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+              class="rounded-md bg-blue-800 px-4 py-2 text-sm font-medium text-white hover:bg-blue-900"
             >
               Create
             </button>
@@ -148,36 +148,36 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       @click.self="showEditModal = false"
     >
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-slate-200" @click.stop>
+      <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 border border-stone-200" @click.stop>
         <h2 class="text-lg font-semibold mb-4">Edit Teacher</h2>
         <form @submit.prevent="submitEdit">
           <div class="space-y-3">
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Name</label>
-              <input v-model="editForm.name" type="text" required class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+              <label class="block text-sm font-medium text-stone-700 mb-1">Name</label>
+              <input v-model="editForm.name" type="text" required class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
-              <input v-model="editForm.email" type="email" required class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+              <label class="block text-sm font-medium text-stone-700 mb-1">Email</label>
+              <input v-model="editForm.email" type="email" required class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
-            <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <p class="text-xs text-slate-500 mb-2">Optional: set a new password for this teacher.</p>
+            <div class="rounded-lg border border-stone-200 bg-stone-50 p-3">
+              <p class="text-xs text-stone-500 mb-2">Optional: set a new password for this teacher.</p>
               <div class="space-y-2">
                 <div>
-                  <label class="block text-sm font-medium text-slate-700 mb-1">New Password</label>
-                  <input v-model="editForm.password" type="password" minlength="8" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                  <label class="block text-sm font-medium text-stone-700 mb-1">New Password</label>
+                  <input v-model="editForm.password" type="password" minlength="8" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-slate-700 mb-1">Confirm New Password</label>
-                  <input v-model="editForm.password_confirmation" type="password" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                  <label class="block text-sm font-medium text-stone-700 mb-1">Confirm New Password</label>
+                  <input v-model="editForm.password_confirmation" type="password" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
                 </div>
               </div>
             </div>
           </div>
           <div v-if="editError" class="mt-2 text-sm text-red-600">{{ editError }}</div>
           <div class="mt-4 flex justify-end gap-2">
-            <button type="button" class="rounded-md border border-slate-300 px-4 py-2 text-sm" @click="showEditModal = false">Cancel</button>
-            <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Save</button>
+            <button type="button" class="rounded-md border border-stone-300 px-4 py-2 text-sm" @click="showEditModal = false">Cancel</button>
+            <button type="submit" class="rounded-md bg-blue-800 px-4 py-2 text-sm font-medium text-white hover:bg-blue-900">Save</button>
           </div>
         </form>
       </div>
@@ -189,13 +189,13 @@
       @click.self="showDeleteModal = false"
     >
       <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6" @click.stop>
-        <h2 class="text-lg font-semibold text-slate-800 mb-2">Delete Teacher</h2>
-        <p class="text-sm text-slate-600 mb-4">
+        <h2 class="text-lg font-semibold text-stone-800 mb-2">Delete Teacher</h2>
+        <p class="text-sm text-stone-600 mb-4">
           Are you sure you want to delete <strong>{{ deleteTarget?.name }}</strong> ({{ deleteTarget?.email }})?
         </p>
         <div v-if="deleteError" class="mb-3 text-sm text-red-600">{{ deleteError }}</div>
         <div class="flex justify-end gap-2">
-          <button type="button" class="rounded-md border border-slate-300 px-4 py-2 text-sm" @click="showDeleteModal = false">Cancel</button>
+          <button type="button" class="rounded-md border border-stone-300 px-4 py-2 text-sm" @click="showDeleteModal = false">Cancel</button>
           <button type="button" class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50" :disabled="deleting" @click="executeDelete">
             {{ deleting ? 'Deleting…' : 'Delete' }}
           </button>

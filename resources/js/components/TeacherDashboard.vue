@@ -1,20 +1,20 @@
 <template>
-  <div class="min-h-screen bg-slate-100 text-slate-800">
-    <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10">
+  <div class="min-h-screen bg-stone-50 text-stone-800">
+    <header class="bg-white border-b border-stone-200 shadow-sm sticky top-0 z-10">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4">
         <div class="flex flex-wrap items-center justify-between gap-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-lg font-bold shadow">
+            <div class="w-10 h-10 rounded-lg bg-blue-800 flex items-center justify-center text-white text-lg font-bold shadow-sm">
               T
             </div>
             <div>
-              <h1 class="text-xl font-bold text-slate-800 tracking-tight">Teacher Dashboard</h1>
-              <p class="text-xs text-slate-500">ScanUp · Manage your students</p>
+              <h1 class="text-xl font-bold text-stone-800 tracking-tight">Teacher Dashboard</h1>
+              <p class="text-xs text-stone-500">ScanUp · Manage your learners</p>
             </div>
           </div>
           <button
             type="button"
-            class="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 hover:border-red-200 hover:text-red-600 transition flex items-center gap-2"
+            class="rounded-lg px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 border border-stone-200 hover:border-red-200 hover:text-red-600 transition flex items-center gap-2"
             @click="logout"
           >
             <span aria-hidden="true">⎋</span>
@@ -25,12 +25,12 @@
     </header>
 
     <div class="max-w-6xl mx-auto p-4 sm:p-6">
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
-          <h2 class="text-lg font-semibold text-slate-800">List of Learners</h2>
+      <div class="bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-stone-200 bg-stone-50/50 flex flex-wrap items-center justify-between gap-4">
+          <h2 class="text-lg font-semibold text-stone-800">List of Learners</h2>
           <button
             type="button"
-            class="rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-800 shadow-sm transition inline-flex items-center gap-2"
+            class="rounded-lg bg-blue-800 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-900 shadow-sm transition inline-flex items-center gap-2"
             @click="openAddModal"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -39,12 +39,12 @@
             Add Learner
           </button>
         </div>
-        <div class="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
-          <label class="flex items-center gap-2 text-sm text-slate-600">
+        <div class="p-4 border-b border-stone-200 flex flex-wrap items-center justify-between gap-3 bg-white">
+          <label class="flex items-center gap-2 text-sm text-stone-600">
             Show
             <select
               v-model.number="perPage"
-              class="rounded border border-slate-300 px-2 py-1.5 text-sm text-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              class="rounded border border-stone-300 px-2 py-1.5 text-sm text-stone-700 focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
               @change="currentPage = 1; load()"
             >
               <option :value="10">10</option>
@@ -54,13 +54,13 @@
             </select>
             entries
           </label>
-          <label class="flex items-center gap-2 text-sm text-slate-600">
+          <label class="flex items-center gap-2 text-sm text-stone-600">
             Search:
             <input
               v-model="searchQuery"
               type="search"
               placeholder="Search..."
-              class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm w-48 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              class="rounded-lg border border-stone-300 px-3 py-1.5 text-sm w-48 focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
               @input="debouncedFetch"
             />
           </label>
@@ -68,7 +68,7 @@
 
         <div class="overflow-x-auto">
           <table class="w-full text-sm text-left">
-            <thead class="bg-slate-700 text-white">
+            <thead class="bg-blue-800 text-white">
               <tr>
                 <th class="py-3 px-4 font-semibold">#</th>
                 <th class="py-3 px-4 font-semibold">Last Name</th>
@@ -84,20 +84,20 @@
               <tr
                 v-for="(row, idx) in students"
                 :key="row.id"
-                class="border-b border-slate-200 hover:bg-slate-50 transition"
+                class="border-b border-stone-200 hover:bg-stone-50/70 transition"
               >
-                <td class="py-3 px-4 text-slate-500 tabular-nums">{{ (currentPage - 1) * perPage + idx + 1 }}</td>
-                <td class="py-3 px-4 font-medium text-slate-800">{{ row.last_name }}</td>
-                <td class="py-3 px-4 text-slate-700">{{ row.first_name }}</td>
-                <td class="py-3 px-4 text-slate-600">{{ row.middle_name || '—' }}</td>
-                <td class="py-3 px-4 text-slate-700">{{ row.grade || row.grade_section || '—' }}</td>
-                <td class="py-3 px-4 text-slate-700">{{ row.section || '—' }}</td>
-                <td class="py-3 px-4 tabular-nums text-slate-600">{{ row.student_number }}</td>
+                <td class="py-3 px-4 text-stone-500 tabular-nums">{{ (currentPage - 1) * perPage + idx + 1 }}</td>
+                <td class="py-3 px-4 font-medium text-stone-800">{{ row.last_name }}</td>
+                <td class="py-3 px-4 text-stone-700">{{ row.first_name }}</td>
+                <td class="py-3 px-4 text-stone-600">{{ row.middle_name || '—' }}</td>
+                <td class="py-3 px-4 text-stone-700">{{ row.grade || row.grade_section || '—' }}</td>
+                <td class="py-3 px-4 text-stone-700">{{ row.section || '—' }}</td>
+                <td class="py-3 px-4 tabular-nums text-stone-600">{{ row.student_number }}</td>
                 <td class="py-3 px-4 text-right">
                   <span class="inline-flex items-center justify-end gap-1">
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-sm"
+                      class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-green-700 text-white hover:bg-green-800 transition shadow-sm"
                       title="Make ID"
                       @click="downloadId(row.id)"
                     >
@@ -107,7 +107,7 @@
                     </button>
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition shadow-sm"
+                      class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-blue-800 text-white hover:bg-blue-900 transition shadow-sm"
                       title="View learner"
                       @click="openViewModal(row)"
                     >
@@ -117,7 +117,7 @@
                     </button>
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-slate-500 text-white hover:bg-slate-600 transition shadow-sm"
+                      class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-stone-600 text-white hover:bg-stone-700 transition shadow-sm"
                       title="Edit"
                       @click="openEditModal(row)"
                     >
@@ -129,34 +129,34 @@
                 </td>
               </tr>
               <tr v-if="loading && students.length === 0">
-                <td colspan="8" class="py-12 text-center text-slate-500">Loading…</td>
+                <td colspan="8" class="py-12 text-center text-stone-500">Loading…</td>
               </tr>
               <tr v-if="!loading && students.length === 0">
-                <td colspan="8" class="py-12 text-center text-slate-500">No learners found.</td>
+                <td colspan="8" class="py-12 text-center text-stone-500">No learners found.</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div class="p-4 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3 bg-slate-50/30">
-          <span class="text-sm text-slate-600">
+        <div class="p-4 border-t border-stone-200 flex items-center justify-between flex-wrap gap-3 bg-stone-50/30">
+          <span class="text-sm text-stone-600">
             Showing {{ total ? (currentPage - 1) * perPage + 1 : 0 }} to {{ Math.min(currentPage * perPage, total) }} of {{ total }} entries
           </span>
           <div class="flex items-center gap-2">
             <button
               type="button"
-              class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+              class="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
               :disabled="currentPage <= 1"
               @click="goToPage(currentPage - 1)"
             >
               Previous
             </button>
-            <span class="text-sm text-slate-600 px-2">
+            <span class="text-sm text-stone-600 px-2">
               Page {{ currentPage }} of {{ lastPage || 1 }}
             </span>
             <button
               type="button"
-              class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+              class="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
               :disabled="currentPage >= lastPage"
               @click="goToPage(currentPage + 1)"
             >
@@ -171,99 +171,99 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       @click.self="showFormModal = false"
     >
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] flex flex-col border border-slate-200" @click.stop>
-        <h2 class="text-lg font-semibold text-slate-800 p-6 pb-0">{{ editingId ? 'Edit Student' : 'Add Learner' }}</h2>
+      <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col border border-stone-200" @click.stop>
+        <h2 class="text-lg font-semibold text-stone-800 p-6 pb-0">{{ editingId ? 'Edit Student' : 'Add Learner' }}</h2>
         <form @submit.prevent="submitForm" class="p-6 overflow-y-auto flex-1">
           <div class="space-y-3">
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Last Name</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Last Name</label>
               <input
                 v-model="form.last_name"
                 type="text"
                 required
-                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">First Name</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">First Name</label>
               <input
                 v-model="form.first_name"
                 type="text"
                 required
-                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Middle Name</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Middle Name</label>
               <input
                 v-model="form.middle_name"
                 type="text"
-                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
               />
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Grade</label>
+                <label class="block text-sm font-medium text-stone-700 mb-1">Grade</label>
                 <input
                   v-model="form.grade"
                   type="text"
                   placeholder="e.g. 7"
-                  class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Section</label>
+                <label class="block text-sm font-medium text-stone-700 mb-1">Section</label>
                 <input
                   v-model="form.section"
                   type="text"
                   placeholder="e.g. A"
-                  class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
                 />
               </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Guardian</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Guardian</label>
               <input
                 v-model="form.guardian"
                 type="text"
                 placeholder="Guardian name"
-                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Contact Number</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Contact Number</label>
               <input
                 v-model="form.contact_number"
                 type="text"
                 placeholder="e.g. 09XXXXXXXXX"
-                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Guardian Email</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Guardian Email</label>
               <input
                 v-model="form.guardian_email"
                 type="email"
                 placeholder="For notifications"
-                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">LRN</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">LRN</label>
               <input
                 v-model="form.student_number"
                 type="text"
                 required
                 :readonly="!!editingId"
                 placeholder="Learner Reference Number"
-                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
               />
             </div>
-            <div class="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50/80 p-4">
-              <label class="block text-sm font-medium text-slate-700 mb-2">Photo <span class="text-xs text-slate-400 font-normal">(PNG only)</span></label>
+            <div class="rounded-lg border-2 border-dashed border-stone-300 bg-stone-50/80 p-4">
+              <label class="block text-sm font-medium text-stone-700 mb-2">Photo <span class="text-xs text-stone-400 font-normal">(PNG only)</span></label>
               <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                <label class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50 transition shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <label class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-stone-300 text-sm font-medium text-stone-700 hover:bg-stone-50 transition shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   Choose file
@@ -275,7 +275,7 @@
                     @change="onPhotoChange"
                   />
                 </label>
-                <span class="text-sm text-slate-500">{{ photoFileName || 'No file chosen' }}</span>
+                <span class="text-sm text-stone-500">{{ photoFileName || 'No file chosen' }}</span>
               </div>
               <p v-if="photoError" class="mt-1 text-xs text-red-500">{{ photoError }}</p>
             </div>
@@ -284,14 +284,14 @@
           <div class="mt-4 flex justify-end gap-2">
             <button
               type="button"
-              class="rounded-md border border-slate-300 px-4 py-2 text-sm"
+              class="rounded-md border border-stone-300 px-4 py-2 text-sm"
               @click="showFormModal = false"
             >
               Cancel
             </button>
             <button
               type="submit"
-              class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              class="rounded-md bg-blue-800 px-4 py-2 text-sm font-medium text-white hover:bg-blue-900"
             >
               {{ editingId ? 'Update' : 'Create' }}
             </button>
@@ -305,29 +305,29 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       @click.self="showViewModal = false"
     >
-      <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full border border-slate-200" @click.stop>
-        <h2 class="text-lg font-semibold text-slate-800 mb-4">Learner details</h2>
+      <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full border border-stone-200" @click.stop>
+        <h2 class="text-lg font-semibold text-stone-800 mb-4">Learner details</h2>
         <dl class="space-y-2 text-sm">
-          <div class="flex justify-between gap-4"><dt class="text-slate-500">Last name</dt><dd class="font-medium text-slate-800">{{ viewModalStudent?.last_name }}</dd></div>
-          <div class="flex justify-between gap-4"><dt class="text-slate-500">First name</dt><dd class="font-medium text-slate-800">{{ viewModalStudent?.first_name }}</dd></div>
-          <div class="flex justify-between gap-4"><dt class="text-slate-500">Middle name</dt><dd class="text-slate-700">{{ viewModalStudent?.middle_name || '—' }}</dd></div>
-          <div class="flex justify-between gap-4"><dt class="text-slate-500">Grade</dt><dd class="text-slate-700">{{ viewModalStudent?.grade || '—' }}</dd></div>
-          <div class="flex justify-between gap-4"><dt class="text-slate-500">Section</dt><dd class="text-slate-700">{{ viewModalStudent?.section || '—' }}</dd></div>
-          <div class="flex justify-between gap-4"><dt class="text-slate-500">LRN</dt><dd class="tabular-nums text-slate-700">{{ viewModalStudent?.student_number }}</dd></div>
-          <div class="flex justify-between gap-4"><dt class="text-slate-500">Guardian</dt><dd class="text-slate-700">{{ viewModalStudent?.guardian || '—' }}</dd></div>
-          <div class="flex justify-between gap-4"><dt class="text-slate-500">Contact</dt><dd class="text-slate-700">{{ viewModalStudent?.contact_number || '—' }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-stone-500">Last name</dt><dd class="font-medium text-stone-800">{{ viewModalStudent?.last_name }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-stone-500">First name</dt><dd class="font-medium text-stone-800">{{ viewModalStudent?.first_name }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-stone-500">Middle name</dt><dd class="text-stone-700">{{ viewModalStudent?.middle_name || '—' }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-stone-500">Grade</dt><dd class="text-stone-700">{{ viewModalStudent?.grade || '—' }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-stone-500">Section</dt><dd class="text-stone-700">{{ viewModalStudent?.section || '—' }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-stone-500">LRN</dt><dd class="tabular-nums text-stone-700">{{ viewModalStudent?.student_number }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-stone-500">Guardian</dt><dd class="text-stone-700">{{ viewModalStudent?.guardian || '—' }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-stone-500">Contact</dt><dd class="text-stone-700">{{ viewModalStudent?.contact_number || '—' }}</dd></div>
         </dl>
         <div class="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
-            class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50 transition"
+            class="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 transition"
             @click="showViewModal = false; openQrModal(viewModalStudent)"
           >
             Show QR
           </button>
           <button
             type="button"
-            class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50 transition"
+            class="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 transition"
             @click="showViewModal = false"
           >
             Close
@@ -341,16 +341,16 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       @click.self="showQrModal = false"
     >
-      <div class="bg-white rounded-xl shadow-xl p-6 text-center border border-slate-200" @click.stop>
-        <h2 class="text-lg font-semibold text-slate-800 mb-2">QR Code</h2>
-        <p class="text-sm text-slate-500 mb-4">{{ qrModalStudent?.full_name }} ({{ qrModalStudent?.student_number }})</p>
-        <div class="inline-block p-4 bg-slate-50 border border-slate-200 rounded-lg">
+      <div class="bg-white rounded-lg shadow-xl p-6 text-center border border-stone-200" @click.stop>
+        <h2 class="text-lg font-semibold text-stone-800 mb-2">QR Code</h2>
+        <p class="text-sm text-stone-500 mb-4">{{ qrModalStudent?.full_name }} ({{ qrModalStudent?.student_number }})</p>
+        <div class="inline-block p-4 bg-stone-50 border border-stone-200 rounded-lg">
           <canvas ref="qrCanvas" width="200" height="200" />
         </div>
         <div class="mt-4">
           <button
             type="button"
-            class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50 transition"
+            class="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 transition"
             @click="showQrModal = false"
           >
             Close

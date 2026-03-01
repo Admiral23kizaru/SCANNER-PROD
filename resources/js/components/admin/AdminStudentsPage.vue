@@ -1,11 +1,11 @@
 <template>
   <div>
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
-        <h1 class="text-lg font-semibold text-slate-800">Master Student List</h1>
+    <div class="bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden">
+      <div class="p-4 sm:p-5 border-b border-stone-200 bg-stone-50/50 flex flex-wrap items-center justify-between gap-4">
+        <h1 class="text-lg font-semibold text-stone-800">Master Student List</h1>
         <button
           type="button"
-          class="rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-800 shadow-sm transition inline-flex items-center gap-2"
+          class="rounded-lg bg-blue-800 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-900 shadow-sm transition inline-flex items-center gap-2"
           @click="openCreateModal"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -14,12 +14,12 @@
           Create Student
         </button>
       </div>
-      <div class="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
-        <label class="flex items-center gap-2 text-sm text-slate-600">
+      <div class="p-4 border-b border-stone-200 flex flex-wrap items-center justify-between gap-3 bg-white">
+        <label class="flex items-center gap-2 text-sm text-stone-600">
           Show
           <select
             v-model.number="perPage"
-            class="rounded border border-slate-300 px-2 py-1.5 text-sm text-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            class="rounded border border-stone-300 px-2 py-1.5 text-sm text-stone-700 focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
             @change="currentPage = 1; load()"
           >
             <option :value="10">10</option>
@@ -29,20 +29,20 @@
           </select>
           entries
         </label>
-        <label class="flex items-center gap-2 text-sm text-slate-600">
+        <label class="flex items-center gap-2 text-sm text-stone-600">
           Search:
           <input
             v-model="searchQuery"
             type="search"
             placeholder="Search by name, LRN, grade/section..."
-            class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm w-48 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            class="rounded-lg border border-stone-300 px-3 py-1.5 text-sm w-48 focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
             @input="debouncedFetch"
           />
         </label>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm text-left">
-          <thead class="bg-slate-700 text-white">
+          <thead class="bg-blue-800 text-white">
             <tr>
               <th class="py-3 px-4 font-semibold">#</th>
               <th class="py-3 px-4 font-semibold">Full Name</th>
@@ -55,17 +55,17 @@
             <tr
               v-for="(row, idx) in students"
               :key="row.id"
-              class="border-b border-slate-200 hover:bg-slate-50 transition"
+              class="border-b border-stone-200 hover:bg-stone-50/70 transition"
             >
-              <td class="py-3 px-4 text-slate-500 tabular-nums">{{ (currentPage - 1) * perPage + idx + 1 }}</td>
-              <td class="py-3 px-4 font-medium text-slate-800">{{ row.full_name }}</td>
-              <td class="py-3 px-4 tabular-nums text-slate-600">{{ row.student_number }}</td>
-              <td class="py-3 px-4 text-slate-700">{{ row.grade_section }}</td>
+              <td class="py-3 px-4 text-stone-500 tabular-nums">{{ (currentPage - 1) * perPage + idx + 1 }}</td>
+              <td class="py-3 px-4 font-medium text-stone-800">{{ row.full_name }}</td>
+              <td class="py-3 px-4 tabular-nums text-stone-600">{{ row.student_number }}</td>
+              <td class="py-3 px-4 text-stone-700">{{ row.grade_section }}</td>
               <td class="py-3 px-4 text-right">
                 <span class="inline-flex items-center justify-end gap-2">
                   <button
                     type="button"
-                    class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition shadow-sm"
+                    class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-blue-800 text-white hover:bg-blue-900 transition shadow-sm"
                     title="Edit student"
                     @click="openEditModal(row)"
                   >
@@ -87,31 +87,31 @@
               </td>
             </tr>
             <tr v-if="loading && students.length === 0">
-              <td colspan="5" class="py-12 text-center text-slate-500">Loading…</td>
+              <td colspan="5" class="py-12 text-center text-stone-500">Loading…</td>
             </tr>
             <tr v-if="!loading && students.length === 0">
-              <td colspan="5" class="py-12 text-center text-slate-500">No students found.</td>
+              <td colspan="5" class="py-12 text-center text-stone-500">No students found.</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div class="p-4 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3 bg-slate-50/30">
-        <span class="text-sm text-slate-600">
+      <div class="p-4 border-t border-stone-200 flex items-center justify-between flex-wrap gap-3 bg-stone-50/30">
+        <span class="text-sm text-stone-600">
           Showing {{ total ? (currentPage - 1) * perPage + 1 : 0 }} to {{ Math.min(currentPage * perPage, total) }} of {{ total }} entries
         </span>
         <div class="flex items-center gap-2">
           <button
             type="button"
-            class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+            class="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
             :disabled="currentPage <= 1"
             @click="goToPage(currentPage - 1)"
           >
             Previous
           </button>
-          <span class="text-sm text-slate-600 px-2">Page {{ currentPage }} of {{ lastPage || 1 }}</span>
+          <span class="text-sm text-stone-600 px-2">Page {{ currentPage }} of {{ lastPage || 1 }}</span>
           <button
             type="button"
-            class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+            class="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
             :disabled="currentPage >= lastPage"
             @click="goToPage(currentPage + 1)"
           >
@@ -126,56 +126,56 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       @click.self="closeForm"
     >
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] flex flex-col border border-slate-200" @click.stop>
-        <h2 class="text-lg font-semibold text-slate-800 p-6 pb-0">{{ editingId ? 'Edit Student' : 'Create Student' }}</h2>
+      <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col border border-stone-200" @click.stop>
+        <h2 class="text-lg font-semibold text-stone-800 p-6 pb-0">{{ editingId ? 'Edit Student' : 'Create Student' }}</h2>
         <form @submit.prevent="submitForm" class="p-6 overflow-y-auto flex-1">
           <div class="space-y-3">
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">First Name</label>
-                <input v-model="form.first_name" type="text" required class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                <label class="block text-sm font-medium text-stone-700 mb-1">First Name</label>
+                <input v-model="form.first_name" type="text" required class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Last Name</label>
-                <input v-model="form.last_name" type="text" required class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                <label class="block text-sm font-medium text-stone-700 mb-1">Last Name</label>
+                <input v-model="form.last_name" type="text" required class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
               </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Middle Name</label>
-              <input v-model="form.middle_name" type="text" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+              <label class="block text-sm font-medium text-stone-700 mb-1">Middle Name</label>
+              <input v-model="form.middle_name" type="text" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">LRN</label>
-              <input v-model="form.student_number" type="text" required :readonly="!!editingId" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+              <label class="block text-sm font-medium text-stone-700 mb-1">LRN</label>
+              <input v-model="form.student_number" type="text" required :readonly="!!editingId" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Grade</label>
-                <input v-model="form.grade" type="text" placeholder="e.g. 7" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                <label class="block text-sm font-medium text-stone-700 mb-1">Grade</label>
+                <input v-model="form.grade" type="text" placeholder="e.g. 7" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Section</label>
-                <input v-model="form.section" type="text" placeholder="e.g. A" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                <label class="block text-sm font-medium text-stone-700 mb-1">Section</label>
+                <input v-model="form.section" type="text" placeholder="e.g. A" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
               </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Guardian</label>
-              <input v-model="form.guardian" type="text" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+              <label class="block text-sm font-medium text-stone-700 mb-1">Guardian</label>
+              <input v-model="form.guardian" type="text" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Parent Email</label>
-              <input v-model="form.parent_email" type="email" placeholder="parent@gmail.com" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+              <label class="block text-sm font-medium text-stone-700 mb-1">Parent Email</label>
+              <input v-model="form.parent_email" type="email" placeholder="parent@gmail.com" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Contact Number</label>
-              <input v-model="form.contact_number" type="text" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+              <label class="block text-sm font-medium text-stone-700 mb-1">Contact Number</label>
+              <input v-model="form.contact_number" type="text" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
           </div>
 
           <div v-if="formError" class="mt-2 text-sm text-red-600">{{ formError }}</div>
           <div class="mt-4 flex justify-end gap-2">
-            <button type="button" class="rounded-md border border-slate-300 px-4 py-2 text-sm" @click="closeForm">Cancel</button>
-            <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+            <button type="button" class="rounded-md border border-stone-300 px-4 py-2 text-sm" @click="closeForm">Cancel</button>
+            <button type="submit" class="rounded-md bg-blue-800 px-4 py-2 text-sm font-medium text-white hover:bg-blue-900">
               {{ editingId ? 'Save' : 'Create' }}
             </button>
           </div>
@@ -189,15 +189,15 @@
       @click.self="showDeleteModal = false"
     >
       <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6" @click.stop>
-        <h2 class="text-lg font-semibold text-slate-800 mb-2">Delete Student</h2>
-        <p class="text-sm text-slate-600 mb-4">
+        <h2 class="text-lg font-semibold text-stone-800 mb-2">Delete Student</h2>
+        <p class="text-sm text-stone-600 mb-4">
           Are you sure you want to delete <strong>{{ deleteTarget?.full_name }}</strong> ({{ deleteTarget?.student_number }})?
           All attendance records for this student will be permanently deleted.
         </p>
         <div class="flex justify-end gap-2">
           <button
             type="button"
-            class="rounded-md border border-slate-300 px-4 py-2 text-sm"
+            class="rounded-md border border-stone-300 px-4 py-2 text-sm"
             @click="showDeleteModal = false"
           >
             Cancel

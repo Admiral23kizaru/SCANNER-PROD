@@ -1,14 +1,14 @@
 <template>
-  <div class="min-h-screen bg-slate-100 text-slate-800 flex">
-    <aside class="w-60 bg-slate-800 text-white shrink-0 flex flex-col shadow-xl">
-      <div class="p-5 border-b border-slate-700">
+  <div class="min-h-screen bg-stone-50 text-stone-800 flex">
+    <aside class="w-60 bg-blue-900 text-white shrink-0 flex flex-col shadow-lg border-r border-blue-800">
+      <div class="p-5 border-b border-blue-800">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-indigo-500 flex items-center justify-center text-lg font-bold shadow">
+          <div class="w-10 h-10 rounded-lg bg-blue-800 flex items-center justify-center text-lg font-bold shadow-sm">
             S
           </div>
           <div>
             <h1 class="text-lg font-semibold tracking-tight">ScanUp</h1>
-            <p class="text-xs text-slate-400">Admin Panel</p>
+            <p class="text-xs text-blue-200">Admin Panel</p>
           </div>
         </div>
       </div>
@@ -16,35 +16,35 @@
         <button
           type="button"
           class="w-full text-left rounded-lg px-4 py-3 text-sm font-medium transition flex items-center gap-3"
-          :class="currentPage === 'dashboard' ? 'bg-indigo-600 text-white shadow' : 'text-slate-300 hover:bg-slate-700/60 hover:text-white'"
+          :class="currentPage === 'dashboard' ? 'bg-blue-800 text-white shadow-sm' : 'text-blue-100 hover:bg-blue-800/60 hover:text-white'"
           @click="currentPage = 'dashboard'"
         >
-          <span class="w-5 text-center opacity-80">📊</span>
+          <span class="w-5 text-center opacity-90">📊</span>
           Dashboard
         </button>
         <button
           type="button"
           class="w-full text-left rounded-lg px-4 py-3 text-sm font-medium transition flex items-center gap-3"
-          :class="currentPage === 'teachers' ? 'bg-indigo-600 text-white shadow' : 'text-slate-300 hover:bg-slate-700/60 hover:text-white'"
+          :class="currentPage === 'teachers' ? 'bg-blue-800 text-white shadow-sm' : 'text-blue-100 hover:bg-blue-800/60 hover:text-white'"
           @click="currentPage = 'teachers'"
         >
-          <span class="w-5 text-center opacity-80">👤</span>
+          <span class="w-5 text-center opacity-90">👤</span>
           Manage Teachers
         </button>
         <button
           type="button"
           class="w-full text-left rounded-lg px-4 py-3 text-sm font-medium transition flex items-center gap-3"
-          :class="currentPage === 'students' ? 'bg-indigo-600 text-white shadow' : 'text-slate-300 hover:bg-slate-700/60 hover:text-white'"
+          :class="currentPage === 'students' ? 'bg-blue-800 text-white shadow-sm' : 'text-blue-100 hover:bg-blue-800/60 hover:text-white'"
           @click="currentPage = 'students'"
         >
-          <span class="w-5 text-center opacity-80">📋</span>
+          <span class="w-5 text-center opacity-90">📋</span>
           Students
         </button>
       </nav>
-      <div class="p-3 border-t border-slate-700">
+      <div class="p-3 border-t border-blue-800">
         <button
           type="button"
-          class="w-full rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-red-600/20 hover:text-red-300 transition flex items-center justify-center gap-2"
+          class="w-full rounded-lg px-4 py-3 text-sm font-medium text-blue-100 hover:bg-red-900/30 hover:text-red-200 transition flex items-center justify-center gap-2"
           @click="logout"
         >
           <span aria-hidden="true">⎋</span>
