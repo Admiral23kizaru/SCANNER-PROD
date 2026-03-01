@@ -45,6 +45,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:Teacher')->prefix('teacher')->group(function () {
         Route::get('/dashboard', fn () => response()->json(['message' => 'Teacher dashboard']));
         Route::get('/students', [StudentController::class, 'index']);
+        Route::post('/students/import', [StudentController::class, 'import']);
         Route::post('/students', [StudentController::class, 'store']);
         Route::put('/students/{id}', [StudentController::class, 'update']);
         Route::post('/students/{id}', [StudentController::class, 'update']); // for _method=PUT spoofing with FormData

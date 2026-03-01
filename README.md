@@ -93,6 +93,12 @@ You need **two** processes: one for the PHP backend and one for the frontend ass
 
 Open your browser at `http://localhost:8000` and log in using the credentials you have configured/seeded.
 
+**Teacher profile photos** require the storage symlink. Run once:
+
+```bash
+php artisan storage:link
+```
+
 ---
 
 ## Teacher management (Admin)
@@ -104,13 +110,35 @@ From the **Admin** dashboard:
   - **Edit** existing teachers (name, email, optional new password).
   - **Delete** teachers (with protection when they have created student records).
 
-At the moment, the admin UI and API expose only:
+The admin UI and API support:
 
 - **Name**
 - **Email**
 - **Password / Confirm password**
+- **School designation** (e.g. Adviser, Principal)
+- **Profile photo** (optional, JPG/PNG, max 2 MB) — upload in Create or Edit modal
 
-Although there is a `Teacher` model with fields like `designation` and `profile_photo`, these are **not yet wired** into the admin screen or API. School designation and an optional teacher profile photo would require additional backend endpoints and frontend form fields to be implemented.
+Teacher profile photos are stored under `storage/app/public/teachers/`. Run `php artisan storage:link` so they are served at `/storage/teachers/...`.
+
+---
+
+## Teacher Dashboard: Bulk Import
+
+Teachers can bulk-import learners from **CSV or Excel** (`.csv`, `.xlsx`, `.xls`):
+
+1. Click **Bulk Import** in the List of Learners section.
+2. Select a CSV or Excel file.
+
+**Expected columns** (headers in first row; names are case-insensitive, spaces become underscores):
+
+- `last_name`, `first_name`, `middle_name`
+- `student_number` or `lrn` (must be exactly 12 digits)
+- `grade`, `section`
+- `guardian`, `guardian_email`, `contact_number` (or `parent_email`, `contact`)
+
+Rows with invalid LRN, duplicate LRN, or missing first/last name are skipped. The result shows how many were imported and how many were skipped.
+
+**LRN validation**: When adding or editing a learner manually, the LRN must be exactly 12 digits. The Save/Create button is disabled until the LRN is valid.
 
 ---
 

@@ -29,7 +29,7 @@ class TeacherManagementController extends Controller
                 'name' => $u->name,
                 'email' => $u->email,
                 'designation' => $u->designation,
-                'profile_photo' => $u->profile_photo ? asset($u->profile_photo) : null,
+                'profile_photo' => $u->profile_photo ? '/' . ltrim($u->profile_photo, '/') : null,
                 'created_at' => $u->created_at?->toIso8601String(),
             ];
         });
@@ -192,7 +192,7 @@ class TeacherManagementController extends Controller
 
         return response()->json([
             'message' => 'Profile photo updated.',
-            'profile_photo' => asset($teacher->profile_photo),
+            'profile_photo' => '/' . ltrim($teacher->profile_photo, '/'),
         ]);
     }
 }

@@ -63,3 +63,13 @@ export function getIdPdfUrl(id) {
 export function openIdPdfInBrowser(id) {
     window.open(getIdPdfUrl(id), '_blank', 'noopener,noreferrer');
 }
+
+export async function bulkImportStudents(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await axios.post(base + '/students/import', formData, {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+        timeout: 120000,
+    });
+    return data;
+}

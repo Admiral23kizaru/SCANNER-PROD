@@ -36,10 +36,21 @@
               <td class="py-3 px-4">
                 <div class="flex items-center gap-3">
                   <div
-                    v-if="t.profile_photo"
-                    class="w-8 h-8 rounded-full overflow-hidden bg-stone-200 flex items-center justify-center text-xs font-medium text-stone-600"
+                    class="w-8 h-8 rounded-full overflow-hidden bg-stone-200 flex items-center justify-center text-xs font-medium text-stone-600 shrink-0"
                   >
-                    <img :src="t.profile_photo" alt="" class="w-full h-full object-cover" />
+                    <img
+                      v-if="t.profile_photo && !photoLoadError[t.id]"
+                      :src="t.profile_photo"
+                      alt=""
+                      class="w-full h-full object-cover"
+                      @error="photoLoadError[t.id] = true"
+                    />
+                    <span
+                      v-else
+                      class="w-full h-full flex items-center justify-center text-blue-900 font-medium"
+                    >
+                      {{ t.name?.charAt(0) || 'T' }}
+                    </span>
                   </div>
                   <div v-else class="w-8 h-8 rounded-full bg-blue-900/10 flex items-center justify-center text-xs font-medium text-blue-900">
                     {{ t.name?.charAt(0) || 'T' }}
@@ -322,6 +333,8 @@ const editPhotoFileName = ref('');
 const editPhotoError = ref('');
 const editPhotoInput = ref(null);
 
+const photoLoadError = ref({});
+
 function formatDate(iso) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString();
@@ -369,6 +382,7 @@ async function load() {
   try {
     const res = await fetchTeachers();
     teachers.value = res.data || [];
+    photoLoadError.value = {};
   } catch {
     teachers.value = [];
   } finally {

@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class StudentController extends Controller
 {
@@ -73,7 +74,7 @@ class StudentController extends Controller
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
-            'student_number' => ['required', 'string', 'max:64', 'unique:students,student_number'],
+            'student_number' => ['required', 'string', 'size:12', 'regex:/^\d{12}$/', 'unique:students,student_number'],
             'grade_section' => ['nullable', 'string', 'max:64'],
             'grade' => ['nullable', 'string', 'max:32'],
             'section' => ['nullable', 'string', 'max:32'],
@@ -144,7 +145,7 @@ class StudentController extends Controller
             'first_name' => ['sometimes', 'required', 'string', 'max:255'],
             'last_name' => ['sometimes', 'required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
-            'student_number' => ['sometimes', 'required', 'string', 'max:64', 'unique:students,student_number,' . $id],
+            'student_number' => ['sometimes', 'required', 'string', 'size:12', 'regex:/^\d{12}$/', 'unique:students,student_number,' . $id],
             'grade_section' => ['nullable', 'string', 'max:64'],
             'grade' => ['nullable', 'string', 'max:32'],
             'section' => ['nullable', 'string', 'max:32'],
@@ -154,6 +155,8 @@ class StudentController extends Controller
             'photo' => ['nullable', 'file', 'mimes:png', 'max:5120'],
         ], [
             'student_number.unique' => 'LRN already exists.',
+            'student_number.size' => 'LRN must be exactly 12 digits.',
+            'student_number.regex' => 'LRN must contain only numbers.',
         ]);
 
         if ($validator->fails()) {
@@ -190,6 +193,84 @@ class StudentController extends Controller
         return response()->json([
             'message' => 'Student updated.',
             'student' => $this->studentToArray($student, $fullName),
+        ]);
+    }
+
+    public function import(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,xlsx,xls', 'max:10240'],
+        ]);
+
+        $user = $request->user();
+        $file = $request->file('file');
+
+        $spreadsheet = IOFactory::load($file->getPathname());
+        $rows = $spreadsheet->getActiveSheet()->toArray();
+        if (empty($rows)) {
+            return response()->json(['message' => 'File is empty.', 'imported' => 0, 'skipped' => 0], 422);
+        }
+
+        $headers = array_map(function ($h) {
+            return strtolower(trim(str_replace([' ', '-'], '_', (string) $h)));
+        }, $rows[0] ?? []);
+        $imported = 0;
+        $skipped = 0;
+
+        for ($i = 1; $i < count($rows); $i++) {
+            $row = $rows[$i] ?? [];
+            $row = array_pad($row, count($headers), null);
+            $data = array_combine($headers, $row);
+            if (!is_array($data)) {
+                $skipped++;
+                continue;
+            }
+
+            $get = fn ($keys, $default = '') => trim((string) ($data[$keys[0] ?? ''] ?? $data[$keys[1] ?? ''] ?? $default));
+
+            $lrn = preg_replace('/\D/', '', $get(['student_number', 'lrn']));
+            if (strlen($lrn) !== 12) {
+                $skipped++;
+                continue;
+            }
+            if (Student::where('student_number', $lrn)->exists()) {
+                $skipped++;
+                continue;
+            }
+
+            $firstName = $get(['first_name', 'firstname']);
+            $lastName = $get(['last_name', 'lastname']);
+            if (!$firstName || !$lastName) {
+                $skipped++;
+                continue;
+            }
+
+            $grade = $get(['grade']);
+            $section = $get(['section']);
+            $gradeSection = $grade && $section ? $grade . '-' . $section : ($grade ?: null);
+
+            Student::create([
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'middle_name' => $get(['middle_name', 'middlename']) ?: null,
+                'student_number' => $lrn,
+                'grade_section' => $gradeSection,
+                'grade' => $grade ?: null,
+                'section' => $section ?: null,
+                'guardian' => $get(['guardian']) ?: null,
+                'guardian_email' => $get(['guardian_email', 'parent_email']) ?: null,
+                'contact_number' => $get(['contact_number', 'contact']) ?: null,
+                'emergency_contact' => $get(['contact_number', 'contact']) ?: null,
+                'teacher_id' => $user->role->name === 'Teacher' ? $user->id : null,
+                'created_by' => $user->id,
+            ]);
+            $imported++;
+        }
+
+        return response()->json([
+            'message' => "Imported {$imported} learner(s).",
+            'imported' => $imported,
+            'skipped' => $skipped,
         ]);
     }
 

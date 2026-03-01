@@ -26,18 +26,46 @@
 
     <div class="max-w-6xl mx-auto p-4 sm:p-6">
       <div class="bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden">
-        <div class="p-4 sm:p-5 border-b border-stone-200 bg-stone-50/50 flex flex-wrap items-center justify-between gap-4">
+          <div class="p-4 sm:p-5 border-b border-stone-200 bg-stone-50/50">
+            <div v-if="bulkImportResult" class="mb-3 p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
+              Imported {{ bulkImportResult.imported }} learner(s). {{ bulkImportResult.skipped ? bulkImportResult.skipped + ' skipped (duplicate or invalid).' : '' }}
+            </div>
+            <div v-if="bulkImportError" class="mb-3 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+              {{ bulkImportError }}
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-4">
           <h2 class="text-lg font-semibold text-stone-800">List of Learners</h2>
-          <button
-            type="button"
-            class="rounded-lg bg-blue-800 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-900 shadow-sm transition inline-flex items-center gap-2"
-            @click="openAddModal"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Add Learner
-          </button>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              class="rounded-lg border-2 border-dashed border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-700 hover:border-blue-700 hover:bg-blue-50 hover:text-blue-800 transition inline-flex items-center gap-2"
+              @click="triggerBulkImport"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Bulk Import
+            </button>
+            <input
+              ref="bulkImportInput"
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              class="sr-only"
+              @change="onBulkImportFile"
+            />
+            <span v-if="bulkImporting" class="text-sm text-stone-500">Importing…</span>
+            <button
+              type="button"
+              class="rounded-lg bg-blue-800 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-900 shadow-sm transition inline-flex items-center gap-2"
+              @click="openAddModal"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Add Learner
+            </button>
+          </div>
+            </div>
         </div>
         <div class="p-4 border-b border-stone-200 flex flex-wrap items-center justify-between gap-3 bg-white">
           <label class="flex items-center gap-2 text-sm text-stone-600">
@@ -249,15 +277,24 @@
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">LRN</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">LRN <span class="text-xs text-stone-500 font-normal">(exactly 12 digits)</span></label>
               <input
                 v-model="form.student_number"
                 type="text"
                 required
                 :readonly="!!editingId"
-                placeholder="Learner Reference Number"
-                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
+                placeholder="12-digit Learner Reference Number"
+                maxlength="12"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                :class="[
+                  'w-full rounded-md border px-3 py-2 text-sm focus:ring-1',
+                  isLrnValid ? 'border-stone-300 focus:border-blue-700 focus:ring-blue-700' : 'border-red-400 focus:border-red-500 focus:ring-red-500'
+                ]"
               />
+              <p v-if="form.student_number && !isLrnValid" class="mt-1 text-xs text-red-600">
+                LRN must be exactly 12 digits.
+              </p>
             </div>
             <div class="rounded-lg border-2 border-dashed border-stone-300 bg-stone-50/80 p-4">
               <label class="block text-sm font-medium text-stone-700 mb-2">Photo <span class="text-xs text-stone-400 font-normal">(PNG only)</span></label>
@@ -291,7 +328,9 @@
             </button>
             <button
               type="submit"
-              class="rounded-md bg-blue-800 px-4 py-2 text-sm font-medium text-white hover:bg-blue-900"
+              class="rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+              :class="canSaveForm ? 'bg-blue-800 hover:bg-blue-900' : 'bg-stone-400 cursor-not-allowed'"
+              :disabled="!canSaveForm"
             >
               {{ editingId ? 'Update' : 'Create' }}
             </button>
@@ -362,12 +401,12 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import QRCode from 'qrcode';
 import { setStoredToken, getStoredToken } from '../router';
-import { fetchStudents, createStudent, createStudentWithFormData, updateStudent, updateStudentWithFormData, uploadStudentPhoto } from '../services/studentService';
+import { fetchStudents, createStudent, createStudentWithFormData, updateStudent, updateStudentWithFormData, uploadStudentPhoto, bulkImportStudents } from '../services/studentService';
 
 const router = useRouter();
 
@@ -406,7 +445,49 @@ const photoFile = ref(null);
 const photoFileName = ref('');
 const photoError = ref('');
 
+const bulkImportInput = ref(null);
+const bulkImporting = ref(false);
+const bulkImportError = ref('');
+const bulkImportResult = ref(null);
+
+const LRN_LENGTH = 12;
+const isLrnValid = computed(() => {
+  const v = String(form.value.student_number ?? '').trim();
+  if (!v) return false;
+  return /^\d{12}$/.test(v);
+});
+const canSaveForm = computed(() => {
+  if (!form.value.first_name?.trim() || !form.value.last_name?.trim()) return false;
+  if (!editingId.value && !isLrnValid.value) return false;
+  return true;
+});
+
 let debounceTimer = null;
+
+function triggerBulkImport() {
+  bulkImportError.value = '';
+  bulkImportResult.value = null;
+  bulkImportInput.value?.click();
+}
+
+async function onBulkImportFile(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  bulkImportInput.value.value = '';
+  bulkImporting.value = true;
+  bulkImportError.value = '';
+  bulkImportResult.value = null;
+  try {
+    const result = await bulkImportStudents(file);
+    bulkImportResult.value = result;
+    await load();
+    setTimeout(() => { bulkImportResult.value = null; }, 5000);
+  } catch (err) {
+    bulkImportError.value = err.response?.data?.message || err.message || 'Import failed.';
+  } finally {
+    bulkImporting.value = false;
+  }
+}
 
 function debouncedFetch() {
   if (debounceTimer) clearTimeout(debounceTimer);
