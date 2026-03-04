@@ -394,11 +394,11 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
 import axios from 'axios';
 import QRCode from 'qrcode';
 import { LogOut, Search, Upload, Plus, IdCard, User, Pencil } from 'lucide-vue-next';
 import { setStoredToken, getStoredToken } from '../router';
+import { useLogout } from '../composables/useLogout';
 import { fetchStudents, createStudent, createStudentWithFormData, updateStudent, updateStudentWithFormData, uploadStudentPhoto, bulkImportStudents } from '../services/studentService';
 
 function titleCase(str) {
@@ -406,7 +406,7 @@ function titleCase(str) {
   return str.replace(/\w\S*/g, (t) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
 }
 
-const router = useRouter();
+const { logout } = useLogout();
 
 // Logo served from Laravel public/logo
 const depedLogo = '/logo/depedozamiz.png';
@@ -700,18 +700,6 @@ async function downloadId(id) {
     console.error(err);
     alert('Failed to generate secure ID link.');
   }
-}
-
-async function logout() {
-  const token = getStoredToken();
-  if (token) {
-    try {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      await axios.post('/api/logout');
-    } catch (_) {}
-    setStoredToken(null);
-  }
-  router.push('/login');
 }
 
 load();

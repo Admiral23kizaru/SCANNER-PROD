@@ -68,17 +68,6 @@
         </button>
       </nav>
 
-      <!-- Logout -->
-      <div class="px-3 pb-4 pt-2 border-t border-slate-200">
-        <button
-          type="button"
-          class="w-full inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 transition-colors"
-          @click="logout"
-        >
-          <LogOut class="h-4 w-4" />
-          <span>Log out</span>
-        </button>
-      </div>
     </aside>
 
     <!-- Main content -->
@@ -95,17 +84,14 @@
             {{ pageSubtitle }}
           </p>
         </div>
-        <div class="flex items-center gap-3">
-          <div class="hidden sm:flex flex-col items-end">
-            <p class="text-sm font-medium text-slate-900">Admin</p>
-            <p class="text-xs text-slate-500">System Administrator</p>
-          </div>
-          <div
-            class="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center text-sm font-semibold text-slate-700 border border-slate-300"
-          >
-            AD
-          </div>
-        </div>
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors"
+          @click="logout"
+        >
+          <LogOut class="h-4 w-4" />
+          <span>Log out</span>
+        </button>
       </header>
 
       <!-- Page content -->
