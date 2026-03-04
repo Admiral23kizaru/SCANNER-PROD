@@ -1,23 +1,22 @@
 <template>
   <div class="min-h-screen bg-stone-50 text-stone-800">
-    <header class="bg-white border-b border-stone-200 shadow-sm sticky top-0 z-10">
+    <!-- Header: very dark navy/black -->
+    <header class="sticky top-0 z-10" style="background-color: #050517;">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4">
         <div class="flex flex-wrap items-center justify-between gap-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-blue-800 flex items-center justify-center text-white text-lg font-bold shadow-sm">
-              T
-            </div>
+            <img :src="depedLogo" alt="Logo" class="h-10 w-auto object-contain" />
             <div>
-              <h1 class="text-xl font-bold text-stone-800 tracking-tight">Teacher Dashboard</h1>
-              <p class="text-xs text-stone-500">Ozamiz Schools QR-ID System · Manage your learners</p>
+              <h1 class="text-xl font-bold text-white tracking-tight">Teacher Dashboard</h1>
+              <p class="text-xs text-stone-400">Manage learners</p>
             </div>
           </div>
           <button
             type="button"
-            class="rounded-lg px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 border border-stone-200 hover:border-red-200 hover:text-red-600 transition flex items-center gap-2"
+            class="rounded-lg px-4 py-2 text-sm font-medium text-white/90 hover:bg-white/10 border border-white/20 hover:border-white/40 transition flex items-center gap-2"
             @click="logout"
           >
-            <span aria-hidden="true">⎋</span>
+            <LogOut class="h-4 w-4" />
             Log out
           </button>
         </div>
@@ -25,54 +24,53 @@
     </header>
 
     <div class="max-w-6xl mx-auto p-4 sm:p-6">
-      <div class="bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden">
-          <div class="p-4 sm:p-5 border-b border-stone-200 bg-stone-50/50">
-            <div v-if="bulkImportResult" class="mb-3 p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
-              Imported {{ bulkImportResult.imported }} learner(s). {{ bulkImportResult.skipped ? bulkImportResult.skipped + ' skipped (duplicate or invalid).' : '' }}
-            </div>
-            <div v-if="bulkImportError" class="mb-3 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
-              {{ bulkImportError }}
-            </div>
-            <div class="flex flex-wrap items-center justify-between gap-4">
-          <h2 class="text-lg font-semibold text-stone-800">List of Learners</h2>
-          <div class="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              class="rounded-lg border-2 border-dashed border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-700 hover:border-blue-700 hover:bg-blue-50 hover:text-blue-800 transition inline-flex items-center gap-2"
-              @click="triggerBulkImport"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-              Bulk Import
-            </button>
-            <input
-              ref="bulkImportInput"
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              class="sr-only"
-              @change="onBulkImportFile"
-            />
-            <span v-if="bulkImporting" class="text-sm text-stone-500">Importing…</span>
-            <button
-              type="button"
-              class="rounded-lg bg-blue-800 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-900 shadow-sm transition inline-flex items-center gap-2"
-              @click="openAddModal"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              Add Learner
-            </button>
+      <!-- White card with subtle shadow -->
+      <div class="bg-white rounded-lg shadow-md border border-stone-200 overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-stone-200 bg-stone-50/50">
+          <div v-if="bulkImportResult" class="mb-3 p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
+            Imported {{ bulkImportResult.imported }} learner(s). {{ bulkImportResult.skipped ? bulkImportResult.skipped + ' skipped (duplicate or invalid).' : '' }}
           </div>
+          <div v-if="bulkImportError" class="mb-3 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+            {{ bulkImportError }}
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <h2 class="text-lg font-semibold text-stone-800">List of Learners</h2>
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                class="rounded-lg border-2 border-dashed border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-700 hover:border-stone-500 hover:bg-stone-50 transition inline-flex items-center gap-2"
+                @click="triggerBulkImport"
+              >
+                <Upload class="h-5 w-5" />
+                Bulk Import
+              </button>
+              <input
+                ref="bulkImportInput"
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                class="sr-only"
+                @change="onBulkImportFile"
+              />
+              <span v-if="bulkImporting" class="text-sm text-stone-500">Importing…</span>
+              <button
+                type="button"
+                class="rounded-lg px-5 py-2.5 text-sm font-medium text-black shadow-sm transition inline-flex items-center gap-2"
+                style="background: linear-gradient(90deg, #03d5ff, #00ffd1);"
+                @click="openAddModal"
+              >
+                <Plus class="h-5 w-5" />
+                Add Learner
+              </button>
             </div>
+          </div>
         </div>
+        <!-- Search & Filter -->
         <div class="p-4 border-b border-stone-200 flex flex-wrap items-center justify-between gap-3 bg-white">
           <label class="flex items-center gap-2 text-sm text-stone-600">
             Show
             <select
               v-model.number="perPage"
-              class="rounded border border-stone-300 px-2 py-1.5 text-sm text-stone-700 focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
+              class="rounded border border-stone-300 px-2 py-1.5 text-sm text-stone-700 focus:border-[#050517] focus:ring-1 focus:ring-[#050517]"
               @change="currentPage = 1; load()"
             >
               <option :value="10">10</option>
@@ -82,13 +80,13 @@
             </select>
             entries
           </label>
-          <label class="flex items-center gap-2 text-sm text-stone-600">
-            Search:
+          <label class="relative">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400 pointer-events-none" />
             <input
               v-model="searchQuery"
               type="search"
               placeholder="Search..."
-              class="rounded-lg border border-stone-300 px-3 py-1.5 text-sm w-48 focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
+              class="rounded-full border border-stone-300 pl-9 pr-4 py-2 text-sm w-48 focus:border-[#050517] focus:ring-1 focus:ring-[#050517]"
               @input="debouncedFetch"
             />
           </label>
@@ -96,7 +94,7 @@
 
         <div class="overflow-x-auto">
           <table class="w-full text-sm text-left">
-            <thead class="bg-blue-800 text-white">
+            <thead class="text-white" style="background-color: #050517;">
               <tr>
                 <th class="py-3 px-4 font-semibold">#</th>
                 <th class="py-3 px-4 font-semibold">Last Name</th>
@@ -105,7 +103,7 @@
                 <th class="py-3 px-4 font-semibold">Grade</th>
                 <th class="py-3 px-4 font-semibold">Section</th>
                 <th class="py-3 px-4 font-semibold">LRN</th>
-                <th class="py-3 px-4 font-semibold text-right">Action</th>
+                <th class="py-3 px-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -114,44 +112,39 @@
                 :key="row.id"
                 class="border-b border-stone-200 hover:bg-stone-50/70 transition"
               >
-                <td class="py-3 px-4 text-stone-500 tabular-nums">{{ (currentPage - 1) * perPage + idx + 1 }}</td>
-                <td class="py-3 px-4 font-medium text-stone-800">{{ row.last_name }}</td>
-                <td class="py-3 px-4 text-stone-700">{{ row.first_name }}</td>
-                <td class="py-3 px-4 text-stone-600">{{ row.middle_name || '—' }}</td>
-                <td class="py-3 px-4 text-stone-700">{{ row.grade || row.grade_section || '—' }}</td>
-                <td class="py-3 px-4 text-stone-700">{{ row.section || '—' }}</td>
-                <td class="py-3 px-4 tabular-nums text-stone-600">{{ row.student_number }}</td>
-                <td class="py-3 px-4 text-right">
+                <td class="py-4 px-4 text-stone-500 tabular-nums">{{ (currentPage - 1) * perPage + idx + 1 }}</td>
+                <td class="py-4 px-4 font-medium text-stone-800 capitalize">{{ titleCase(row.last_name) }}</td>
+                <td class="py-4 px-4 text-stone-700 capitalize">{{ titleCase(row.first_name) }}</td>
+                <td class="py-4 px-4 text-stone-600 capitalize">{{ row.middle_name ? titleCase(row.middle_name) : '—' }}</td>
+                <td class="py-4 px-4 text-stone-700">{{ row.grade || row.grade_section || '—' }}</td>
+                <td class="py-4 px-4 text-stone-700">{{ row.section || '—' }}</td>
+                <td class="py-4 px-4 font-mono text-stone-600 tabular-nums">{{ row.student_number }}</td>
+                <td class="py-4 px-4 text-right">
                   <span class="inline-flex items-center justify-end gap-1">
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-green-700 text-white hover:bg-green-800 transition shadow-sm"
-                      title="Make ID"
-                      @click="downloadId(row.id)"
+                      class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-green-600 text-white hover:bg-green-700 transition shadow-sm"
+                      title="Make ID Card"
+                      @click="openGroups(row)"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
+                      <IdCard class="h-8 w-8" />
                     </button>
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-blue-800 text-white hover:bg-blue-900 transition shadow-sm"
-                      title="View learner"
+                      class="inline-flex items-center justify-center w-9 h-9 rounded-full text-white transition shadow-sm hover:opacity-90"
+                      style="background-color: #050517;"
+                      title="Profile"
                       @click="openViewModal(row)"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
+                      <User class="h-5 w-5" />
                     </button>
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-stone-600 text-white hover:bg-stone-700 transition shadow-sm"
-                      title="Edit"
+                      class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-stone-600 text-white hover:bg-stone-700 transition shadow-sm"
+                      title="Edit Profile"
                       @click="openEditModal(row)"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
+                      <Pencil class="h-5 w-5" />
                     </button>
                   </span>
                 </td>
@@ -282,7 +275,6 @@
                 v-model="form.student_number"
                 type="text"
                 required
-                :readonly="!!editingId"
                 placeholder="12-digit Learner Reference Number"
                 maxlength="12"
                 inputmode="numeric"
@@ -405,10 +397,19 @@ import { ref, computed, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import QRCode from 'qrcode';
+import { LogOut, Search, Upload, Plus, IdCard, User, Pencil } from 'lucide-vue-next';
 import { setStoredToken, getStoredToken } from '../router';
 import { fetchStudents, createStudent, createStudentWithFormData, updateStudent, updateStudentWithFormData, uploadStudentPhoto, bulkImportStudents } from '../services/studentService';
 
+function titleCase(str) {
+  if (!str || typeof str !== 'string') return '';
+  return str.replace(/\w\S*/g, (t) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
+}
+
 const router = useRouter();
+
+// Logo served from Laravel public/logo
+const depedLogo = '/logo/depedozamiz.png';
 
 const students = ref([]);
 const loading = ref(false);
@@ -644,6 +645,11 @@ async function submitForm() {
     const errors = err.response?.data?.errors;
     formError.value = errors ? Object.values(errors).flat().join(' ') : msg;
   }
+}
+
+function openGroups(row) {
+  // Placeholder: e.g. open groups modal or navigate to learner groups
+  downloadId(row.id);
 }
 
 function openViewModal(row) {
