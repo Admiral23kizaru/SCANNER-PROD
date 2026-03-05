@@ -5,7 +5,7 @@
       class="w-64 shrink-0 flex flex-col border-r border-slate-200 bg-white"
     >
       <!-- Brand -->
-      <div class="px-6 py-5 border-b border-slate-200">
+      <div class="px-6 py-3 border-b border-slate-700" style="background-color: #050517;">
         <div class="flex items-center gap-3">
           <img
             :src="logoSrc"
@@ -13,10 +13,10 @@
             class="h-10 w-auto rounded-md object-contain bg-white"
           />
           <div class="leading-tight">
-            <h1 class="text-sm font-semibold tracking-tight text-slate-900">
-              Ozamiz Schools QR-ID System
+            <h1 class="text-sm font-semibold tracking-tight text-white">
+              
             </h1>
-            <p class="text-[11px] text-slate-500 uppercase tracking-[0.18em]">
+            <p class="text-[17px] text-white uppercase tracking-[0.18em]">
               Admin Panel
             </p>
           </div>
@@ -73,25 +73,25 @@
     <!-- Main content -->
     <div class="flex-1 flex flex-col bg-slate-50">
       <!-- Top navbar -->
-      <header
-        class="h-16 flex items-center justify-between px-6 lg:px-10 bg-white/95 backdrop-blur border-b border-slate-200/80 shadow-sm"
-      >
-        <div>
-          <p class="text-xs font-medium tracking-[0.25em] text-slate-400 uppercase">
-            {{ pageTitle }}
-          </p>
-          <p class="text-sm font-semibold text-slate-900">
-            {{ pageSubtitle }}
-          </p>
+      <header class="sticky top-0 z-10" style="background-color: #050517;">
+        <div class="h-16 flex items-center justify-between px-6 lg:px-10 border-b border-slate-700/80">
+          <div>
+            <p class="text-xs font-medium tracking-[0.25em] text-slate-400 uppercase">
+              {{ pageTitle }}
+            </p>
+            <p class="text-sm font-semibold text-white">
+              {{ pageSubtitle }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="grid grid-flow-col items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 transition-colors border border-white/20"
+            @click="logout"
+          >
+            <LogOut class="h-4 w-4" />
+            <span>Log out</span>
+          </button>
         </div>
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors"
-          @click="logout"
-        >
-          <LogOut class="h-4 w-4" />
-          <span>Log out</span>
-        </button>
       </header>
 
       <!-- Page content -->

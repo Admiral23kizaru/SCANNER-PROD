@@ -3,10 +3,8 @@
     <div>
       <h1 class="text-2xl md:text-3xl font-semibold text-slate-900">Dashboard</h1>
       <p class="text-sm text-slate-600 mt-1">
-        Overview of your Ozamiz Schools QR-ID System data
       </p>
     </div>
-
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
       <!-- Total Students -->
       <div

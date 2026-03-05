@@ -83,8 +83,8 @@ class AttendanceController extends Controller
         ]);
 
         // Attempt to notify parent/guardian via email (non-blocking for API response)
-        // Prefer explicit parent_email; fall back to emergency_contact for older data.
-        $parentEmail = $student->parent_email ?: $student->emergency_contact;
+        // Prefer explicit guardian_email; fall back to emergency_contact if it's an email format.
+        $parentEmail = $student->guardian_email ?: $student->emergency_contact;
         if ($parentEmail && filter_var($parentEmail, FILTER_VALIDATE_EMAIL)) {
             try {
                 $scannedAt = $attendance->scanned_at->timezone(config('app.timezone', 'UTC'));

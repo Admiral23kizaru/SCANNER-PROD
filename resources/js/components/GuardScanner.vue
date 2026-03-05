@@ -7,14 +7,6 @@
           <p class="text-xs text-slate-400">Ozamiz Schools QR-ID System · Live Attendance</p>
         </div>
       </div>
-      <button
-        type="button"
-        class="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-600 hover:border-red-500/50 hover:text-red-300 transition flex items-center gap-2"
-        @click="logout"
-      >
-        <span aria-hidden="true">⎋</span>
-        Log out
-      </button>
     </header>
     <div class="flex flex-1 min-h-0 overflow-hidden">
     <section class="flex flex-col flex-1 min-w-0 p-4 border-r border-slate-700">
@@ -144,10 +136,8 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
-import axios from 'axios';
 import { Html5Qrcode } from 'html5-qrcode';
 import { scanAttendancePublic, fetchRecentAttendancePublic } from '../services/attendanceService';
-import { setStoredToken, getStoredToken } from '../router';
 
 const DEBOUNCE_MS = 2000;
 const REFRESH_INTERVAL_MS = 5000;
@@ -447,17 +437,7 @@ async function manualRetry() {
   await startCamera();
 }
 
-async function logout() {
-  const token = getStoredToken();
-  if (token) {
-    try {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      await axios.post('/api/logout');
-    } catch (_) {}
-    setStoredToken(null);
-  }
-  window.location.href = '/login';
-}
+
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
