@@ -14,12 +14,11 @@ class Teacher extends Authenticatable
     protected $table = 'teachers';
 
     protected $fillable = [
-        'school_id',
         'first_name',
         'last_name',
-        'email',
+        'employee_number',
         'password',
-        'designation',
+        'school_name',
         'profile_photo',
     ];
 

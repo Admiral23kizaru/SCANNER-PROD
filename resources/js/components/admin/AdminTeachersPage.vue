@@ -18,8 +18,8 @@
             <tr>
               <th class="py-3 px-4 font-semibold border-b border-slate-800/80">#</th>
               <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Name</th>
-              <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Designation</th>
-              <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Email</th>
+              <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Employee Number</th>
+              <th class="py-3 px-4 font-semibold border-b border-slate-800/80">School Name</th>
               <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Created</th>
               <th class="py-3 px-4 font-semibold text-right border-b border-slate-800/80">Actions</th>
             </tr>
@@ -59,9 +59,9 @@
                 </div>
               </td>
               <td class="py-3 px-4 text-slate-700 whitespace-nowrap">
-                {{ t.designation || '—' }}
+                {{ t.employee_number || '—' }}
               </td>
-              <td class="py-3 px-4 text-slate-700">{{ t.email }}</td>
+              <td class="py-3 px-4 text-slate-700">{{ t.school_name || '—' }}</td>
               <td class="py-3 px-4 text-slate-600">{{ formatDate(t.created_at) }}</td>
               <td class="py-3 px-4 text-right">
                 <span class="inline-flex items-center justify-end gap-2">
@@ -119,22 +119,29 @@
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">Email (Username)</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Employee Number</label>
               <input
-                v-model="form.email"
-                type="email"
+                v-model="form.employee_number"
+                type="text"
                 required
                 class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">School designation</label>
-              <input
-                v-model="form.designation"
-                type="text"
-                placeholder="e.g. Adviser, Principal"
-                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
-              />
+              <label class="block text-sm font-medium text-stone-700 mb-1">School Name</label>
+              <select
+                v-model="form.school_name"
+                required
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
+              >
+                <option value="" disabled>Select a school</option>
+                <optgroup label="Elementary">
+                  <option v-for="school in elementarySchools" :key="school" :value="school">{{ school }}</option>
+                </optgroup>
+                <optgroup label="Secondary & Integrated">
+                  <option v-for="school in secondarySchools" :key="school" :value="school">{{ school }}</option>
+                </optgroup>
+              </select>
             </div>
             <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">Password</label>
@@ -212,17 +219,24 @@
               <input v-model="editForm.name" type="text" required class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">Email</label>
-              <input v-model="editForm.email" type="email" required class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
+              <label class="block text-sm font-medium text-stone-700 mb-1">Employee Number</label>
+              <input v-model="editForm.employee_number" type="text" required class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">School designation</label>
-              <input
-                v-model="editForm.designation"
-                type="text"
-                placeholder="e.g. Adviser, Principal"
-                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
-              />
+              <label class="block text-sm font-medium text-stone-700 mb-1">School Name</label>
+              <select
+                v-model="editForm.school_name"
+                required
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
+              >
+                <option value="" disabled>Select a school</option>
+                <optgroup label="Elementary">
+                  <option v-for="school in elementarySchools" :key="school" :value="school">{{ school }}</option>
+                </optgroup>
+                <optgroup label="Secondary & Integrated">
+                  <option v-for="school in secondarySchools" :key="school" :value="school">{{ school }}</option>
+                </optgroup>
+              </select>
             </div>
             <div class="rounded-lg border border-stone-200 bg-stone-50 p-3">
               <p class="text-xs text-stone-500 mb-2">Optional: set a new password for this teacher.</p>
@@ -277,7 +291,7 @@
       <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6" @click.stop>
         <h2 class="text-lg font-semibold text-stone-800 mb-2">Delete Teacher</h2>
         <p class="text-sm text-stone-600 mb-4">
-          Are you sure you want to delete <strong>{{ deleteTarget?.name }}</strong> ({{ deleteTarget?.email }})?
+          Are you sure you want to delete <strong>{{ deleteTarget?.name }}</strong> ({{ deleteTarget?.employee_number }})?
         </p>
         <div v-if="deleteError" class="mb-3 text-sm text-red-600">{{ deleteError }}</div>
         <div class="flex justify-end gap-2">
@@ -305,17 +319,36 @@ const deleteTarget = ref(null);
 const deleting = ref(false);
 const deleteError = ref('');
 
+const elementarySchools = [
+  "Baybay Central", "Ozamiz City Central", "Bacolod ES", "Catadman ES", "Doña Consuelo ES", 
+  "Embargo ES", "Gango ES", "Gotocan ES", "Labo Central", "Antero D. Hinagdanan ES", 
+  "Maningcol Central", "San Antonio ES", "Andrea D. Costonera ES", "Maximino S. Laurete Sr. Central", 
+  "Felipe Carreon Central", "Guimad ES", "Roman E. Mabanag Sr. ES", "Antero U. Roa Central", 
+  "Pershing Tan Queto Sr. ES", "Balintawak ES", "Bongbong ES", "Gala ES", "Gregorio A. Saquin ES", 
+  "Juan A. Acapulco ES", "Labinay ES", "Diego Tuastomban ES", "Pulot ES", "Narciso B. Ledesma Central", 
+  "Hilarion J. Ramiro Jr. ES", "Mintalar ES", "Dalapang ES", "Tipan ES", "Capucao C ES", 
+  "Sta. Cruz ES", "Cruz Lanzado Saligan ES"
+];
+
+const secondarySchools = [
+  "Labinay NHS", "Tabid NHS", "Labo NHS", "Jose Lim Ho NHS", "San Antonio NHS", "Montol NHS", 
+  "Ozamiz City National HS", "Ozamiz City School of Arts and Trades (OCSAT)", "Pulot NHS", 
+  "Gala NHS", "Cogon IS", "Malaubang IS", "Misamis Annex IS", "Jacinto Nemeno IS", 
+  "Marcelino C. Regis IS", "Sancho Capa IS", "Sangay IS", "Sinusa IS", "Capucao IS", 
+  "Dimaluna IS", "Domingo A. Barloa IS", "Faustino C. Decena IS", "Guingona IS"
+];
+
 const form = ref({
   name: '',
-  email: '',
-  designation: '',
+  employee_number: '',
+  school_name: '',
   password: '',
   password_confirmation: '',
 });
 const formError = ref('');
 
 const editTargetId = ref(null);
-const editForm = ref({ name: '', email: '', designation: '', password: '', password_confirmation: '' });
+const editForm = ref({ name: '', employee_number: '', school_name: '', password: '', password_confirmation: '' });
 const editError = ref('');
 
 const createPhotoFile = ref(null);
@@ -336,7 +369,7 @@ function formatDate(iso) {
 }
 
 function openCreateModal() {
-  form.value = { name: '', email: '', designation: '', password: '', password_confirmation: '' };
+  form.value = { name: '', employee_number: '', school_name: '', password: '', password_confirmation: '' };
   formError.value = '';
   createPhotoFile.value = null;
   createPhotoFileName.value = '';
@@ -351,8 +384,8 @@ function openEditModal(t) {
   editTargetId.value = t.id;
   editForm.value = {
     name: t.name || '',
-    email: t.email || '',
-    designation: t.designation || '',
+    employee_number: t.employee_number || '',
+    school_name: t.school_name || '',
     password: '',
     password_confirmation: '',
   };
@@ -394,10 +427,10 @@ async function submitCreate() {
   try {
     const payload = {
       name: form.value.name,
-      email: form.value.email,
+      employee_number: form.value.employee_number,
+      school_name: form.value.school_name,
       password: form.value.password,
       password_confirmation: form.value.password_confirmation,
-      designation: form.value.designation || null,
     };
 
     const res = await createTeacher(payload);
@@ -431,14 +464,12 @@ async function submitEdit() {
 
   const payload = {
     name: editForm.value.name,
-    email: editForm.value.email,
+    employee_number: editForm.value.employee_number,
+    school_name: editForm.value.school_name,
   };
   if (editForm.value.password) {
     payload.password = editForm.value.password;
     payload.password_confirmation = editForm.value.password_confirmation;
-  }
-  if (editForm.value.designation !== undefined) {
-    payload.designation = editForm.value.designation || null;
   }
 
   try {

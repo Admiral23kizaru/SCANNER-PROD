@@ -10,7 +10,7 @@
               <h1 class="text-xl font-bold text-white tracking-tight">Teacher Dashboard</h1>
               <p class="text-xs text-stone-400">Manage learners</p>
             </div>
-          </div>
+          </div
           <button
             type="button"
             class="rounded-lg px-4 py-2 text-sm font-medium text-white/90 hover:bg-white/10 border border-white/20 hover:border-white/40 transition flex items-center gap-2"

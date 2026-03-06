@@ -21,16 +21,16 @@ class TeacherManagementController extends Controller
 
         $teachers = User::where('role_id', $teacherRole->id)
             ->orderBy('name')
-            ->get(['id', 'name', 'email', 'designation', 'profile_photo', 'created_at']);
+            ->get();
 
         $data = $teachers->map(function (User $u) {
             return [
-                'id' => $u->id,
-                'name' => $u->name,
-                'email' => $u->email,
-                'designation' => $u->designation,
-                'profile_photo' => $u->profile_photo ? '/' . ltrim($u->profile_photo, '/') : null,
-                'created_at' => $u->created_at?->toIso8601String(),
+                'id'              => $u->id,
+                'name'            => $u->name,
+                'employee_number' => $u->employee_number,
+                'school_name'     => $u->school_name,
+                'profile_photo'   => $u->profile_photo ? '/' . ltrim($u->profile_photo, '/') : null,
+                'created_at'      => $u->created_at?->toIso8601String(),
             ];
         });
 
@@ -40,19 +40,19 @@ class TeacherManagementController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'designation' => ['nullable', 'string', 'max:255'],
+            'name'            => ['required', 'string', 'max:255'],
+            'employee_number' => ['required', 'string', 'max:255', 'unique:users,employee_number'],
+            'password'        => ['required', 'string', 'min:8', 'confirmed'],
+            'school_name'     => ['nullable', 'string', 'max:255'],
         ], [
-            'email.unique' => 'A teacher with this email already exists.',
-            'password.min' => 'Password must be at least 8 characters.',
+            'employee_number.unique' => 'A teacher with this employee number already exists.',
+            'password.min'           => 'Password must be at least 8 characters.',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validation failed.',
-                'errors' => $validator->errors(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
@@ -61,23 +61,27 @@ class TeacherManagementController extends Controller
             return response()->json(['message' => 'Teacher role not found.'], 500);
         }
 
+        // Generate a placeholder email from employee_number to satisfy the unique constraint
+        $email = strtolower(str_replace(' ', '', $request->employee_number)) . '@deped.local';
+
         $user = User::create([
-            'role_id' => $teacherRole->id,
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => $request->password,
-            'designation' => $request->input('designation'),
+            'role_id'         => $teacherRole->id,
+            'name'            => $request->name,
+            'email'           => $email,
+            'password'        => $request->password,
+            'employee_number' => $request->employee_number,
+            'school_name'     => $request->input('school_name'),
         ]);
 
         return response()->json([
             'message' => 'Teacher account created.',
             'teacher' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'designation' => $user->designation,
-                'profile_photo' => $user->profile_photo ? asset($user->profile_photo) : null,
-                'created_at' => $user->created_at?->toIso8601String(),
+                'id'              => $user->id,
+                'name'            => $user->name,
+                'employee_number' => $user->employee_number,
+                'school_name'     => $user->school_name,
+                'profile_photo'   => $user->profile_photo ? asset($user->profile_photo) : null,
+                'created_at'      => $user->created_at?->toIso8601String(),
             ],
         ], 201);
     }
@@ -95,30 +99,30 @@ class TeacherManagementController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'email' => ['sometimes', 'required', 'string', 'email', 'max:255', 'unique:users,email,' . $teacher->id],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-            'designation' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'name'            => ['sometimes', 'required', 'string', 'max:255'],
+            'employee_number' => ['sometimes', 'required', 'string', 'max:255', 'unique:users,employee_number,' . $teacher->id],
+            'password'        => ['nullable', 'string', 'min:8', 'confirmed'],
+            'school_name'     => ['sometimes', 'nullable', 'string', 'max:255'],
         ], [
-            'email.unique' => 'A teacher with this email already exists.',
-            'password.min' => 'Password must be at least 8 characters.',
+            'employee_number.unique' => 'A teacher with this employee number already exists.',
+            'password.min'           => 'Password must be at least 8 characters.',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validation failed.',
-                'errors' => $validator->errors(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
         if ($request->has('name')) {
             $teacher->name = $request->name;
         }
-        if ($request->has('email')) {
-            $teacher->email = $request->email;
+        if ($request->has('employee_number')) {
+            $teacher->employee_number = $request->employee_number;
         }
-        if ($request->has('designation')) {
-            $teacher->designation = $request->input('designation');
+        if ($request->has('school_name')) {
+            $teacher->school_name = $request->input('school_name');
         }
         if ($request->filled('password')) {
             $teacher->password = $request->password;
@@ -128,12 +132,12 @@ class TeacherManagementController extends Controller
         return response()->json([
             'message' => 'Teacher updated.',
             'teacher' => [
-                'id' => $teacher->id,
-                'name' => $teacher->name,
-                'email' => $teacher->email,
-                'designation' => $teacher->designation,
-                'profile_photo' => $teacher->profile_photo ? asset($teacher->profile_photo) : null,
-                'created_at' => $teacher->created_at?->toIso8601String(),
+                'id'              => $teacher->id,
+                'name'            => $teacher->name,
+                'employee_number' => $teacher->employee_number,
+                'school_name'     => $teacher->school_name,
+                'profile_photo'   => $teacher->profile_photo ? asset($teacher->profile_photo) : null,
+                'created_at'      => $teacher->created_at?->toIso8601String(),
             ],
         ], 200);
     }
@@ -191,7 +195,7 @@ class TeacherManagementController extends Controller
         $teacher->save();
 
         return response()->json([
-            'message' => 'Profile photo updated.',
+            'message'       => 'Profile photo updated.',
             'profile_photo' => '/' . ltrim($teacher->profile_photo, '/'),
         ]);
     }
