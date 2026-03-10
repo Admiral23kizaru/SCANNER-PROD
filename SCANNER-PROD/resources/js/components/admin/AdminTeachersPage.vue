@@ -25,7 +25,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr
+     git        <tr
               v-for="(t, idx) in teachers"
               :key="t.id"
               class="border-b border-slate-200/80 odd:bg-slate-50/40 even:bg-white hover:bg-blue-50/60 transition"

@@ -7,11 +7,12 @@
       <!-- Brand -->
       <div class="px-6 py-5 border-b border-slate-200">
         <div class="flex items-center gap-3">
-          <img
-            :src="logoSrc"
-            alt="Ozamiz Schools QR-ID System"
-            class="h-10 w-auto rounded-md object-contain bg-white"
-          />
+          <div
+            class="w-10 h-10 rounded-lg bg-blue-800 flex items-center justify-center text-white text-lg font-bold shadow-sm shrink-0"
+            aria-hidden="true"
+          >
+            A
+          </div>
           <div class="leading-tight">
             <h1 class="text-sm font-semibold tracking-tight text-slate-900">
               Ozamiz Schools QR-ID System
@@ -117,7 +118,6 @@ import AdminTeachersPage from './AdminTeachersPage.vue';
 import AdminStudentsPage from './AdminStudentsPage.vue';
 
 const currentPage = ref('dashboard');
-const logoSrc = '/logo/depedozamiz.png';
 const { logout } = useLogout();
 
 const pageTitle = computed(() => {
