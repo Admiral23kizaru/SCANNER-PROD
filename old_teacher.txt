@@ -1,124 +1,29 @@
 <template>
-  <div class="min-h-screen bg-stone-50 text-stone-900 flex">
-    <!-- Sidebar -->
-    <aside
-      class="w-64 shrink-0 flex flex-col border-r border-stone-200 bg-white fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:static lg:transform-none"
-      :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
-    >
-      <!-- Brand -->
-      <div class="px-6 py-3 border-b border-stone-700" style="background-color: #050517;">
-        <div class="flex items-center gap-3">
-          <img
-            :src="depedLogo"
-            alt="Logo"
-            class="h-10 w-auto rounded-md object-contain bg-white"
-          />
-          <div class="leading-tight">
-            <h1 class="text-sm font-semibold tracking-tight text-white"></h1>
-            <p class="text-[17px] text-white uppercase tracking-[0.18em]">
-              Teacher
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Navigation -->
-      <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
-        <button
-          type="button"
-          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition"
-          :class="currentTab === 'learners' ? 'bg-stone-800 text-white shadow-sm' : 'text-stone-400 hover:bg-stone-800/50 hover:text-white'"
-          @click="currentTab = 'learners'; isSidebarOpen = false"
-        >
-          <Users class="h-4 w-4" />
-          <span>Learners List</span>
-        </button>
-
-        <button
-          type="button"
-          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition"
-          :class="currentTab === 'locator' ? 'bg-stone-800 text-white shadow-sm' : 'text-stone-400 hover:bg-stone-800/50 hover:text-white'"
-          @click="currentTab = 'locator'; isSidebarOpen = false"
-        >
-          <FileText class="h-4 w-4" />
-          <span>Locator Slips</span>
-        </button>
-      </nav>
-    </aside>
-
-    <!-- Mobile sidebar overlay -->
-    <div
-      v-if="isSidebarOpen"
-      class="fixed inset-0 z-40 bg-black/50 lg:hidden"
-      @click="isSidebarOpen = false"
-    ></div>
-
-    <!-- Main content -->
-    <div class="flex-1 flex flex-col bg-stone-50">
-      <!-- Top navbar -->
-      <header class="sticky top-0 z-10" style="background-color: #050517;">
-        <div class="h-16 flex flex-wrap lg:h-16 items-center justify-between px-4 lg:px-10 py-2 border-b border-stone-700/80">
+  <div class="min-h-screen bg-stone-50 text-stone-800">
+    <!-- Header: very dark navy/black -->
+    <header class="sticky top-0 z-10" style="background-color: #050517;">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+        <div class="flex flex-wrap items-center justify-between gap-4">
           <div class="flex items-center gap-3">
-            <button
-              type="button"
-              class="lg:hidden p-2 text-white hover:bg-white/10 rounded-lg transition"
-              @click="isSidebarOpen = true"
-            >
-              <Menu class="h-5 w-5" />
-            </button>
-            <div class="hidden sm:block">
-              <p class="text-xs font-medium tracking-[0.25em] text-stone-400 uppercase">
-                {{ pageTitle }}
-              </p>
-              <p class="text-sm font-semibold text-white">
-                {{ pageSubtitle }}
-              </p>
+            <img :src="depedLogo" alt="Logo" class="h-10 w-auto object-contain" />
+            <div>
+              <h1 class="text-xl font-bold text-white tracking-tight">Teacher Dashboard</h1>
+              <p class="text-xs text-stone-400">Manage learners</p>
             </div>
           </div>
-          <div class="flex items-center gap-2 lg:gap-4">
-            <template v-if="currentTab === 'learners'">
-              <button
-                type="button"
-                class="hidden sm:flex rounded-lg border border-stone-500 bg-stone-800 px-3 py-2 text-xs font-medium text-white hover:border-stone-400 hover:bg-stone-700 transition items-center gap-1.5"
-                @click="triggerBulkImport"
-              >
-                <Upload class="h-4 w-4" />
-                Bulk Import
-              </button>
-              <input
-                ref="bulkImportInput"
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                class="sr-only"
-                @change="onBulkImportFile"
-              />
-              <span v-if="bulkImporting" class="text-sm text-stone-500 mr-2">Importing…</span>
-              <button
-                type="button"
-                class="rounded-lg px-3 py-2 text-xs font-medium text-black shadow-sm transition flex items-center gap-1.5"
-                style="background: linear-gradient(90deg, #03d5ff, #00ffd1);"
-                @click="openAddModal"
-              >
-                <Plus class="h-4 w-4" />
-                Add Learner
-              </button>
-            </template>
-            <button
-              type="button"
-              class="grid grid-flow-col items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-white hover:bg-stone-800 transition-colors border border-white/20 ml-2"
-              @click="logout"
-            >
-              <LogOut class="h-4 w-4" />
-              <span class="hidden sm:inline">Log out</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            class="rounded-lg px-4 py-2 text-sm font-medium text-white/90 hover:bg-white/10 border border-white/20 hover:border-white/40 transition flex items-center gap-2"
+            @click="logout"
+          >
+            <LogOut class="h-4 w-4" />
+            Log out
+          </button>
         </div>
-      </header>
-    
-      <main class="flex-1 overflow-auto">
-        <div v-show="currentTab === 'learners'" class="w-full">
-           <!-- Page Content Wrapper -->
-           <div class="w-full mx-auto p-4 sm:p-6 lg:max-w-6xl">
+      </div>
+    </header>
+
+    <div class="max-w-6xl mx-auto p-4 sm:p-6">
       <!-- White card with subtle shadow -->
       <div class="bg-white rounded-lg shadow-md border border-stone-200 overflow-hidden">
         <div class="p-4 sm:p-5 border-b border-stone-200 bg-stone-50/50">
@@ -130,6 +35,33 @@
           </div>
           <div class="flex flex-wrap items-center justify-between gap-4">
             <h2 class="text-lg font-semibold text-stone-800">List of Learners</h2>
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                class="rounded-lg border-2 border-dashed border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-700 hover:border-stone-500 hover:bg-stone-50 transition inline-flex items-center gap-2"
+                @click="triggerBulkImport"
+              >
+                <Upload class="h-5 w-5" />
+                Bulk Import
+              </button>
+              <input
+                ref="bulkImportInput"
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                class="sr-only"
+                @change="onBulkImportFile"
+              />
+              <span v-if="bulkImporting" class="text-sm text-stone-500">Importing…</span>
+              <button
+                type="button"
+                class="rounded-lg px-5 py-2.5 text-sm font-medium text-black shadow-sm transition inline-flex items-center gap-2"
+                style="background: linear-gradient(90deg, #03d5ff, #00ffd1);"
+                @click="openAddModal"
+              >
+                <Plus class="h-5 w-5" />
+                Add Learner
+              </button>
+            </div>
           </div>
         </div>
         <!-- Search & Filter -->
@@ -252,14 +184,8 @@
               Next
             </button>
           </div>
-          </div>
         </div>
       </div>
-      </div>
-          <div v-show="currentTab === 'locator'" class="w-full">
-            <TeacherLocatorSlipsPage />
-          </div>
-      </main>
     </div>
     <div
       v-if="showFormModal"
@@ -470,11 +396,10 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import axios from 'axios';
 import QRCode from 'qrcode';
-import { LogOut, Search, Upload, Plus, IdCard, User, Pencil, Users, FileText, Menu } from 'lucide-vue-next';
+import { LogOut, Search, Upload, Plus, IdCard, User, Pencil } from 'lucide-vue-next';
 import { setStoredToken, getStoredToken } from '../router';
 import { useLogout } from '../composables/useLogout';
 import { fetchStudents, createStudent, createStudentWithFormData, updateStudent, updateStudentWithFormData, uploadStudentPhoto, bulkImportStudents } from '../services/studentService';
-import TeacherLocatorSlipsPage from './TeacherLocatorSlipsPage.vue';
 
 function titleCase(str) {
   if (!str || typeof str !== 'string') return '';
@@ -494,19 +419,6 @@ const total = ref(0);
 const perPage = ref(10);
 const searchQuery = ref('');
 const searchInput = ref('');
-
-const currentTab = ref('learners');
-const isSidebarOpen = ref(false);
-
-const pageTitle = computed(() => {
-  if (currentTab.value === 'locator') return 'LOCATOR SLIPS';
-  return 'LEARNERS';
-});
-
-const pageSubtitle = computed(() => {
-  if (currentTab.value === 'locator') return 'File and track your travel slips';
-  return 'Manage student records';
-});
 
 const showFormModal = ref(false);
 const showViewModal = ref(false);
