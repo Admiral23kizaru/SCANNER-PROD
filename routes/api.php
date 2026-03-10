@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\TeacherManagementController;
+use App\Http\Controllers\Api\LocatorSlipController;
 use App\Http\Middleware\SanctumTokenFromQuery;
 use Illuminate\Support\Facades\Route;
 
@@ -47,6 +48,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/students', [AdminStudentController::class, 'store']);
         Route::put('/students/{id}', [AdminStudentController::class, 'update']);
         Route::delete('/students/{id}', [AdminStudentController::class, 'destroy']);
+        Route::get('/locator-slips', [LocatorSlipController::class, 'indexAdmin']);
+        Route::put('/locator-slips/{id}/status', [LocatorSlipController::class, 'updateStatus']);
     });
 
     Route::middleware('role:Teacher')->prefix('teacher')->group(function () {
@@ -57,6 +60,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/students/{id}', [StudentController::class, 'update']);
         Route::post('/students/{id}', [StudentController::class, 'update']); // for _method=PUT spoofing with FormData
         Route::post('/students/{id}/photo', [StudentController::class, 'uploadPhoto']);
+        Route::get('/locator-slips', [LocatorSlipController::class, 'indexTeacher']);
+        Route::post('/locator-slips', [LocatorSlipController::class, 'store']);
     });
 
     Route::middleware('role:Guard')->prefix('guard')->group(function () {
