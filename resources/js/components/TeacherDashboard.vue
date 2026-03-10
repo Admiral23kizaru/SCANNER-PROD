@@ -191,14 +191,6 @@
                   <span class="inline-flex items-center justify-end gap-1">
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-green-600 text-white hover:bg-green-700 transition shadow-sm"
-                      title="Make ID Card"
-                      @click="openGroups(row)"
-                    >
-                      <IdCard class="h-8 w-8" />
-                    </button>
-                    <button
-                      type="button"
                       class="inline-flex items-center justify-center w-9 h-9 rounded-full text-white transition shadow-sm hover:opacity-90"
                       style="background-color: #050517;"
                       title="Profile"
@@ -470,7 +462,7 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import axios from 'axios';
 import QRCode from 'qrcode';
-import { LogOut, Search, Upload, Plus, IdCard, User, Pencil, Users, FileText, Menu } from 'lucide-vue-next';
+import { LogOut, Search, Upload, Plus, User, Pencil, Users, FileText, Menu } from 'lucide-vue-next';
 import { setStoredToken, getStoredToken } from '../router';
 import { useLogout } from '../composables/useLogout';
 import { fetchStudents, createStudent, createStudentWithFormData, updateStudent, updateStudentWithFormData, uploadStudentPhoto, bulkImportStudents } from '../services/studentService';
@@ -735,10 +727,7 @@ async function submitForm() {
   }
 }
 
-function openGroups(row) {
-  // Placeholder: e.g. open groups modal or navigate to learner groups
-  downloadId(row.id);
-}
+
 
 function openViewModal(row) {
   viewModalStudent.value = row;
@@ -774,21 +763,7 @@ watch([showQrModal, qrModalStudent], async () => {
   }
 });
 
-async function downloadId(id) {
-  const token = getStoredToken();
-  if (token) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  }
-  try {
-    const res = await axios.get(`/api/teacher/students/${encodeURIComponent(id)}/id-url`);
-    if (res.data?.url) {
-      window.open(res.data.url, '_blank', 'noopener,noreferrer');
-    }
-  } catch (err) {
-    console.error(err);
-    alert('Failed to generate secure ID link.');
-  }
-}
+
 
 load();
 </script>

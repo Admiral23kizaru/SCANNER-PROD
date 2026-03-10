@@ -27,6 +27,9 @@ Route::get('/attendance/public/recent', [AttendanceController::class, 'publicRec
 Route::get('/teacher/students/{id}/id-url', [IdCardController::class, 'getSignedUrl'])
     ->middleware(['auth:sanctum', 'role:Teacher']);
 
+Route::get('/admin/students/{id}/id-url', [IdCardController::class, 'getSignedUrl'])
+    ->middleware(['auth:sanctum', 'role:Admin']);
+
 // Secure signed route without auth middleware since it's signed with expiration
 Route::get('/media/id/{hash}', [IdCardController::class, 'generateSecure'])
     ->name('id.download')

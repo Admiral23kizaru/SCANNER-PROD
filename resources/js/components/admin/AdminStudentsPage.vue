@@ -68,6 +68,14 @@
                 <span class="inline-flex items-center justify-end gap-2">
                   <button
                     type="button"
+                    class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-green-600 text-white hover:bg-green-700 transition shadow-sm"
+                    title="Generate ID Card"
+                    @click="downloadId(row.id)"
+                  >
+                    <IdCard class="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
                     class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition shadow-sm"
                     title="Edit student"
                     @click="openEditModal(row)"
@@ -217,8 +225,8 @@
 
 <script setup>
 import { ref } from 'vue';
-import { Search, PencilLine, Trash2 } from 'lucide-vue-next';
-import { fetchAdminStudents, createAdminStudent, updateAdminStudent, deleteStudent } from '../../services/adminService';
+import { Search, PencilLine, Trash2, IdCard } from 'lucide-vue-next';
+import { fetchAdminStudents, createAdminStudent, updateAdminStudent, deleteStudent, getAdminStudentIdUrl } from '../../services/adminService';
 
 const students = ref([]);
 const loading = ref(false);
@@ -368,6 +376,18 @@ async function executeDelete() {
     alert(msg);
   } finally {
     deleting.value = false;
+  }
+}
+
+async function downloadId(id) {
+  try {
+    const res = await getAdminStudentIdUrl(id);
+    if (res?.url) {
+      window.open(res.url, '_blank', 'noopener,noreferrer');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Failed to generate secure ID link.');
   }
 }
 

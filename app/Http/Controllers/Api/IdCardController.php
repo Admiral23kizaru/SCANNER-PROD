@@ -16,6 +16,7 @@ class IdCardController extends Controller
         $student = Student::findOrFail($id);
         $user = $request->user();
 
+        // Admin can access any student; Teacher restricted to own students
         if ($user?->role?->name === 'Teacher') {
             $allowed = ($student->teacher_id === $user->id || $student->created_by === $user->id);
             if (!$allowed) {

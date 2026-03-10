@@ -80,3 +80,10 @@ export async function deleteStudent(id) {
     });
     return data;
 }
+
+export async function getAdminStudentIdUrl(id) {
+    const { data } = await axios.get(base + '/students/' + id + '/id-url', {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data;
+}
