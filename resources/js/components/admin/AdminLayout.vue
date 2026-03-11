@@ -11,7 +11,7 @@
           <img
             :src="logoSrc"
             alt="Ozamiz Schools QR-ID System"
-            class="h-10 w-auto rounded-md object-contain bg-white"
+            class="h-10 w-auto rounded-full object-contain bg-white"
           />
           <div class="leading-tight">
             <h1 class="text-sm font-semibold tracking-tight text-white">
