@@ -20,6 +20,7 @@ class User extends Authenticatable
         'profile_photo',
         'employee_number',
         'school_name',
+        'signature_path',
     ];
 
     protected $hidden = [

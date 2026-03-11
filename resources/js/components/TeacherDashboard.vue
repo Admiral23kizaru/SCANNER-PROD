@@ -33,16 +33,6 @@
           <Users class="h-4 w-4" />
           <span>Learners List</span>
         </button>
-
-        <button
-          type="button"
-          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition"
-          :class="currentTab === 'locator' ? 'bg-stone-800 text-white shadow-sm' : 'text-stone-400 hover:bg-stone-800/50 hover:text-white'"
-          @click="currentTab = 'locator'; isSidebarOpen = false"
-        >
-          <FileText class="h-4 w-4" />
-          <span>Locator Slips</span>
-        </button>
       </nav>
     </aside>
 
@@ -248,9 +238,6 @@
         </div>
       </div>
       </div>
-          <div v-show="currentTab === 'locator'" class="w-full">
-            <TeacherLocatorSlipsPage />
-          </div>
       </main>
     </div>
     <div
@@ -462,11 +449,10 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import axios from 'axios';
 import QRCode from 'qrcode';
-import { LogOut, Search, Upload, Plus, User, Pencil, Users, FileText, Menu } from 'lucide-vue-next';
+import { LogOut, Search, Upload, Plus, User, Pencil, Users, Menu } from 'lucide-vue-next';
 import { setStoredToken, getStoredToken } from '../router';
 import { useLogout } from '../composables/useLogout';
 import { fetchStudents, createStudent, createStudentWithFormData, updateStudent, updateStudentWithFormData, uploadStudentPhoto, bulkImportStudents } from '../services/studentService';
-import TeacherLocatorSlipsPage from './TeacherLocatorSlipsPage.vue';
 
 function titleCase(str) {
   if (!str || typeof str !== 'string') return '';
@@ -491,12 +477,10 @@ const currentTab = ref('learners');
 const isSidebarOpen = ref(false);
 
 const pageTitle = computed(() => {
-  if (currentTab.value === 'locator') return 'LOCATOR SLIPS';
   return 'LEARNERS';
 });
 
 const pageSubtitle = computed(() => {
-  if (currentTab.value === 'locator') return 'File and track your travel slips';
   return 'Manage student records';
 });
 

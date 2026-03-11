@@ -6,37 +6,35 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::dropIfExists('locator_slips');
-        
+    }
+
+    public function down(): void
+    {
         Schema::create('locator_slips', function (Blueprint $table) {
             $table->id();
-            $table->unsignedInteger('teacher_id');
-            $table->foreign('teacher_id')->references('id')->on('users')->onDelete('cascade');
+            $table->unsignedBigInteger('teacher_id');
             $table->date('date_of_filing');
             $table->string('name');
             $table->string('position');
+            $table->string('permanent_station');
             $table->string('destination');
-            $table->string('purpose_of_travel');
-            $table->time('time_out')->nullable();
+            $table->text('purpose_of_travel');
+            $table->enum('official_type', ['Official Business', 'Official Time']);
+            $table->dateTime('date_time');
+            $table->time('time_out');
+            $table->time('expected_return');
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->text('admin_remarks')->nullable();
+            $table->unsignedBigInteger('reviewed_by')->nullable();
             $table->timestamp('reviewed_at')->nullable();
-            $table->unsignedInteger('reviewed_by')->nullable();
-            $table->foreign('reviewed_by')->references('id')->on('users')->onDelete('set null');
             $table->timestamps();
+
+            $table->foreign('teacher_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('reviewed_by')->references('id')->on('users')->nullOnDelete();
         });
     }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('locator_slips');
-    }
 };
+

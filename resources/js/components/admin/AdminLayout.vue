@@ -67,20 +67,6 @@
           <GraduationCap class="h-4 w-4" />
           <span>Students</span>
         </button>
-
-        <button
-          type="button"
-          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent"
-          :class="
-            currentPage === 'locator'
-              ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm border-l-blue-600'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          "
-          @click="currentPage = 'locator'; isSidebarOpen = false"
-        >
-          <FileText class="h-4 w-4" />
-          <span>Locator Slips</span>
-        </button>
       </nav>
     </aside>
 
@@ -130,7 +116,6 @@
           <AdminDashboardStats v-if="currentPage === 'dashboard'" />
           <AdminTeachersPage v-else-if="currentPage === 'teachers'" />
           <AdminStudentsPage v-else-if="currentPage === 'students'" />
-          <AdminLocatorSlipsPage v-else-if="currentPage === 'locator'" />
         </div>
       </main>
     </div>
@@ -141,12 +126,11 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
-import { LayoutDashboard, Users, GraduationCap, LogOut, FileText, Menu } from 'lucide-vue-next';
+import { LayoutDashboard, Users, GraduationCap, LogOut, Menu } from 'lucide-vue-next';
 import { setStoredToken, getStoredToken } from '../../router';
 import AdminDashboardStats from './AdminDashboardStats.vue';
 import AdminTeachersPage from './AdminTeachersPage.vue';
 import AdminStudentsPage from './AdminStudentsPage.vue';
-import AdminLocatorSlipsPage from './AdminLocatorSlipsPage.vue';
 
 const router = useRouter();
 const currentPage = ref('dashboard');
@@ -156,14 +140,12 @@ const logoSrc = '/logo/depedozamiz.png';
 const pageTitle = computed(() => {
   if (currentPage.value === 'teachers') return 'TEACHERS';
   if (currentPage.value === 'students') return 'STUDENTS';
-  if (currentPage.value === 'locator') return 'LOCATOR SLIPS';
   return 'DASHBOARD';
 });
 
 const pageSubtitle = computed(() => {
   if (currentPage.value === 'teachers') return 'Manage teacher accounts and profiles';
   if (currentPage.value === 'students') return 'Master list and records for students';
-  if (currentPage.value === 'locator') return 'Review and manage filed travel slips';
   return 'Overview of Ozamiz Schools QR-ID System activity';
 });
 
