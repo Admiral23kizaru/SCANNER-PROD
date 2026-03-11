@@ -18,7 +18,7 @@
             <tr>
               <th class="py-3 px-4 font-semibold border-b border-slate-800/80">#</th>
               <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Name</th>
-              <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Employee Number</th>
+              <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Employee ID</th>
               <th class="py-3 px-4 font-semibold border-b border-slate-800/80">School Name</th>
               <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Created</th>
               <th class="py-3 px-4 font-semibold text-right border-b border-slate-800/80">Actions</th>
@@ -127,7 +127,7 @@
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">Employee Number</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Employee ID</label>
               <input
                 v-model="form.employee_id"
                 type="text"
@@ -222,7 +222,7 @@
               <input v-model="editForm.name" type="text" required class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">Employee Number</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Employee ID</label>
               <input v-model="editForm.employee_id" type="text" required class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
 
