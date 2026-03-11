@@ -87,3 +87,10 @@ export async function getAdminStudentIdUrl(id) {
     });
     return data;
 }
+
+export async function getAdminTeacherIdUrl(id) {
+    const { data } = await axios.get(base + '/teachers/' + id + '/id-url', {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data;
+}

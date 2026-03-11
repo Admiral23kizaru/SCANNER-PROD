@@ -27,8 +27,9 @@ class TeacherManagementController extends Controller
             return [
                 'id'              => $u->id,
                 'name'            => $u->name,
-                'employee_number' => $u->employee_number,
+                'employee_id' => $u->employee_id,
                 'school_name'     => $u->school_name,
+                'job_title'       => $u->job_title,
                 'profile_photo'   => $u->profile_photo ? '/' . ltrim($u->profile_photo, '/') : null,
                 'created_at'      => $u->created_at?->toIso8601String(),
             ];
@@ -41,11 +42,12 @@ class TeacherManagementController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name'            => ['required', 'string', 'max:255'],
-            'employee_number' => ['required', 'string', 'max:255', 'unique:users,employee_number'],
+            'employee_id' => ['required', 'string', 'max:255', 'unique:users,employee_id'],
             'password'        => ['required', 'string', 'min:8', 'confirmed'],
             'school_name'     => ['nullable', 'string', 'max:255'],
+            'job_title'       => ['nullable', 'string', 'max:50'],
         ], [
-            'employee_number.unique' => 'A teacher with this employee number already exists.',
+            'employee_id.unique' => 'A teacher with this employee number already exists.',
             'password.min'           => 'Password must be at least 8 characters.',
         ]);
 
@@ -61,16 +63,17 @@ class TeacherManagementController extends Controller
             return response()->json(['message' => 'Teacher role not found.'], 500);
         }
 
-        // Generate a placeholder email from employee_number to satisfy the unique constraint
-        $email = strtolower(str_replace(' ', '', $request->employee_number)) . '@deped.local';
+        // Generate a placeholder email from employee_id to satisfy the unique constraint
+        $email = strtolower(str_replace(' ', '', $request->employee_id)) . '@deped.local';
 
         $user = User::create([
             'role_id'         => $teacherRole->id,
             'name'            => $request->name,
             'email'           => $email,
             'password'        => $request->password,
-            'employee_number' => $request->employee_number,
+            'employee_id' => $request->employee_id,
             'school_name'     => $request->input('school_name'),
+            'job_title'       => $request->input('job_title'),
         ]);
 
         return response()->json([
@@ -78,8 +81,9 @@ class TeacherManagementController extends Controller
             'teacher' => [
                 'id'              => $user->id,
                 'name'            => $user->name,
-                'employee_number' => $user->employee_number,
+                'employee_id' => $user->employee_id,
                 'school_name'     => $user->school_name,
+                'job_title'       => $user->job_title,
                 'profile_photo'   => $user->profile_photo ? asset($user->profile_photo) : null,
                 'created_at'      => $user->created_at?->toIso8601String(),
             ],
@@ -100,11 +104,12 @@ class TeacherManagementController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name'            => ['sometimes', 'required', 'string', 'max:255'],
-            'employee_number' => ['sometimes', 'required', 'string', 'max:255', 'unique:users,employee_number,' . $teacher->id],
+            'employee_id' => ['sometimes', 'required', 'string', 'max:255', 'unique:users,employee_id,' . $teacher->id],
             'password'        => ['nullable', 'string', 'min:8', 'confirmed'],
             'school_name'     => ['sometimes', 'nullable', 'string', 'max:255'],
+            'job_title'       => ['sometimes', 'nullable', 'string', 'max:50'],
         ], [
-            'employee_number.unique' => 'A teacher with this employee number already exists.',
+            'employee_id.unique' => 'A teacher with this employee number already exists.',
             'password.min'           => 'Password must be at least 8 characters.',
         ]);
 
@@ -118,11 +123,14 @@ class TeacherManagementController extends Controller
         if ($request->has('name')) {
             $teacher->name = $request->name;
         }
-        if ($request->has('employee_number')) {
-            $teacher->employee_number = $request->employee_number;
+        if ($request->has('employee_id')) {
+            $teacher->employee_id = $request->employee_id;
         }
         if ($request->has('school_name')) {
             $teacher->school_name = $request->input('school_name');
+        }
+        if ($request->has('job_title')) {
+            $teacher->job_title = $request->input('job_title');
         }
         if ($request->filled('password')) {
             $teacher->password = $request->password;
@@ -134,8 +142,9 @@ class TeacherManagementController extends Controller
             'teacher' => [
                 'id'              => $teacher->id,
                 'name'            => $teacher->name,
-                'employee_number' => $teacher->employee_number,
+                'employee_id' => $teacher->employee_id,
                 'school_name'     => $teacher->school_name,
+                'job_title'       => $teacher->job_title,
                 'profile_photo'   => $teacher->profile_photo ? asset($teacher->profile_photo) : null,
                 'created_at'      => $teacher->created_at?->toIso8601String(),
             ],

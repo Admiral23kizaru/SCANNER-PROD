@@ -224,3 +224,17 @@ is what gives the Ozamiz Schools QR-ID System its **unique, secure ID generation
   ```bash
   php artisan storage:link
   ```
+
+---
+
+## Troubleshooting
+
+### Class "App\Services\IdCardImageService" not found
+If you encounter this error when generating IDs, it means the `IdCardImageService.php` file is either in the wrong directory or Laravel's autoloader needs to be rebuilt.
+
+**Solution:**
+1. Ensure the file is correctly placed in `app/Services/IdCardImageService.php` (it should **not** be in `app/Http/Controllers/Api/`).
+2. Run the following command in your terminal from the project root to rebuild the autoload files:
+   ```bash
+   composer dump-autoload
+   ```

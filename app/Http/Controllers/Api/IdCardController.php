@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\IdCardImageService;
 use App\Models\Student;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\URL;
 
 class IdCardController extends Controller
 {
@@ -31,6 +34,33 @@ class IdCardController extends Controller
             'id.download',
             now()->addMinutes(5),
             ['hash' => $hash, 'id' => $student->id]
+        );
+
+        return response()->json(['url' => $url]);
+    }
+
+    /**
+     * Admin-only: generate a signed URL for inline Teacher ID PDF preview.
+     */
+    public function getTeacherSignedUrl(Request $request, int $id): JsonResponse
+    {
+        $teacher = User::findOrFail($id);
+
+        // Ensure target is a Teacher account
+        if (!$teacher->role || strcasecmp((string) $teacher->role->name, 'Teacher') !== 0) {
+            return response()->json(['message' => 'Teacher not found.'], 404);
+        }
+
+        if (!$teacher->job_title) {
+            return response()->json(['message' => 'Please set the teacher job title first.'], 422);
+        }
+
+        $hash = md5($teacher->employee_id . '-teacher-' . config('app.key'));
+
+        $url = URL::temporarySignedRoute(
+            'teacher-id.download',
+            now()->addMinutes(5),
+            ['hash' => $hash, 'id' => $teacher->id]
         );
 
         return response()->json(['url' => $url]);
@@ -211,6 +241,111 @@ class IdCardController extends Controller
         return response($content)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'inline; filename="student_id.pdf"');
+    }
+
+    public function generateTeacherSecure(Request $request, string $hash): Response
+    {
+        if (!$request->hasValidSignature()) {
+            abort(401, 'Invalid or expired signature.');
+        }
+
+        $id = $request->query('id');
+        $teacher = User::findOrFail($id);
+
+        if (!$teacher->role || strcasecmp((string) $teacher->role->name, 'Teacher') !== 0) {
+            abort(404, 'Teacher not found.');
+        }
+
+        $expectedHash = md5($teacher->employee_id . '-teacher-' . config('app.key'));
+        if ($hash !== $expectedHash) {
+            abort(403, 'Invalid file reference.');
+        }
+
+        if (!class_exists(\TCPDF::class)) {
+            return response()->json(['message' => 'TCPDF is not installed. Install tecnickcom/tcpdf via Composer.'], 500);
+        }
+
+        $templatesDir = IdCardImageService::templatesPath();
+        if ($templatesDir === null) {
+            return response()->json(['message' => 'ID templates folder not found. Expected public/TEMPLATE.'], 500);
+        }
+
+        $photoPath = null;
+        if ($teacher->profile_photo) {
+            $candidate = public_path(ltrim((string) $teacher->profile_photo, '/'));
+            if (is_file($candidate) && is_readable($candidate)) {
+                $photoPath = $candidate;
+            }
+        }
+
+        // Get Background
+        $backgroundPath = IdCardImageService::eodbTemplatePath(null, null, null, $teacher->job_title);
+        if (!$backgroundPath || !is_file($backgroundPath)) {
+            return response()->json([
+                'message' => 'Failed to generate Teacher ID. Ensure template exists in TEMPLATE folder (e.g. ' . $teacher->job_title . '.jpg/.png).',
+            ], 500);
+        }
+        $backgroundDataUri = 'data:image/jpeg;base64,' . base64_encode(file_get_contents($backgroundPath));
+
+        // Get Photo
+        $photoDataUri = null;
+        if ($photoPath) {
+            $photoExt = strtolower(pathinfo($photoPath, PATHINFO_EXTENSION));
+            $photoMime = $photoExt === 'png' ? 'image/png' : 'image/jpeg';
+            $photoDataUri = 'data:' . $photoMime . ';base64,' . base64_encode(file_get_contents($photoPath));
+        }
+
+        // Get QR Code
+        $qrDataUri = null;
+        $employeeId = $teacher->employee_id ?? '';
+        if ($employeeId !== '' && class_exists(\Endroid\QrCode\QrCode::class)) {
+            try {
+                $qrCode = new \Endroid\QrCode\QrCode(data: $employeeId, size: 200, margin: 0);
+                $writer = new \Endroid\QrCode\Writer\PngWriter();
+                $qrDataUri = 'data:image/png;base64,' . base64_encode($writer->write($qrCode)->getString());
+            } catch (\Exception $e) {
+                // Ignore if fails
+            }
+        }
+
+        $html = view()->file(
+            app_path('Http/Controllers/Api/eodb-id-bb.blade.php'),
+            [
+                'background' => $backgroundDataUri,
+                'photo' => $photoDataUri,
+                'qr' => $qrDataUri,
+                'name' => mb_strtoupper((string) ($teacher->name ?? '')),
+                'job_title' => mb_strtoupper((string) ($teacher->job_title ?? '')),
+                'employee_id' => $employeeId,
+                'school_name' => mb_strtoupper((string) ($teacher->school_name ?? '')),
+            ]
+        )->render();
+
+        // 1011x638 pixels at 300 DPI is approximately 85.6mm x 54mm (standard ID size)
+        $cardW = 85.6; // mm
+        $cardH = 54.0; // mm
+
+        $pdf = new \TCPDF('L', 'mm', [$cardH, $cardW], true, 'UTF-8', false);
+        $pdf->SetCreator('Ozamiz Schools QR-ID System');
+        $pdf->SetTitle('Teacher ID');
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        $pdf->SetMargins(0, 0, 0);
+        $pdf->SetAutoPageBreak(false, 0);
+        $pdf->AddPage();
+        
+        // Output the HTML
+        $pdf->writeHTML($html, true, false, true, false, '');
+
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+
+        $content = $pdf->Output('teacher_id.pdf', 'S');
+
+        return response($content)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="teacher_id.pdf"');
     }
 }
 

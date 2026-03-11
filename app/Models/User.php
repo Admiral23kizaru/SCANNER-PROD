@@ -18,7 +18,7 @@ class User extends Authenticatable
         'password',
         'designation',
         'profile_photo',
-        'employee_number',
+        'employee_id',
         'school_name',
         'signature_path',
     ];

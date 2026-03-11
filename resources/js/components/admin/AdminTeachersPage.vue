@@ -59,12 +59,20 @@
                 </div>
               </td>
               <td class="py-3 px-4 text-slate-700 whitespace-nowrap">
-                {{ t.employee_number || '—' }}
+                {{ t.employee_id || '—' }}
               </td>
               <td class="py-3 px-4 text-slate-700">{{ t.school_name || '—' }}</td>
               <td class="py-3 px-4 text-slate-600">{{ formatDate(t.created_at) }}</td>
               <td class="py-3 px-4 text-right">
                 <span class="inline-flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-sm"
+                    title="Print ID"
+                    @click="printTeacherId(t)"
+                  >
+                    <IdCard class="h-4 w-4" />
+                  </button>
                   <button
                     type="button"
                     class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition shadow-sm"
@@ -105,9 +113,9 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       @click.self="showCreateModal = false"
     >
-      <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 border border-stone-200" @click.stop>
-        <h2 class="text-lg font-semibold mb-4">Create Teacher Account</h2>
-        <form @submit.prevent="submitCreate">
+      <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col border border-stone-200" @click.stop>
+        <h2 class="text-lg font-semibold p-6 pb-0">Create Teacher Account</h2>
+        <form @submit.prevent="submitCreate" class="p-6 overflow-y-auto flex-1">
           <div class="space-y-3">
             <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">Name</label>
@@ -121,26 +129,21 @@
             <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">Employee Number</label>
               <input
-                v-model="form.employee_number"
+                v-model="form.employee_id"
                 type="text"
                 required
                 class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
               />
             </div>
+
             <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">School Name</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Position</label>
               <select
-                v-model="form.school_name"
-                required
+                v-model="form.job_title"
                 class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
               >
-                <option value="" disabled>Select a school</option>
-                <optgroup label="Elementary">
-                  <option v-for="school in elementarySchools" :key="school" :value="school">{{ school }}</option>
-                </optgroup>
-                <optgroup label="Secondary & Integrated">
-                  <option v-for="school in secondarySchools" :key="school" :value="school">{{ school }}</option>
-                </optgroup>
+                <option value="" disabled>Select position</option>
+                <option v-for="opt in jobTitleOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
             </div>
             <div>
@@ -210,9 +213,9 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       @click.self="showEditModal = false"
     >
-      <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 border border-stone-200" @click.stop>
-        <h2 class="text-lg font-semibold mb-4">Edit Teacher</h2>
-        <form @submit.prevent="submitEdit">
+      <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col border border-stone-200" @click.stop>
+        <h2 class="text-lg font-semibold p-6 pb-0">Edit Teacher</h2>
+        <form @submit.prevent="submitEdit" class="p-6 overflow-y-auto flex-1">
           <div class="space-y-3">
             <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">Name</label>
@@ -220,22 +223,17 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">Employee Number</label>
-              <input v-model="editForm.employee_number" type="text" required class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
+              <input v-model="editForm.employee_id" type="text" required class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
+
             <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">School Name</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Position</label>
               <select
-                v-model="editForm.school_name"
-                required
+                v-model="editForm.job_title"
                 class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
               >
-                <option value="" disabled>Select a school</option>
-                <optgroup label="Elementary">
-                  <option v-for="school in elementarySchools" :key="school" :value="school">{{ school }}</option>
-                </optgroup>
-                <optgroup label="Secondary & Integrated">
-                  <option v-for="school in secondarySchools" :key="school" :value="school">{{ school }}</option>
-                </optgroup>
+                <option value="" disabled>Select position</option>
+                <option v-for="opt in jobTitleOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
             </div>
             <div class="rounded-lg border border-stone-200 bg-stone-50 p-3">
@@ -291,7 +289,7 @@
       <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6" @click.stop>
         <h2 class="text-lg font-semibold text-stone-800 mb-2">Delete Teacher</h2>
         <p class="text-sm text-stone-600 mb-4">
-          Are you sure you want to delete <strong>{{ deleteTarget?.name }}</strong> ({{ deleteTarget?.employee_number }})?
+          Are you sure you want to delete <strong>{{ deleteTarget?.name }}</strong> ({{ deleteTarget?.employee_id }})?
         </p>
         <div v-if="deleteError" class="mb-3 text-sm text-red-600">{{ deleteError }}</div>
         <div class="flex justify-end gap-2">
@@ -307,8 +305,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { PencilLine, Trash2 } from 'lucide-vue-next';
-import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto } from '../../services/adminService';
+import { PencilLine, Trash2, IdCard } from 'lucide-vue-next';
+import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, getAdminTeacherIdUrl } from '../../services/adminService';
 
 const teachers = ref([]);
 const loading = ref(false);
@@ -340,15 +338,16 @@ const secondarySchools = [
 
 const form = ref({
   name: '',
-  employee_number: '',
+  employee_id: '',
   school_name: '',
+  job_title: '',
   password: '',
   password_confirmation: '',
 });
 const formError = ref('');
 
 const editTargetId = ref(null);
-const editForm = ref({ name: '', employee_number: '', school_name: '', password: '', password_confirmation: '' });
+const editForm = ref({ name: '', employee_id: '', school_name: '', job_title: '', password: '', password_confirmation: '' });
 const editError = ref('');
 
 const createPhotoFile = ref(null);
@@ -363,13 +362,26 @@ const editPhotoInput = ref(null);
 
 const photoLoadError = ref({});
 
+const jobTitleOptions = [
+  { label: 'Administrative Assistant III', value: 'ADASIII' },
+  { label: 'Administrative Officer II', value: 'AOII' },
+  { label: 'Administrative Officer IV', value: 'AOIV' },
+  { label: 'Administrative Officer V', value: 'AOV' },
+  { label: 'Assistant Schools Division Superintendent', value: 'ASDS' },
+  { label: 'Attorney III', value: 'ATTYIII' },
+  { label: 'Chief Education Supervisor', value: 'CES' },
+  { label: 'Dentist II', value: 'DENTII' },
+  { label: 'Education Program Supervisor II', value: 'EPSII' },
+  { label: 'Guidance Counselor III', value: 'GCIII' },
+];
+
 function formatDate(iso) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString();
 }
 
 function openCreateModal() {
-  form.value = { name: '', employee_number: '', school_name: '', password: '', password_confirmation: '' };
+  form.value = { name: '', employee_id: '', school_name: '', job_title: '', password: '', password_confirmation: '' };
   formError.value = '';
   createPhotoFile.value = null;
   createPhotoFileName.value = '';
@@ -384,8 +396,9 @@ function openEditModal(t) {
   editTargetId.value = t.id;
   editForm.value = {
     name: t.name || '',
-    employee_number: t.employee_number || '',
+    employee_id: t.employee_id || '',
     school_name: t.school_name || '',
+    job_title: t.job_title || '',
     password: '',
     password_confirmation: '',
   };
@@ -427,8 +440,9 @@ async function submitCreate() {
   try {
     const payload = {
       name: form.value.name,
-      employee_number: form.value.employee_number,
+      employee_id: form.value.employee_id,
       school_name: form.value.school_name,
+      job_title: form.value.job_title || null,
       password: form.value.password,
       password_confirmation: form.value.password_confirmation,
     };
@@ -464,8 +478,9 @@ async function submitEdit() {
 
   const payload = {
     name: editForm.value.name,
-    employee_number: editForm.value.employee_number,
+    employee_id: editForm.value.employee_id,
     school_name: editForm.value.school_name,
+    job_title: editForm.value.job_title || null,
   };
   if (editForm.value.password) {
     payload.password = editForm.value.password;
@@ -544,6 +559,20 @@ function onEditPhotoChange(e) {
   } else {
     editPhotoFile.value = null;
     editPhotoFileName.value = '';
+  }
+}
+
+async function printTeacherId(t) {
+  try {
+    const res = await getAdminTeacherIdUrl(t.id);
+    const url = res?.url;
+    if (!url) {
+      throw new Error('No URL returned.');
+    }
+    window.open(url, '_blank', 'noopener');
+  } catch (err) {
+    const msg = err?.response?.data?.message || err?.message || 'Failed to generate ID.';
+    alert(msg);
   }
 }
 

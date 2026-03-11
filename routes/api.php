@@ -29,9 +29,16 @@ Route::get('/teacher/students/{id}/id-url', [IdCardController::class, 'getSigned
 Route::get('/admin/students/{id}/id-url', [IdCardController::class, 'getSignedUrl'])
     ->middleware(['auth:sanctum', 'role:Admin']);
 
+Route::get('/admin/teachers/{id}/id-url', [IdCardController::class, 'getTeacherSignedUrl'])
+    ->middleware(['auth:sanctum', 'role:Admin']);
+
 // Secure signed route without auth middleware since it's signed with expiration
 Route::get('/media/id/{hash}', [IdCardController::class, 'generateSecure'])
     ->name('id.download')
+    ->middleware('signed');
+
+Route::get('/media/teacher-id/{hash}', [IdCardController::class, 'generateTeacherSecure'])
+    ->name('teacher-id.download')
     ->middleware('signed');
 
 Route::middleware('auth:sanctum')->group(function () {
