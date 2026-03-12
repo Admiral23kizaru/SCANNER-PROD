@@ -1,35 +1,62 @@
 <template>
   <div>
     <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
-      <div class="p-4 sm:p-5 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-4">
-        <h1 class="text-lg font-semibold text-slate-900">Manage Teachers</h1>
-        <button
-          type="button"
-          class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 shadow-sm transition inline-flex items-center gap-2"
-          @click="openCreateModal"
-        >
-          <PencilLine class="h-5 w-5" />
-          Create Teacher
-        </button>
+      <!-- Toolbar (match screenshot layout) -->
+      <div class="p-4 sm:p-5 border-b border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 shadow-sm transition inline-flex items-center gap-2"
+            @click="openCreateModal"
+          >
+            <Plus class="h-4 w-4" />
+            Create Teacher
+          </button>
+
+          <button
+            type="button"
+            class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition inline-flex items-center gap-2"
+          >
+            <Download class="h-4 w-4" />
+            Export
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <div class="relative">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <input
+              type="search"
+              placeholder="Search teachers..."
+              class="w-64 max-w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+            />
+          </div>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition"
+            title="Filter"
+          >
+            <Filter class="h-4 w-4" />
+          </button>
+        </div>
       </div>
+
       <div class="overflow-x-auto">
         <table class="w-full text-sm text-left border-separate border-spacing-0">
-          <thead class="bg-slate-900 text-slate-50 text-xs uppercase tracking-wide">
+          <thead class="bg-slate-50 text-slate-500 text-xs font-medium">
             <tr>
-              <th class="py-3 px-4 font-semibold border-b border-slate-800/80">#</th>
-              <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Name</th>
-              <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Employee ID</th>
-              <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Created</th>
-              <th class="py-3 px-4 font-semibold text-right border-b border-slate-800/80">Actions</th>
+              <th class="py-3 px-4 border-b border-slate-200">Name</th>
+              <th class="py-3 px-4 border-b border-slate-200">Employee ID</th>
+              <th class="py-3 px-4 border-b border-slate-200">Created</th>
+              <th class="py-3 px-4 text-right border-b border-slate-200">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr
               v-for="(t, idx) in teachers"
               :key="t.id"
-              class="border-b border-slate-200/80 odd:bg-slate-50/40 even:bg-white hover:bg-blue-50/60 transition"
+              class="border-b border-slate-100 hover:bg-slate-50 transition"
             >
-              <td class="py-3 px-4 text-slate-500 tabular-nums">{{ idx + 1 }}</td>
               <td class="py-3 px-4">
                 <div class="flex items-center gap-3">
                   <div v-if="t.profile_photo || t.name"
@@ -54,6 +81,7 @@
                   </div>
                   <div class="min-w-0">
                     <div class="font-medium text-slate-900 truncate">{{ t.name }}</div>
+                    <div class="text-xs text-slate-500 truncate">{{ t.school_name || '—' }}</div>
                   </div>
                 </div>
               </td>
@@ -62,10 +90,10 @@
               </td>
               <td class="py-3 px-4 text-slate-600">{{ formatDate(t.created_at) }}</td>
               <td class="py-3 px-4 text-right">
-                <span class="inline-flex items-center justify-end gap-2">
+                <span class="inline-flex items-center justify-end gap-3">
                   <button
                     type="button"
-                    class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-sm"
+                    class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
                     title="Print ID"
                     @click="printTeacherId(t)"
                   >
@@ -73,7 +101,7 @@
                   </button>
                   <button
                     type="button"
-                    class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition shadow-sm"
+                    class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
                     title="Edit teacher"
                     @click="openEditModal(t)"
                   >
@@ -81,7 +109,7 @@
                   </button>
                   <button
                     type="button"
-                    class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-red-500 text-white hover:bg-red-600 transition shadow-sm"
+                    class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-600 hover:text-red-600 hover:bg-slate-100 transition"
                     title="Delete teacher"
                     @click="confirmDelete(t)"
                   >
@@ -91,10 +119,10 @@
               </td>
             </tr>
             <tr v-if="loading && teachers.length === 0">
-              <td colspan="5" class="py-12 text-center text-slate-500">Loading…</td>
+              <td colspan="4" class="py-12 text-center text-slate-500">Loading…</td>
             </tr>
             <tr v-if="!loading && teachers.length === 0">
-              <td colspan="5" class="py-12 text-center text-slate-500">No teachers yet.</td>
+              <td colspan="4" class="py-12 text-center text-slate-500">No teachers yet.</td>
             </tr>
           </tbody>
         </table>
@@ -303,7 +331,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { PencilLine, Trash2, IdCard } from 'lucide-vue-next';
+import { PencilLine, Trash2, IdCard, Plus, Download, Search, Filter } from 'lucide-vue-next';
 import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, getAdminTeacherIdUrl } from '../../services/adminService';
 
 const teachers = ref([]);

@@ -112,7 +112,7 @@
 
       <!-- Page content -->
       <main class="flex-1 overflow-auto px-4 py-6 lg:px-10 lg:py-8">
-        <div class="max-w-6xl mx-auto space-y-6">
+        <div class="max-w-7xl mx-auto space-y-6">
           <AdminDashboardStats v-if="currentPage === 'dashboard'" />
           <AdminTeachersPage v-else-if="currentPage === 'teachers'" />
           <AdminStudentsPage v-else-if="currentPage === 'students'" />
