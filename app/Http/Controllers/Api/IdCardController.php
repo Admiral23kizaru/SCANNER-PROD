@@ -298,13 +298,14 @@ class IdCardController extends Controller
         // Get QR Code
         $qrDataUri = null;
         $employeeId = $teacher->employee_id ?? '';
-        if ($employeeId !== '' && class_exists(\Endroid\QrCode\QrCode::class)) {
-            try {
+        if ($employeeId !== '') {
+            if (class_exists(\Endroid\QrCode\QrCode::class) && class_exists(\Endroid\QrCode\Writer\PngWriter::class)) {
                 $qrCode = new \Endroid\QrCode\QrCode(data: $employeeId, size: 200, margin: 0);
                 $writer = new \Endroid\QrCode\Writer\PngWriter();
-                $qrDataUri = 'data:image/png;base64,' . base64_encode($writer->write($qrCode)->getString());
-            } catch (\Exception $e) {
-                // Ignore if fails
+                $result = $writer->write($qrCode);
+                $qrDataUri = $result->getDataUri();
+            } else {
+                abort(500, 'Endroid QR Code packages not found');
             }
         }
 
@@ -321,17 +322,19 @@ class IdCardController extends Controller
             ]
         )->render();
 
-        // 1011x638 pixels at 300 DPI is approximately 85.6mm x 54mm (standard ID size)
-        $cardW = 85.6; // mm
-        $cardH = 54.0; // mm
-
-        $pdf = new \TCPDF('L', 'mm', [$cardH, $cardW], true, 'UTF-8', false);
+        // 1011x638 pixels -> exactly proportionate to 85.6x54 PVC
+        $cardW = 85.6; 
+        $cardH = 54.0; 
+        
+        // Use 'L' for Landscape, supplying correct width x height
+        $pdf = new \TCPDF('L', 'mm', [$cardW, $cardH], true, 'UTF-8', false);
         $pdf->SetCreator('Ozamiz Schools QR-ID System');
         $pdf->SetTitle('Teacher ID');
         $pdf->setPrintHeader(false);
         $pdf->setPrintFooter(false);
         $pdf->SetMargins(0, 0, 0);
         $pdf->SetAutoPageBreak(false, 0);
+        $pdf->setImageScale(1.53); // Helps map 300DPI HTML scale precisely
         $pdf->AddPage();
         
         // Output the HTML
@@ -341,11 +344,7 @@ class IdCardController extends Controller
             ob_end_clean();
         }
 
-        $content = $pdf->Output('teacher_id.pdf', 'S');
-
-        return response($content)
-            ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'inline; filename="teacher_id.pdf"');
+        $content = $pdf->Output('teacher_id.pdf', 'I');
     }
 }
 

@@ -3,7 +3,6 @@
 <head>
     <meta charset="utf-8">
     <style>
-        @page { margin: 0; }
         body { margin: 0; padding: 0; font-family: helvetica, sans-serif; }
         
         /* Container Scaling: PVC size high resolution */
@@ -28,49 +27,52 @@
         /* Teacher Picture: Position on the right */
         .profile-photo {
             position: absolute;
-            top: 180px;
-            right: 80px;
-            width: 250px;
-            height: 250px;
+            top: 150px;
+            right: 60px;
+            width: 310px;
+            height: 310px;
             z-index: 2;
         }
 
-        /* QR Code: Position on the front side */
+        /* QR Code: Position it accurately Front/Center */
         .qr-code {
             position: absolute;
-            bottom: 50px;
-            left: 50px;
+            bottom: 60px;
+            left: 420px;
             width: 150px;
             height: 150px;
             z-index: 2;
         }
 
-        /* Text: Place Name and Job Title on the left */
+        /* Text Details */
         .text-group {
             position: absolute;
             top: 250px;
-            left: 50px;
-            width: 550px;
+            left: 60px;
+            width: 450px;
             z-index: 2;
         }
 
         /* Font: Bold, clear font for name */
         .teacher-name {
-            font-size: 55px;
+            font-size: 50px;
             font-weight: bold;
-            color: #000;
+            color: #ffffff;
+            line-height: 1.1;
         }
 
         .job-title {
-            font-size: 35px;
-            color: #333;
-            margin-top: 15px;
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-top: 5px;
         }
         
         .employee-id {
-            font-size: 30px;
-            color: #333;
-            margin-top: 5px;
+            font-size: 26px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-top: 15px;
         }
     </style>
 </head>
@@ -79,22 +81,22 @@
         <!-- Background Image -->
         <img src="{{ $background }}" class="bg-template">
         
-        <!-- Profile Picture on the right -->
-        @if($photo)
-            <img src="{{ $photo }}" class="profile-photo">
-        @endif
-        
-        <!-- QR Code -->
-        @if($qr)
-            <img src="{{ $qr }}" class="qr-code">
-        @endif
-
-        <!-- Absolute positioned text on left -->
+        <!-- Text details on the left -->
         <div class="text-group">
             <div class="teacher-name">{{ $name }}</div>
             <div class="job-title">{{ $job_title }}</div>
             <div class="employee-id">ID NO. {{ $employee_id }}</div>
         </div>
+
+        <!-- Profile Picture on the right -->
+        @if($photo)
+            <img src="{{ $photo }}" class="profile-photo">
+        @endif
+
+        <!-- QR Code Front/Center -->
+        @if($qr)
+            <img src="{{ $qr }}" class="qr-code">
+        @endif
     </div>
 </body>
 </html>

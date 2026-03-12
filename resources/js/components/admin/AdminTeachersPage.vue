@@ -19,7 +19,6 @@
               <th class="py-3 px-4 font-semibold border-b border-slate-800/80">#</th>
               <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Name</th>
               <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Employee ID</th>
-              <th class="py-3 px-4 font-semibold border-b border-slate-800/80">School Name</th>
               <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Created</th>
               <th class="py-3 px-4 font-semibold text-right border-b border-slate-800/80">Actions</th>
             </tr>
@@ -61,7 +60,6 @@
               <td class="py-3 px-4 text-slate-700 whitespace-nowrap">
                 {{ t.employee_id || '—' }}
               </td>
-              <td class="py-3 px-4 text-slate-700">{{ t.school_name || '—' }}</td>
               <td class="py-3 px-4 text-slate-600">{{ formatDate(t.created_at) }}</td>
               <td class="py-3 px-4 text-right">
                 <span class="inline-flex items-center justify-end gap-2">
@@ -317,29 +315,9 @@ const deleteTarget = ref(null);
 const deleting = ref(false);
 const deleteError = ref('');
 
-const elementarySchools = [
-  "Baybay Central", "Ozamiz City Central", "Bacolod ES", "Catadman ES", "Doña Consuelo ES", 
-  "Embargo ES", "Gango ES", "Gotocan ES", "Labo Central", "Antero D. Hinagdanan ES", 
-  "Maningcol Central", "San Antonio ES", "Andrea D. Costonera ES", "Maximino S. Laurete Sr. Central", 
-  "Felipe Carreon Central", "Guimad ES", "Roman E. Mabanag Sr. ES", "Antero U. Roa Central", 
-  "Pershing Tan Queto Sr. ES", "Balintawak ES", "Bongbong ES", "Gala ES", "Gregorio A. Saquin ES", 
-  "Juan A. Acapulco ES", "Labinay ES", "Diego Tuastomban ES", "Pulot ES", "Narciso B. Ledesma Central", 
-  "Hilarion J. Ramiro Jr. ES", "Mintalar ES", "Dalapang ES", "Tipan ES", "Capucao C ES", 
-  "Sta. Cruz ES", "Cruz Lanzado Saligan ES"
-];
-
-const secondarySchools = [
-  "Labinay NHS", "Tabid NHS", "Labo NHS", "Jose Lim Ho NHS", "San Antonio NHS", "Montol NHS", 
-  "Ozamiz City National HS", "Ozamiz City School of Arts and Trades (OCSAT)", "Pulot NHS", 
-  "Gala NHS", "Cogon IS", "Malaubang IS", "Misamis Annex IS", "Jacinto Nemeno IS", 
-  "Marcelino C. Regis IS", "Sancho Capa IS", "Sangay IS", "Sinusa IS", "Capucao IS", 
-  "Dimaluna IS", "Domingo A. Barloa IS", "Faustino C. Decena IS", "Guingona IS"
-];
-
 const form = ref({
   name: '',
   employee_id: '',
-  school_name: '',
   job_title: '',
   password: '',
   password_confirmation: '',
@@ -347,7 +325,7 @@ const form = ref({
 const formError = ref('');
 
 const editTargetId = ref(null);
-const editForm = ref({ name: '', employee_id: '', school_name: '', job_title: '', password: '', password_confirmation: '' });
+const editForm = ref({ name: '', employee_id: '', job_title: '', password: '', password_confirmation: '' });
 const editError = ref('');
 
 const createPhotoFile = ref(null);
@@ -381,7 +359,7 @@ function formatDate(iso) {
 }
 
 function openCreateModal() {
-  form.value = { name: '', employee_id: '', school_name: '', job_title: '', password: '', password_confirmation: '' };
+  form.value = { name: '', employee_id: '', job_title: '', password: '', password_confirmation: '' };
   formError.value = '';
   createPhotoFile.value = null;
   createPhotoFileName.value = '';
@@ -397,7 +375,6 @@ function openEditModal(t) {
   editForm.value = {
     name: t.name || '',
     employee_id: t.employee_id || '',
-    school_name: t.school_name || '',
     job_title: t.job_title || '',
     password: '',
     password_confirmation: '',
@@ -441,7 +418,6 @@ async function submitCreate() {
     const payload = {
       name: form.value.name,
       employee_id: form.value.employee_id,
-      school_name: form.value.school_name,
       job_title: form.value.job_title || null,
       password: form.value.password,
       password_confirmation: form.value.password_confirmation,
@@ -479,7 +455,6 @@ async function submitEdit() {
   const payload = {
     name: editForm.value.name,
     employee_id: editForm.value.employee_id,
-    school_name: editForm.value.school_name,
     job_title: editForm.value.job_title || null,
   };
   if (editForm.value.password) {

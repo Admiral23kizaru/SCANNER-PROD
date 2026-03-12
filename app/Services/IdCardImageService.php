@@ -17,11 +17,6 @@ class IdCardImageService
             return $baseTemplates;
         }
 
-        $publicTemplates = public_path('TEMPLATE');
-        if (is_dir($publicTemplates)) {
-            return $publicTemplates;
-        }
-
         return null;
     }
 
