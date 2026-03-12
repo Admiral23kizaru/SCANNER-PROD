@@ -14,10 +14,12 @@
           </button>
           <button
             type="button"
-            class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition inline-flex items-center gap-2"
+            class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="handleExport"
+            :disabled="exporting"
           >
             <Download class="h-4 w-4" />
-            Export
+            {{ exporting ? 'Exporting...' : 'Export' }}
           </button>
         </div>
 
@@ -66,7 +68,6 @@
                   </div>
                   <div class="min-w-0">
                     <div class="font-medium text-slate-900 truncate">{{ row.full_name }}</div>
-                    <div class="text-xs text-slate-500">{{ row.grade_section || '—' }}</div>
                   </div>
                 </div>
               </td>
@@ -234,10 +235,11 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { Search, PencilLine, Trash2, IdCard, Plus, Download, Filter, ChevronLeft, ChevronRight } from 'lucide-vue-next';
-import { fetchAdminStudents, createAdminStudent, updateAdminStudent, deleteStudent, getAdminStudentIdUrl } from '../../services/adminService';
+import { fetchAdminStudents, createAdminStudent, updateAdminStudent, deleteStudent, getAdminStudentIdUrl, exportAdminStudents } from '../../services/adminService';
 
 const students = ref([]);
 const loading = ref(false);
+const exporting = ref(false);
 const currentPage = ref(1);
 const lastPage = ref(1);
 const total = ref(0);
@@ -290,6 +292,26 @@ async function load() {
     students.value = [];
   } finally {
     loading.value = false;
+  }
+}
+
+async function handleExport() {
+  if (exporting.value) return;
+  exporting.value = true;
+  try {
+    const blob = await exportAdminStudents({ search: searchInput.value || undefined });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = 'students_export.csv';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('Failed to export students.');
+  } finally {
+    exporting.value = false;
   }
 }
 

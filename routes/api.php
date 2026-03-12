@@ -50,11 +50,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/stats', [StatsController::class, 'index']);
         Route::get('/dashboard/overview', [StatsController::class, 'overview']);
         Route::get('/reports/summary-pdf', [StatsController::class, 'summaryReportPdf']);
+        Route::get('/teachers/export', [TeacherManagementController::class, 'export']);
         Route::get('/teachers', [TeacherManagementController::class, 'index']);
         Route::post('/teachers', [TeacherManagementController::class, 'store']);
         Route::put('/teachers/{id}', [TeacherManagementController::class, 'update']);
         Route::post('/teachers/{id}/photo', [TeacherManagementController::class, 'uploadPhoto']);
         Route::delete('/teachers/{id}', [TeacherManagementController::class, 'destroy']);
+        Route::get('/students/export', [AdminStudentController::class, 'export']);
         Route::get('/students', [AdminStudentController::class, 'index']);
         Route::post('/students', [AdminStudentController::class, 'store']);
         Route::put('/students/{id}', [AdminStudentController::class, 'update']);

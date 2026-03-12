@@ -7,6 +7,7 @@ use App\Models\Student;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminStudentController extends Controller
 {
@@ -200,5 +201,54 @@ class AdminStudentController extends Controller
         $student->delete();
 
         return response()->json(['message' => 'Student and related attendance records deleted.'], 200);
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        $query = Student::query()->orderBy('last_name')->orderBy('first_name');
+
+        $search = $request->input('search');
+        if ($search && is_string($search)) {
+            $term = '%' . trim($search) . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('first_name', 'like', $term)
+                    ->orWhere('last_name', 'like', $term)
+                    ->orWhere('student_number', 'like', $term)
+                    ->orWhere('grade_section', 'like', $term);
+            });
+        }
+
+        $response = new StreamedResponse(function () use ($query) {
+            if (ob_get_length()) {
+                ob_end_clean();
+            }
+            $handle = fopen('php://output', 'w');
+            fputs($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($handle, ['ID', 'LRN', 'First Name', 'Last Name', 'Middle Name', 'Grade & Section', 'Grade', 'Section', 'Guardian', 'Guardian Email', 'Contact Number']);
+
+            $query->chunk(100, function ($students) use ($handle) {
+                foreach ($students as $student) {
+                    fputcsv($handle, [
+                        $student->id,
+                        $student->student_number,
+                        $student->first_name,
+                        $student->last_name,
+                        $student->middle_name,
+                        $student->grade_section,
+                        $student->grade,
+                        $student->section,
+                        $student->guardian,
+                        $student->parent_email,
+                        $student->contact_number,
+                    ]);
+                }
+            });
+            fclose($handle);
+        });
+
+        $response->headers->set('Content-Type', 'text/csv');
+        $response->headers->set('Content-Disposition', 'attachment; filename="students_export.csv"');
+
+        return $response;
     }
 }

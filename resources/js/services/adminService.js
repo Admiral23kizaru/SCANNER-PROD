@@ -67,6 +67,14 @@ export async function uploadTeacherPhoto(id, file) {
     return data;
 }
 
+export async function exportAdminTeachers() {
+    const res = await axios.get(base + '/teachers/export', {
+        headers: { ...getAuthHeaders(), Accept: 'text/csv' },
+        responseType: 'blob',
+    });
+    return res.data;
+}
+
 export async function fetchAdminStudents(params = {}) {
     const { data } = await axios.get(base + '/students', {
         params: { page: params.page, per_page: params.per_page, search: params.search },
@@ -94,6 +102,15 @@ export async function deleteStudent(id) {
         headers: { ...getAuthHeaders(), Accept: 'application/json' },
     });
     return data;
+}
+
+export async function exportAdminStudents(params = {}) {
+    const res = await axios.get(base + '/students/export', {
+        params: { search: params.search },
+        headers: { ...getAuthHeaders(), Accept: 'text/csv' },
+        responseType: 'blob',
+    });
+    return res.data;
 }
 
 export async function getAdminStudentIdUrl(id) {

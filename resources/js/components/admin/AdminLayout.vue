@@ -1,8 +1,8 @@
 <template>
-  <div class="min-h-screen bg-slate-50 text-slate-900 flex">
+  <div class="h-screen overflow-hidden bg-slate-50 text-slate-900 flex">
     <!-- Sidebar -->
     <aside
-      class="w-64 shrink-0 flex flex-col border-r border-slate-200 bg-white fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:static lg:transform-none"
+      class="w-64 shrink-0 flex flex-col h-full border-r border-slate-200 bg-white fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:relative lg:transform-none"
       :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
     >
       <!-- Brand -->
@@ -25,7 +25,7 @@
       </div>
 
       <!-- Navigation -->
-      <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
+      <nav class="flex-1 px-3 py-4 space-y-1 text-sm overflow-y-auto">
         <button
           type="button"
           class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent"
@@ -78,7 +78,7 @@
     ></div>
 
     <!-- Main content -->
-    <div class="flex-1 flex flex-col bg-slate-50">
+    <div class="flex-1 flex flex-col bg-slate-50 min-w-0 h-full overflow-hidden">
       <!-- Top navbar -->
       <header class="sticky top-0 z-10" style="background-color: #050517;">
         <div class="h-16 flex items-center justify-between px-4 lg:px-10 border-b border-slate-700/80">

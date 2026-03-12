@@ -15,10 +15,12 @@
 
           <button
             type="button"
-            class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition inline-flex items-center gap-2"
+            class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="handleExport"
+            :disabled="exporting"
           >
             <Download class="h-4 w-4" />
-            Export
+            {{ exporting ? 'Exporting...' : 'Export' }}
           </button>
         </div>
 
@@ -47,6 +49,7 @@
             <tr>
               <th class="py-3 px-4 border-b border-slate-200">Name</th>
               <th class="py-3 px-4 border-b border-slate-200">Employee ID</th>
+              <th class="py-3 px-4 border-b border-slate-200">School</th>
               <th class="py-3 px-4 border-b border-slate-200">Created</th>
               <th class="py-3 px-4 text-right border-b border-slate-200">Actions</th>
             </tr>
@@ -81,13 +84,13 @@
                   </div>
                   <div class="min-w-0">
                     <div class="font-medium text-slate-900 truncate">{{ t.name }}</div>
-                    <div class="text-xs text-slate-500 truncate">{{ t.school_name || '—' }}</div>
                   </div>
                 </div>
               </td>
               <td class="py-3 px-4 text-slate-700 whitespace-nowrap">
                 {{ t.employee_id || '—' }}
               </td>
+              <td class="py-3 px-4 text-slate-600 truncate max-w-[150px]">{{ t.school_name || '—' }}</td>
               <td class="py-3 px-4 text-slate-600">{{ formatDate(t.created_at) }}</td>
               <td class="py-3 px-4 text-right">
                 <span class="inline-flex items-center justify-end gap-3">
@@ -158,6 +161,16 @@
                 v-model="form.employee_id"
                 type="text"
                 required
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-stone-700 mb-1">School Name</label>
+              <input
+                v-model="form.school_name"
+                type="text"
+                placeholder="e.g. Ozamiz City Central"
                 class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
               />
             </div>
@@ -253,6 +266,16 @@
             </div>
 
             <div>
+              <label class="block text-sm font-medium text-stone-700 mb-1">School Name</label>
+              <input
+                v-model="editForm.school_name"
+                type="text"
+                placeholder="e.g. Ozamiz City Central"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">Position</label>
               <select
                 v-model="editForm.job_title"
@@ -332,10 +355,11 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { PencilLine, Trash2, IdCard, Plus, Download, Search, Filter } from 'lucide-vue-next';
-import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, getAdminTeacherIdUrl } from '../../services/adminService';
+import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, getAdminTeacherIdUrl, exportAdminTeachers } from '../../services/adminService';
 
 const teachers = ref([]);
 const loading = ref(false);
+const exporting = ref(false);
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const showDeleteModal = ref(false);
@@ -346,6 +370,7 @@ const deleteError = ref('');
 const form = ref({
   name: '',
   employee_id: '',
+  school_name: '',
   job_title: '',
   password: '',
   password_confirmation: '',
@@ -353,7 +378,7 @@ const form = ref({
 const formError = ref('');
 
 const editTargetId = ref(null);
-const editForm = ref({ name: '', employee_id: '', job_title: '', password: '', password_confirmation: '' });
+const editForm = ref({ name: '', employee_id: '', school_name: '', job_title: '', password: '', password_confirmation: '' });
 const editError = ref('');
 
 const createPhotoFile = ref(null);
@@ -409,7 +434,7 @@ function formatDate(iso) {
 }
 
 function openCreateModal() {
-  form.value = { name: '', employee_id: '', job_title: '', password: '', password_confirmation: '' };
+  form.value = { name: '', employee_id: '', school_name: '', job_title: '', password: '', password_confirmation: '' };
   formError.value = '';
   createPhotoFile.value = null;
   createPhotoFileName.value = '';
@@ -425,6 +450,7 @@ function openEditModal(t) {
   editForm.value = {
     name: t.name || '',
     employee_id: t.employee_id || '',
+    school_name: t.school_name || '',
     job_title: t.job_title || '',
     password: '',
     password_confirmation: '',
@@ -458,6 +484,26 @@ async function load() {
   }
 }
 
+async function handleExport() {
+  if (exporting.value) return;
+  exporting.value = true;
+  try {
+    const blob = await exportAdminTeachers();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = 'teachers_export.csv';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('Failed to export teachers.');
+  } finally {
+    exporting.value = false;
+  }
+}
+
 async function submitCreate() {
   formError.value = '';
   if (form.value.password !== form.value.password_confirmation) {
@@ -468,6 +514,7 @@ async function submitCreate() {
     const payload = {
       name: form.value.name,
       employee_id: form.value.employee_id,
+      school_name: form.value.school_name || null,
       job_title: form.value.job_title || null,
       password: form.value.password,
       password_confirmation: form.value.password_confirmation,
@@ -505,6 +552,7 @@ async function submitEdit() {
   const payload = {
     name: editForm.value.name,
     employee_id: editForm.value.employee_id,
+    school_name: editForm.value.school_name || null,
     job_title: editForm.value.job_title || null,
   };
   if (editForm.value.password) {

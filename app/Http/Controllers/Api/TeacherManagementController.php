@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TeacherManagementController extends Controller
 {
@@ -207,5 +208,43 @@ class TeacherManagementController extends Controller
             'message'       => 'Profile photo updated.',
             'profile_photo' => '/' . ltrim($teacher->profile_photo, '/'),
         ]);
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        $teacherRole = Role::where('name', 'Teacher')->first();
+        if (!$teacherRole) {
+            abort(500, 'Teacher role not found.');
+        }
+
+        $response = new StreamedResponse(function () use ($teacherRole) {
+            if (ob_get_length()) {
+                ob_end_clean();
+            }
+            $handle = fopen('php://output', 'w');
+            fputs($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($handle, ['ID', 'Name', 'Employee ID', 'Job Title', 'School Name', 'Created At']);
+
+            User::where('role_id', $teacherRole->id)
+                ->orderBy('name')
+                ->chunk(100, function ($teachers) use ($handle) {
+                    foreach ($teachers as $teacher) {
+                        fputcsv($handle, [
+                            $teacher->id,
+                            $teacher->name,
+                            $teacher->employee_id,
+                            $teacher->job_title,
+                            $teacher->school_name,
+                            $teacher->created_at?->toIso8601String(),
+                        ]);
+                    }
+                });
+            fclose($handle);
+        });
+
+        $response->headers->set('Content-Type', 'text/csv');
+        $response->headers->set('Content-Disposition', 'attachment; filename="teachers_export.csv"');
+
+        return $response;
     }
 }
