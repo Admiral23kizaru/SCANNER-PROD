@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Services\IdCardImageService;
 use App\Models\Student;
 use App\Models\User;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Symfony\Component\HttpFoundation\Response;
@@ -299,9 +301,9 @@ class IdCardController extends Controller
         $qrDataUri = null;
         $employeeId = $teacher->employee_id ?? '';
         if ($employeeId !== '') {
-            if (class_exists(\Endroid\QrCode\QrCode::class) && class_exists(\Endroid\QrCode\Writer\PngWriter::class)) {
-                $qrCode = new \Endroid\QrCode\QrCode(data: $employeeId, size: 200, margin: 0);
-                $writer = new \Endroid\QrCode\Writer\PngWriter();
+            if (class_exists(QrCode::class) && class_exists(PngWriter::class)) {
+                $qrCode = new QrCode(data: $employeeId, size: 200, margin: 0);
+                $writer = new PngWriter();
                 $result = $writer->write($qrCode);
                 $qrDataUri = $result->getDataUri();
             } else {
@@ -344,7 +346,11 @@ class IdCardController extends Controller
             ob_end_clean();
         }
 
-        $content = $pdf->Output('teacher_id.pdf', 'I');
+        $content = $pdf->Output('teacher_id.pdf', 'S');
+
+        return response($content)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="teacher_id.pdf"');
     }
 }
 

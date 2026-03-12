@@ -17,7 +17,7 @@ class StudentController extends Controller
         $user = $request->user();
         $query = Student::query();
 
-        if ($user->role->name === 'Teacher') {
+        if ($user->role?->name === 'Teacher') {
             $query->where(function ($q) use ($user) {
                 $q->where('teacher_id', $user->id)->orWhere('created_by', $user->id);
             });
@@ -110,7 +110,7 @@ class StudentController extends Controller
             'guardian_email' => $request->guardian_email ?: null,
             'contact_number' => $request->contact_number ?: null,
             'emergency_contact' => $request->contact_number ?: null,
-            'teacher_id' => $user->role->name === 'Teacher' ? $user->id : null,
+            'teacher_id' => $user->role?->name === 'Teacher' ? $user->id : null,
             'created_by' => $user->id,
         ]);
 
@@ -134,7 +134,7 @@ class StudentController extends Controller
             return response()->json(['message' => 'Student not found.'], 404);
         }
 
-        if ($user->role->name === 'Teacher') {
+        if ($user->role?->name === 'Teacher') {
             $allowed = ($student->teacher_id === $user->id || $student->created_by === $user->id);
             if (!$allowed) {
                 return response()->json(['message' => 'Forbidden.'], 403);
@@ -261,7 +261,7 @@ class StudentController extends Controller
                 'guardian_email' => $get(['guardian_email', 'parent_email']) ?: null,
                 'contact_number' => $get(['contact_number', 'contact']) ?: null,
                 'emergency_contact' => $get(['contact_number', 'contact']) ?: null,
-                'teacher_id' => $user->role->name === 'Teacher' ? $user->id : null,
+                'teacher_id' => $user->role?->name === 'Teacher' ? $user->id : null,
                 'created_by' => $user->id,
             ]);
             $imported++;
@@ -281,7 +281,7 @@ class StudentController extends Controller
         if (!$student) {
             return response()->json(['message' => 'Student not found.'], 404);
         }
-        if ($user->role->name === 'Teacher') {
+        if ($user->role?->name === 'Teacher') {
             $allowed = ($student->teacher_id === $user->id || $student->created_by === $user->id);
             if (!$allowed) {
                 return response()->json(['message' => 'Forbidden.'], 403);
