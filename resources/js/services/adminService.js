@@ -14,6 +14,21 @@ export async function fetchStats() {
     return data;
 }
 
+export async function fetchDashboardOverview() {
+    const { data } = await axios.get(base + '/dashboard/overview', {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data;
+}
+
+export async function fetchSummaryReportPdfBlob() {
+    const res = await axios.get(base + '/reports/summary-pdf', {
+        headers: { ...getAuthHeaders(), Accept: 'application/pdf' },
+        responseType: 'blob',
+    });
+    return res.data;
+}
+
 export async function fetchTeachers() {
     const { data } = await axios.get(base + '/teachers', {
         headers: { ...getAuthHeaders(), Accept: 'application/json' },

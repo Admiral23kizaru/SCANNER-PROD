@@ -67,14 +67,6 @@
           </div>
           <div class="flex items-center gap-2 lg:gap-4">
             <template v-if="currentTab === 'learners'">
-              <button
-                type="button"
-                class="hidden sm:flex rounded-lg border border-stone-500 bg-stone-800 px-3 py-2 text-xs font-medium text-white hover:border-stone-400 hover:bg-stone-700 transition items-center gap-1.5"
-                @click="triggerBulkImport"
-              >
-                <Upload class="h-4 w-4" />
-                Bulk Import
-              </button>
               <input
                 ref="bulkImportInput"
                 type="file"
@@ -83,15 +75,6 @@
                 @change="onBulkImportFile"
               />
               <span v-if="bulkImporting" class="text-sm text-stone-500 mr-2">Importing…</span>
-              <button
-                type="button"
-                class="rounded-lg px-3 py-2 text-xs font-medium text-black shadow-sm transition flex items-center gap-1.5"
-                style="background: linear-gradient(90deg, #03d5ff, #00ffd1);"
-                @click="openAddModal"
-              >
-                <Plus class="h-4 w-4" />
-                Add Learner
-              </button>
             </template>
             <button
               type="button"
@@ -122,55 +105,78 @@
             <h2 class="text-lg font-semibold text-stone-800">List of Learners</h2>
           </div>
         </div>
-        <!-- Search & Filter -->
+        <!-- Toolbar (match screenshot layout) -->
         <div class="p-4 border-b border-stone-200 flex flex-wrap items-center justify-between gap-3 bg-white">
-          <label class="flex items-center gap-2 text-sm text-stone-600">
-            Show
-            <select
-              v-model.number="perPage"
-              class="rounded border border-stone-300 px-2 py-1.5 text-sm text-stone-700 focus:border-[#050517] focus:ring-1 focus:ring-[#050517]"
-              @change="currentPage = 1; load()"
+          <div class="flex items-center gap-2 w-full md:w-auto">
+            <label class="relative flex-1 md:flex-none md:w-[420px] max-w-full">
+              <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400 pointer-events-none" />
+              <input
+                v-model="searchQuery"
+                type="search"
+                placeholder="Search learners by name or LRN..."
+                class="w-full rounded-lg border border-stone-200 bg-white pl-9 pr-3 py-2.5 text-sm text-stone-700 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-200"
+                @input="debouncedFetch"
+              />
+            </label>
+
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition"
             >
+              <Filter class="h-4 w-4 text-stone-500" />
+              <span class="hidden sm:inline">Filter</span>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+            <button
+              type="button"
+              class="rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition inline-flex items-center gap-2"
+              @click="triggerBulkImport"
+            >
+              <Upload class="h-4 w-4" />
+              Bulk Import
+            </button>
+            <button
+              type="button"
+              class="rounded-lg bg-stone-900 px-3 py-2.5 text-sm font-medium text-white hover:bg-stone-800 transition inline-flex items-center gap-2"
+              @click="openAddModal"
+            >
+              <Plus class="h-4 w-4" />
+              Add Learner
+            </button>
+          </div>
+
+          <!-- Keep per-page control (UI hidden to match screenshot, logic unchanged) -->
+          <div class="hidden">
+            <select v-model.number="perPage" @change="currentPage = 1; load()">
               <option :value="10">10</option>
               <option :value="25">25</option>
               <option :value="50">50</option>
               <option :value="100">100</option>
             </select>
-            entries
-          </label>
-          <label class="relative">
-            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400 pointer-events-none" />
-            <input
-              v-model="searchQuery"
-              type="search"
-              placeholder="Search..."
-              class="rounded-full border border-stone-300 pl-9 pr-4 py-2 text-sm w-48 focus:border-[#050517] focus:ring-1 focus:ring-[#050517]"
-              @input="debouncedFetch"
-            />
-          </label>
+          </div>
         </div>
 
         <div class="overflow-x-auto">
           <table class="w-full text-sm text-left">
-            <thead class="text-white" style="background-color: #050517;">
+            <thead class="bg-stone-50 text-stone-500 text-xs font-medium">
               <tr>
-                <th class="py-3 px-4 font-semibold">#</th>
-                <th class="py-3 px-4 font-semibold">Last Name</th>
-                <th class="py-3 px-4 font-semibold">First Name</th>
-                <th class="py-3 px-4 font-semibold">Middle Name</th>
-                <th class="py-3 px-4 font-semibold">Grade</th>
-                <th class="py-3 px-4 font-semibold">Section</th>
-                <th class="py-3 px-4 font-semibold">LRN</th>
-                <th class="py-3 px-4 font-semibold text-right">Actions</th>
+                <th class="py-3 px-4 border-b border-stone-200">Last Name</th>
+                <th class="py-3 px-4 border-b border-stone-200">First Name</th>
+                <th class="py-3 px-4 border-b border-stone-200">Middle Name</th>
+                <th class="py-3 px-4 border-b border-stone-200">Grade</th>
+                <th class="py-3 px-4 border-b border-stone-200">Section</th>
+                <th class="py-3 px-4 border-b border-stone-200">LRN</th>
+                <th class="py-3 px-4 border-b border-stone-200 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr
                 v-for="(row, idx) in students"
                 :key="row.id"
-                class="border-b border-stone-200 hover:bg-stone-50/70 transition"
+                class="border-b border-stone-100 hover:bg-stone-50 transition"
               >
-                <td class="py-4 px-4 text-stone-500 tabular-nums">{{ (currentPage - 1) * perPage + idx + 1 }}</td>
                 <td class="py-4 px-4 font-medium text-stone-800 capitalize">{{ titleCase(row.last_name) }}</td>
                 <td class="py-4 px-4 text-stone-700 capitalize">{{ titleCase(row.first_name) }}</td>
                 <td class="py-4 px-4 text-stone-600 capitalize">{{ row.middle_name ? titleCase(row.middle_name) : '—' }}</td>
@@ -178,11 +184,10 @@
                 <td class="py-4 px-4 text-stone-700">{{ row.section || '—' }}</td>
                 <td class="py-4 px-4 font-mono text-stone-600 tabular-nums">{{ row.student_number }}</td>
                 <td class="py-4 px-4 text-right">
-                  <span class="inline-flex items-center justify-end gap-1">
+                  <span class="inline-flex items-center justify-end gap-2">
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center w-9 h-9 rounded-full text-white transition shadow-sm hover:opacity-90"
-                      style="background-color: #050517;"
+                      class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-stone-900 text-white hover:bg-stone-800 transition shadow-sm"
                       title="Profile"
                       @click="openViewModal(row)"
                     >
@@ -190,7 +195,7 @@
                     </button>
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-stone-600 text-white hover:bg-stone-700 transition shadow-sm"
+                      class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-stone-200 text-stone-800 hover:bg-stone-300 transition shadow-sm"
                       title="Edit Profile"
                       @click="openEditModal(row)"
                     >
@@ -200,38 +205,45 @@
                 </td>
               </tr>
               <tr v-if="loading && students.length === 0">
-                <td colspan="8" class="py-12 text-center text-stone-500">Loading…</td>
+                <td colspan="7" class="py-12 text-center text-stone-500">Loading…</td>
               </tr>
               <tr v-if="!loading && students.length === 0">
-                <td colspan="8" class="py-12 text-center text-stone-500">No learners found.</td>
+                <td colspan="7" class="py-12 text-center text-stone-500">No learners found.</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div class="p-4 border-t border-stone-200 flex items-center justify-between flex-wrap gap-3 bg-stone-50/30">
+        <div class="p-4 border-t border-stone-200 flex items-center justify-between flex-wrap gap-3 bg-white">
           <span class="text-sm text-stone-600">
             Showing {{ total ? (currentPage - 1) * perPage + 1 : 0 }} to {{ Math.min(currentPage * perPage, total) }} of {{ total }} entries
           </span>
           <div class="flex items-center gap-2">
             <button
               type="button"
-              class="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+              class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-stone-200 bg-white text-stone-700 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
               :disabled="currentPage <= 1"
               @click="goToPage(currentPage - 1)"
+              title="Previous"
             >
-              Previous
+              <ChevronLeft class="h-4 w-4" />
             </button>
-            <span class="text-sm text-stone-600 px-2">
-              Page {{ currentPage }} of {{ lastPage || 1 }}
-            </span>
             <button
               type="button"
-              class="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+              class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-stone-900 text-white"
+              disabled
+              title="Current page"
+            >
+              {{ currentPage }}
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-stone-200 bg-white text-stone-700 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
               :disabled="currentPage >= lastPage"
               @click="goToPage(currentPage + 1)"
+              title="Next"
             >
-              Next
+              <ChevronRight class="h-4 w-4" />
             </button>
           </div>
           </div>
@@ -449,7 +461,7 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import axios from 'axios';
 import QRCode from 'qrcode';
-import { LogOut, Search, Upload, Plus, User, Pencil, Users, Menu } from 'lucide-vue-next';
+import { LogOut, Search, Upload, Plus, User, Pencil, Users, Menu, Filter, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { setStoredToken, getStoredToken } from '../router';
 import { useLogout } from '../composables/useLogout';
 import { fetchStudents, createStudent, createStudentWithFormData, updateStudent, updateStudentWithFormData, uploadStudentPhoto, bulkImportStudents } from '../services/studentService';

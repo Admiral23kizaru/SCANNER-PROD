@@ -392,4 +392,10 @@ async function downloadId(id) {
 }
 
 load();
+
+const openFlag = sessionStorage.getItem('admin_open_create_student');
+if (openFlag) {
+  sessionStorage.removeItem('admin_open_create_student');
+  openCreateModal();
+}
 </script>

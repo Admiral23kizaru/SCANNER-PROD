@@ -48,6 +48,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:Admin')->prefix('admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
         Route::get('/stats', [StatsController::class, 'index']);
+        Route::get('/dashboard/overview', [StatsController::class, 'overview']);
+        Route::get('/reports/summary-pdf', [StatsController::class, 'summaryReportPdf']);
         Route::get('/teachers', [TeacherManagementController::class, 'index']);
         Route::post('/teachers', [TeacherManagementController::class, 'store']);
         Route::put('/teachers/{id}', [TeacherManagementController::class, 'update']);

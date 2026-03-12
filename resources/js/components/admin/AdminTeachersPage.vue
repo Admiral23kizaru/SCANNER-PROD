@@ -579,5 +579,12 @@ async function printTeacherId(t) {
   }
 }
 
-onMounted(load);
+onMounted(async () => {
+  await load();
+  const flag = sessionStorage.getItem('admin_open_create_teacher');
+  if (flag) {
+    sessionStorage.removeItem('admin_open_create_teacher');
+    openCreateModal();
+  }
+});
 </script>
