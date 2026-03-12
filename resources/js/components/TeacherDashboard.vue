@@ -66,16 +66,6 @@
             </div>
           </div>
           <div class="flex items-center gap-2 lg:gap-4">
-            <template v-if="currentTab === 'learners'">
-              <input
-                ref="bulkImportInput"
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                class="sr-only"
-                @change="onBulkImportFile"
-              />
-              <span v-if="bulkImporting" class="text-sm text-stone-500 mr-2">Importing…</span>
-            </template>
             <button
               type="button"
               class="grid grid-flow-col items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-white hover:bg-stone-800 transition-colors border border-white/20 ml-2"
@@ -129,6 +119,14 @@
           </div>
 
           <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+            <input
+              ref="bulkImportInput"
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              class="sr-only"
+              @change="onBulkImportFile"
+            />
+            <span v-if="bulkImporting" class="text-sm text-stone-500 mr-2">Importing…</span>
             <button
               type="button"
               class="rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition inline-flex items-center gap-2"

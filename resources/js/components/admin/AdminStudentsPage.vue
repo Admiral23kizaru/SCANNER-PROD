@@ -1,82 +1,91 @@
 <template>
   <div>
     <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
-      <div class="p-4 sm:p-5 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-4">
-        <h1 class="text-lg font-semibold text-slate-900">Master Student List</h1>
-        <button
-          type="button"
-          class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 shadow-sm transition inline-flex items-center gap-2"
-          @click="openCreateModal"
-        >
-          <PencilLine class="h-5 w-5" />
-          Create Student
-        </button>
-      </div>
-      <div class="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-white">
-        <label class="flex items-center gap-2 text-sm text-slate-600">
-          Show
-          <select
-            v-model.number="perPage"
-            class="rounded border border-slate-300 px-2 py-1.5 text-sm text-slate-700 focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
-            @change="currentPage = 1; load()"
+      <!-- Toolbar matching AdminTeachersPage layout -->
+      <div class="p-4 sm:p-5 border-b border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 shadow-sm transition inline-flex items-center gap-2"
+            @click="openCreateModal"
           >
-            <option :value="10">10</option>
-            <option :value="25">25</option>
-            <option :value="50">50</option>
-            <option :value="100">100</option>
-          </select>
-          entries
-        </label>
-        <label class="flex items-center gap-2 text-sm text-slate-600 w-full sm:w-auto">
-          <span>Search:</span>
-          <div class="relative flex-1">
-            <span class="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-              <Search class="h-4 w-4" />
-            </span>
+            <Plus class="h-4 w-4" />
+            Create Student
+          </button>
+          <button
+            type="button"
+            class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition inline-flex items-center gap-2"
+          >
+            <Download class="h-4 w-4" />
+            Export
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <div class="relative">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <input
               v-model="searchQuery"
               type="search"
-              placeholder="Search by name, LRN, grade/section..."
-              class="w-full rounded-lg border border-slate-300 pl-9 pr-3 py-1.5 text-sm focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+              placeholder="Search students..."
+              class="w-64 max-w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
               @input="debouncedFetch"
             />
           </div>
-        </label>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition"
+            title="Filter"
+          >
+            <Filter class="h-4 w-4" />
+          </button>
+        </div>
       </div>
+
       <div class="overflow-x-auto">
         <table class="w-full text-sm text-left border-separate border-spacing-0">
-          <thead class="bg-slate-900 text-slate-50 text-xs uppercase tracking-wide">
+          <thead class="bg-slate-50 text-slate-500 text-xs font-medium">
             <tr>
-              <th class="py-3 px-4 font-semibold border-b border-slate-800/80">#</th>
-              <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Full Name</th>
-              <th class="py-3 px-4 font-semibold border-b border-slate-800/80">LRN</th>
-              <th class="py-3 px-4 font-semibold border-b border-slate-800/80">Grade/Section</th>
-              <th class="py-3 px-4 font-semibold text-right border-b border-slate-800/80">Actions</th>
+              <th class="py-3 px-4 border-b border-slate-200">Full Name</th>
+              <th class="py-3 px-4 border-b border-slate-200">LRN</th>
+              <th class="py-3 px-4 border-b border-slate-200">Grade / Section</th>
+              <th class="py-3 px-4 border-b border-slate-200">Guardian</th>
+              <th class="py-3 px-4 text-right border-b border-slate-200">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr
-              v-for="(row, idx) in students"
+              v-for="(row) in students"
               :key="row.id"
-              class="border-b border-slate-200/80 odd:bg-slate-50/40 even:bg-white hover:bg-blue-50/60 transition"
+              class="border-b border-slate-100 hover:bg-slate-50 transition"
             >
-              <td class="py-3 px-4 text-slate-500 tabular-nums">{{ (currentPage - 1) * perPage + idx + 1 }}</td>
-              <td class="py-3 px-4 font-medium text-slate-900">{{ row.full_name }}</td>
-              <td class="py-3 px-4 tabular-nums text-slate-700">{{ row.student_number }}</td>
-              <td class="py-3 px-4 text-slate-700">{{ row.grade_section }}</td>
+              <td class="py-3 px-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-xs font-semibold text-blue-700 shrink-0">
+                    {{ row.first_name?.charAt(0) || '?' }}
+                  </div>
+                  <div class="min-w-0">
+                    <div class="font-medium text-slate-900 truncate">{{ row.full_name }}</div>
+                    <div class="text-xs text-slate-500">{{ row.grade_section || '—' }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3 px-4 font-mono text-slate-700 whitespace-nowrap">{{ row.student_number }}</td>
+              <td class="py-3 px-4 text-slate-700">{{ row.grade_section || '—' }}</td>
+              <td class="py-3 px-4 text-slate-600">{{ row.guardian || '—' }}</td>
               <td class="py-3 px-4 text-right">
-                <span class="inline-flex items-center justify-end gap-2">
+                <span class="inline-flex items-center justify-end gap-3">
                   <button
                     type="button"
-                    class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-green-600 text-white hover:bg-green-700 transition shadow-sm"
+                    class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
                     title="Generate ID Card"
                     @click="downloadId(row.id)"
                   >
-                    <IdCard class="h-5 w-5" />
+                    <IdCard class="h-4 w-4" />
                   </button>
                   <button
                     type="button"
-                    class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition shadow-sm"
+                    class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
                     title="Edit student"
                     @click="openEditModal(row)"
                   >
@@ -84,7 +93,7 @@
                   </button>
                   <button
                     type="button"
-                    class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-red-500 text-white hover:bg-red-600 transition shadow-sm"
+                    class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-600 hover:text-red-600 hover:bg-slate-100 transition"
                     title="Delete student"
                     @click="confirmDelete(row)"
                   >
@@ -102,39 +111,44 @@
           </tbody>
         </table>
       </div>
+
+      <!-- Footer pagination -->
       <div class="p-4 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3 bg-slate-50/60">
         <span class="text-sm text-slate-600">
-          Showing {{ total ? (currentPage - 1) * perPage + 1 : 0 }} to {{ Math.min(currentPage * perPage, total) }} of {{ total }} entries
+          Showing {{ total ? (currentPage - 1) * perPage + 1 : 0 }}–{{ Math.min(currentPage * perPage, total) }} of {{ total }} entries
         </span>
         <div class="flex items-center gap-2">
           <button
             type="button"
-            class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+            class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
             :disabled="currentPage <= 1"
             @click="goToPage(currentPage - 1)"
+            title="Previous"
           >
-            Previous
+            <ChevronLeft class="h-4 w-4" />
           </button>
-          <span class="text-sm text-slate-600 px-2">Page {{ currentPage }} of {{ lastPage || 1 }}</span>
+          <span class="text-sm text-slate-600 px-1">{{ currentPage }} / {{ lastPage || 1 }}</span>
           <button
             type="button"
-            class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+            class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
             :disabled="currentPage >= lastPage"
             @click="goToPage(currentPage + 1)"
+            title="Next"
           >
-            Next
+            <ChevronRight class="h-4 w-4" />
           </button>
         </div>
       </div>
     </div>
 
+    <!-- Create / Edit Modal -->
     <div
       v-if="showFormModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       @click.self="closeForm"
     >
       <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col border border-stone-200" @click.stop>
-        <h2 class="text-lg font-semibold text-stone-800 p-6 pb-0">{{ editingId ? 'Edit Student' : 'Create Student' }}</h2>
+        <h2 class="text-lg font-semibold p-6 pb-0">{{ editingId ? 'Edit Student' : 'Create Student' }}</h2>
         <form @submit.prevent="submitForm" class="p-6 overflow-y-auto flex-1">
           <div class="space-y-3">
             <div class="grid grid-cols-2 gap-3">
@@ -152,8 +166,8 @@
               <input v-model="form.middle_name" type="text" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">LRN</label>
-              <input v-model="form.student_number" type="text" required :readonly="!!editingId" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
+              <label class="block text-sm font-medium text-stone-700 mb-1">LRN <span class="text-xs text-stone-400 font-normal">(12 digits)</span></label>
+              <input v-model="form.student_number" type="text" required :readonly="!!editingId" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm font-mono" maxlength="12" />
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
@@ -170,7 +184,7 @@
               <input v-model="form.guardian" type="text" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">Parent Email</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Guardian Email</label>
               <input v-model="form.parent_email" type="email" placeholder="parent@gmail.com" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
             <div>
@@ -178,7 +192,6 @@
               <input v-model="form.contact_number" type="text" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
           </div>
-
           <div v-if="formError" class="mt-2 text-sm text-red-600">{{ formError }}</div>
           <div class="mt-4 flex justify-end gap-2">
             <button type="button" class="rounded-md border border-stone-300 px-4 py-2 text-sm" @click="closeForm">Cancel</button>
@@ -190,6 +203,7 @@
       </div>
     </div>
 
+    <!-- Delete Modal -->
     <div
       v-if="showDeleteModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -202,13 +216,7 @@
           All attendance records for this student will be permanently deleted.
         </p>
         <div class="flex justify-end gap-2">
-          <button
-            type="button"
-            class="rounded-md border border-stone-300 px-4 py-2 text-sm"
-            @click="showDeleteModal = false"
-          >
-            Cancel
-          </button>
+          <button type="button" class="rounded-md border border-stone-300 px-4 py-2 text-sm" @click="showDeleteModal = false">Cancel</button>
           <button
             type="button"
             class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
@@ -224,8 +232,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { Search, PencilLine, Trash2, IdCard } from 'lucide-vue-next';
+import { ref, onMounted } from 'vue';
+import { Search, PencilLine, Trash2, IdCard, Plus, Download, Filter, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { fetchAdminStudents, createAdminStudent, updateAdminStudent, deleteStudent, getAdminStudentIdUrl } from '../../services/adminService';
 
 const students = ref([]);
@@ -233,7 +241,7 @@ const loading = ref(false);
 const currentPage = ref(1);
 const lastPage = ref(1);
 const total = ref(0);
-const perPage = ref(10);
+const perPage = ref(15);
 const searchQuery = ref('');
 const searchInput = ref('');
 const showDeleteModal = ref(false);
@@ -299,15 +307,9 @@ function confirmDelete(row) {
 function openCreateModal() {
   editingId.value = null;
   form.value = {
-    first_name: '',
-    last_name: '',
-    middle_name: '',
-    student_number: '',
-    grade: '',
-    section: '',
-    guardian: '',
-    parent_email: '',
-    contact_number: '',
+    first_name: '', last_name: '', middle_name: '',
+    student_number: '', grade: '', section: '',
+    guardian: '', parent_email: '', contact_number: '',
   };
   formError.value = '';
   showFormModal.value = true;
@@ -323,7 +325,7 @@ function openEditModal(row) {
     grade: row.grade ?? '',
     section: row.section ?? '',
     guardian: row.guardian ?? '',
-    parent_email: row.parent_email ?? '',
+    parent_email: row.parent_email ?? row.guardian_email ?? '',
     contact_number: row.contact_number ?? '',
   };
   formError.value = '';
@@ -345,7 +347,7 @@ async function submitForm() {
     grade: form.value.grade || '',
     section: form.value.section || '',
     guardian: form.value.guardian || '',
-    parent_email: form.value.parent_email || '',
+    guardian_email: form.value.parent_email || '',
     contact_number: form.value.contact_number || '',
   };
   try {
@@ -372,8 +374,7 @@ async function executeDelete() {
     deleteTarget.value = null;
     await load();
   } catch (err) {
-    const msg = err.response?.data?.message || 'Delete failed.';
-    alert(msg);
+    alert(err.response?.data?.message || 'Delete failed.');
   } finally {
     deleting.value = false;
   }
@@ -382,20 +383,18 @@ async function executeDelete() {
 async function downloadId(id) {
   try {
     const res = await getAdminStudentIdUrl(id);
-    if (res?.url) {
-      window.open(res.url, '_blank', 'noopener,noreferrer');
-    }
-  } catch (err) {
-    console.error(err);
+    if (res?.url) window.open(res.url, '_blank', 'noopener,noreferrer');
+  } catch {
     alert('Failed to generate secure ID link.');
   }
 }
 
-load();
-
-const openFlag = sessionStorage.getItem('admin_open_create_student');
-if (openFlag) {
-  sessionStorage.removeItem('admin_open_create_student');
-  openCreateModal();
-}
+onMounted(async () => {
+  await load();
+  const flag = sessionStorage.getItem('admin_open_create_student');
+  if (flag) {
+    sessionStorage.removeItem('admin_open_create_student');
+    openCreateModal();
+  }
+});
 </script>

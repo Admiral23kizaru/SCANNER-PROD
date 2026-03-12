@@ -238,3 +238,110 @@ If you encounter this error when generating IDs, it means the `IdCardImageServic
    ```bash
    composer dump-autoload
    ```
+
+### Cannot log in / "The provided credentials are incorrect"
+
+This usually means the password hash in the database doesn't match the password you're typing. To reset a user's password, run **one** of the following from the project root:
+
+**Option A — Using Artisan Tinker (interactive):**
+```bash
+php artisan tinker
+```
+Then inside tinker:
+```php
+$u = \App\Models\User::where('email', 'admin@gmail.com')->first();
+$u->password = \Hash::make('admin123');
+$u->save();
+```
+
+**Option B — One-liner PHP script:**
+
+Create a file called `reset_password.php` in the project root:
+```php
+<?php
+require 'vendor/autoload.php';
+$app = require_once 'bootstrap/app.php';
+$app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+
+$u = \App\Models\User::where('email', 'admin@gmail.com')->first();
+if ($u) {
+    $u->password = \Hash::make('admin123');
+    $u->save();
+    echo "Password reset to 'admin123' for {$u->email}\n";
+} else {
+    echo "User not found.\n";
+}
+```
+Then run:
+```bash
+php reset_password.php
+```
+Delete the file afterwards:
+```bash
+del reset_password.php
+```
+
+### Teacher data sync (users → teachers table)
+
+Teachers are stored in the `users` table (`role_id = 2`). If you need to populate the `teachers` table, run these SQL commands in **phpMyAdmin**:
+
+**Step 1 — Add `employee_id` column (if missing):**
+```sql
+ALTER TABLE `teachers`
+  ADD COLUMN `employee_id` varchar(50) DEFAULT NULL AFTER `profile_photo`;
+```
+
+**Step 2 — Copy teacher data from `users` to `teachers`:**
+```sql
+INSERT INTO `teachers` (first_name, last_name, email, password, designation, profile_photo, job_title, employee_id, school_id, created_at, updated_at)
+SELECT
+  SUBSTRING_INDEX(name, ' ', 1),
+  CASE WHEN LOCATE(' ', name) > 0 THEN SUBSTRING(name, LOCATE(' ', name) + 1) ELSE '' END,
+  email, password, COALESCE(designation, ''), profile_photo, job_title, employee_id, 1, created_at, updated_at
+FROM users
+WHERE role_id = 2;
+```
+
+### QR Code not appearing on Teacher ID
+
+If the QR code is missing when generating teacher IDs, check:
+
+1. **endroid/qr-code is installed:**
+   ```bash
+   composer require endroid/qr-code
+   ```
+
+2. **The teacher has an `employee_id` set.** QR codes are generated from the `employee_id` field. If it's empty, no QR will appear.
+
+3. **The background template exists.** Place `{JOB_TITLE}.jpg` in the `TEMPLATE/` folder at the project root (e.g., `TEMPLATE/ADASIII.jpg`).
+
+### General maintenance commands
+
+```bash
+# Clear all caches
+php artisan cache:clear
+php artisan config:clear
+php artisan view:clear
+php artisan route:clear
+
+# Rebuild autoloader
+composer dump-autoload
+
+# Rebuild frontend assets
+npm run build
+
+# Create storage symlink (required for profile photos)
+php artisan storage:link
+
+# Start development server
+php artisan serve
+```
+
+### Default login credentials
+
+| Role    | Email              | Password   |
+|---------|--------------------|------------|
+| Admin   | admin@gmail.com    | admin123   |
+
+> **Note:** If you re-import the SQL dump, you will need to reset passwords again using the commands above.
+

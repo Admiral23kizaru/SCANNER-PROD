@@ -12,9 +12,7 @@
           <div>
             <p class="text-sm text-slate-600">Total Students</p>
             <p class="mt-2 text-3xl font-semibold text-slate-900">{{ stats.total_students ?? '—' }}</p>
-            <p class="mt-2 text-xs text-slate-500">
-              <span class="text-emerald-600 font-medium">↑ +12%</span> from last month
-            </p>
+            <p class="mt-2 text-xs text-slate-500">Enrolled learners</p>
           </div>
           <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
             <GraduationCap class="h-5 w-5" />
@@ -27,9 +25,7 @@
           <div>
             <p class="text-sm text-slate-600">Total Teachers</p>
             <p class="mt-2 text-3xl font-semibold text-slate-900">{{ stats.total_teachers ?? '—' }}</p>
-            <p class="mt-2 text-xs text-slate-500">
-              <span class="text-emerald-600 font-medium">↑ +3%</span> from last month
-            </p>
+            <p class="mt-2 text-xs text-slate-500">Registered accounts</p>
           </div>
           <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
             <Users class="h-5 w-5" />
@@ -42,9 +38,7 @@
           <div>
             <p class="text-sm text-slate-600">Today's Attendance</p>
             <p class="mt-2 text-3xl font-semibold text-slate-900">{{ stats.todays_attendance ?? '—' }}</p>
-            <p class="mt-2 text-xs text-slate-500">
-              <span class="text-emerald-600 font-medium">↑ +2.1%</span> from yesterday
-            </p>
+            <p class="mt-2 text-xs text-slate-500">Scans recorded today</p>
           </div>
           <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
             <CalendarDays class="h-5 w-5" />

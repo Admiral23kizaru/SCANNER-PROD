@@ -16,10 +16,14 @@ class Teacher extends Authenticatable
     protected $fillable = [
         'first_name',
         'last_name',
-        'employee_id',
+        'email',
         'password',
-        'school_name',
+        'designation',
         'profile_photo',
+        'job_title',
+        'employee_id',
+        'school_name',
+        'school_id',
     ];
 
     protected $hidden = [
