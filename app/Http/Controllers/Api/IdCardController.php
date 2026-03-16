@@ -16,6 +16,32 @@ use Illuminate\Support\Facades\URL;
 
 class IdCardController extends Controller
 {
+    private function renderEodbIdBbHtml(array $data): string
+    {
+        // Prefer the existing non-standard location used by this project, but allow fallbacks.
+        $candidates = [
+            app_path('Services/eodb-id-bb.blade.php'),
+            resource_path('views/id-cards/eodb-id-bb.blade.php'),
+            resource_path('views/eodb-id-bb.blade.php'),
+        ];
+
+        foreach ($candidates as $path) {
+            if (is_string($path) && $path !== '' && is_file($path)) {
+                return view()->file($path, $data)->render();
+            }
+        }
+
+        // If the view exists in the standard Laravel view locations, use it.
+        if (view()->exists('id-cards.eodb-id-bb')) {
+            return view('id-cards.eodb-id-bb', $data)->render();
+        }
+        if (view()->exists('eodb-id-bb')) {
+            return view('eodb-id-bb', $data)->render();
+        }
+
+        abort(500, 'Teacher ID template view not found. Expected app/Services/eodb-id-bb.blade.php or resources/views/id-cards/eodb-id-bb.blade.php');
+    }
+
     public function getSignedUrl(Request $request, int $id): JsonResponse
     {
         $student = Student::findOrFail($id);
@@ -326,18 +352,15 @@ class IdCardController extends Controller
             }
         }
 
-        $html = view()->file(
-            app_path('Http/Controllers/Api/eodb-id-bb.blade.php'),
-            [
-                'background' => $backgroundDataUri,
-                'photo' => $photoDataUri,
-                'qr' => $qrDataUri,
-                'name' => mb_strtoupper((string) ($teacher->name ?? '')),
-                'job_title' => mb_strtoupper((string) ($teacher->job_title ?? '')),
-                'employee_id' => $employeeId,
-                'school_name' => mb_strtoupper((string) ($teacher->school_name ?? '')),
-            ]
-        )->render();
+        $html = $this->renderEodbIdBbHtml([
+            'background' => $backgroundDataUri,
+            'photo' => $photoDataUri,
+            'qr' => $qrDataUri,
+            'name' => mb_strtoupper((string) ($teacher->name ?? '')),
+            'job_title' => mb_strtoupper((string) ($teacher->job_title ?? '')),
+            'employee_id' => $employeeId,
+            'school_name' => mb_strtoupper((string) ($teacher->school_name ?? '')),
+        ]);
 
         // 1011x638 pixels -> exactly proportionate to 85.6x54 PVC
         $cardW = 85.6; 
