@@ -99,14 +99,34 @@
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            class="grid grid-flow-col items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 transition-colors border border-white/20"
-            @click="logout"
-          >
-            <LogOut class="h-4 w-4" />
-            <span class="hidden sm:inline">Log out</span>
-          </button>
+          <div class="flex items-center gap-4">
+            <div v-if="user" class="hidden sm:flex items-center gap-3 border-r border-white/10 pr-4 mr-2">
+              <div class="text-right">
+                <p class="text-xs font-medium text-white">{{ user.name }}</p>
+                <p class="text-[10px] text-slate-400 uppercase tracking-wider">{{ user.role?.name || 'Admin' }}</p>
+              </div>
+              <div class="w-9 h-9 rounded-full overflow-hidden border border-white/20 bg-slate-800">
+                <img
+                  v-if="user.profile_photo && !userPhotoError"
+                  :src="getPhotoUrl(user.profile_photo)"
+                  class="w-full h-full object-cover"
+                  @error="userPhotoError = true"
+                />
+                <div v-else class="w-full h-full flex items-center justify-center bg-blue-600 text-white text-xs font-bold">
+                  <img v-if="userPhotoError" :src="'/images/default-avatar.png'" class="w-full h-full object-cover" />
+                  <span v-else>{{ user.name?.charAt(0) }}</span>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="grid grid-flow-col items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 transition-colors border border-white/20"
+              @click="logout"
+            >
+              <LogOut class="h-4 w-4" />
+              <span class="hidden sm:inline">Log out</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -123,7 +143,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { LayoutDashboard, Users, GraduationCap, LogOut, Menu } from 'lucide-vue-next';
@@ -136,6 +156,14 @@ const router = useRouter();
 const currentPage = ref('dashboard');
 const isSidebarOpen = ref(false);
 const logoSrc = '/logo/depedozamiz.png';
+const user = ref(null);
+const userPhotoError = ref(false);
+
+function getPhotoUrl(path) {
+  if (!path) return '/images/default-avatar.png';
+  const cleanPath = path.replace(/^(public\/|storage\/|\/storage\/|\/public\/)/, '').replace(/^\//, '');
+  return '/storage/' + cleanPath;
+}
 
 const pageTitle = computed(() => {
   if (currentPage.value === 'teachers') return 'TEACHERS';
@@ -160,4 +188,16 @@ async function logout() {
   }
   router.push('/login');
 }
+
+
+onMounted(async () => {
+  const token = getStoredToken();
+  if (token) {
+    try {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      const res = await axios.get('/api/user');
+      user.value = res.data;
+    } catch (_) {}
+  }
+});
 </script>

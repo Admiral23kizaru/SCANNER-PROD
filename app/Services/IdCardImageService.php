@@ -354,7 +354,7 @@ class IdCardImageService
             // MANUAL POSITION: adjust employee ID X/Y placement.
             $employeeIdX = $offsetX + (int) round($cardWidth * 0.056);
             $employeeIdY = (int) round($h * 0.63);
-            // MANUAL POSITION: adjust department abbreviation X/Y placement.
+            // MANUAL POSITION: adjust department abbreviation X/Y placement.obs
             $departmentAbbrevX = $offsetX + (int) round($cardWidth * 0.056);
             $departmentAbbrevY = (int) round($h * 0.55);
 

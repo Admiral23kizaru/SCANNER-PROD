@@ -23,7 +23,7 @@ class StatsController extends Controller
         }
 
         $totalStudents = Student::count();
-        $totalTeachers = User::where('role_id', $teacherRoleId)->count();
+        $totalTeachers = \App\Models\Teacher::count();
         $todaysAttendance = Attendance::whereDate('scanned_at', now()->toDateString())->count();
 
         return response()->json([

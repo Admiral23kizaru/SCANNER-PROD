@@ -66,6 +66,24 @@
             </div>
           </div>
           <div class="flex items-center gap-2 lg:gap-4">
+            <div v-if="user" class="hidden sm:flex items-center gap-3 border-r border-white/10 pr-4 mr-2">
+              <div class="text-right">
+                <p class="text-[11px] font-medium text-white">{{ user.name }}</p>
+                <p class="text-[10px] text-stone-400 uppercase tracking-wider">{{ user.job_title || 'Teacher' }}</p>
+              </div>
+              <div class="w-8 h-8 rounded-full overflow-hidden border border-white/20 bg-stone-800">
+                <img
+                  v-if="user.profile_photo && !userPhotoError"
+                  :src="getPhotoUrl(user.profile_photo)"
+                  class="w-full h-full object-cover"
+                  @error="userPhotoError = true"
+                />
+                <div v-else class="w-full h-full flex items-center justify-center bg-stone-700 text-white text-[10px] font-bold">
+                  <img v-if="userPhotoError" :src="'/images/default-avatar.png'" class="w-full h-full object-cover" />
+                  <span v-else>{{ user.name?.charAt(0) }}</span>
+                </div>
+              </div>
+            </div>
             <button
               type="button"
               class="grid grid-flow-col items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-white hover:bg-stone-800 transition-colors border border-white/20 ml-2"
@@ -456,7 +474,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import axios from 'axios';
 import QRCode from 'qrcode';
 import { LogOut, Search, Upload, Plus, User, Pencil, Users, Menu, Filter, ChevronLeft, ChevronRight } from 'lucide-vue-next';
@@ -485,6 +503,14 @@ const searchInput = ref('');
 
 const currentTab = ref('learners');
 const isSidebarOpen = ref(false);
+const user = ref(null);
+const userPhotoError = ref(false);
+
+function getPhotoUrl(path) {
+  if (!path) return '/images/default-avatar.png';
+  const cleanPath = path.replace(/^(public\/|storage\/|\/storage\/|\/public\/)/, '').replace(/^\//, '');
+  return '/storage/' + cleanPath;
+}
 
 const pageTitle = computed(() => {
   return 'LEARNERS';
@@ -758,6 +784,17 @@ watch([showQrModal, qrModalStudent], async () => {
 });
 
 
+
+onMounted(async () => {
+  const token = getStoredToken();
+  if (token) {
+    try {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      const res = await axios.get('/api/user');
+      user.value = res.data;
+    } catch (_) {}
+  }
+});
 
 load();
 </script>

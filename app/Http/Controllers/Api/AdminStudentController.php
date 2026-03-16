@@ -41,8 +41,9 @@ class AdminStudentController extends Controller
                 'section' => $s->section,
                 'middle_name' => $s->middle_name,
                 'guardian' => $s->guardian,
-                'parent_email' => $s->parent_email,
+                'guardian_email' => $s->guardian_email,
                 'contact_number' => $s->contact_number,
+                'photo_path' => $s->photo_path,
                 'created_at' => $s->created_at?->toIso8601String(),
             ];
         });
@@ -67,8 +68,9 @@ class AdminStudentController extends Controller
             'grade' => ['nullable', 'string', 'max:32'],
             'section' => ['nullable', 'string', 'max:32'],
             'guardian' => ['nullable', 'string', 'max:255'],
-            'parent_email' => ['nullable', 'string', 'email', 'max:255'],
+            'guardian_email' => ['nullable', 'string', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
+            'school_id' => ['nullable', 'exists:schools,id'],
         ], [
             'student_number.unique' => 'LRN already exists.',
         ]);
@@ -93,9 +95,10 @@ class AdminStudentController extends Controller
             'grade' => $request->grade ?: null,
             'section' => $request->section ?: null,
             'guardian' => $request->guardian ?: null,
-            'parent_email' => $request->parent_email ?: null,
+            'guardian_email' => $request->guardian_email ?: null,
             'contact_number' => $request->contact_number ?: null,
-            // Admin-created master list entries: created_by/teacher_id can remain null in this build
+            'school_id' => $request->user()->school_id,
+            'created_by' => $request->user()->id,
         ]);
 
         return response()->json([
@@ -111,7 +114,7 @@ class AdminStudentController extends Controller
                 'grade' => $student->grade,
                 'section' => $student->section,
                 'guardian' => $student->guardian,
-                'parent_email' => $student->parent_email,
+                'guardian_email' => $student->guardian_email,
                 'contact_number' => $student->contact_number,
                 'created_at' => $student->created_at?->toIso8601String(),
             ],
@@ -134,7 +137,7 @@ class AdminStudentController extends Controller
             'grade' => ['nullable', 'string', 'max:32'],
             'section' => ['nullable', 'string', 'max:32'],
             'guardian' => ['nullable', 'string', 'max:255'],
-            'parent_email' => ['nullable', 'string', 'email', 'max:255'],
+            'guardian_email' => ['nullable', 'string', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
         ], [
             'student_number.unique' => 'LRN already exists.',
@@ -156,7 +159,7 @@ class AdminStudentController extends Controller
             'grade',
             'section',
             'guardian',
-            'parent_email',
+            'guardian_email',
             'contact_number',
         ]);
 
@@ -183,7 +186,7 @@ class AdminStudentController extends Controller
                 'grade' => $student->grade,
                 'section' => $student->section,
                 'guardian' => $student->guardian,
-                'parent_email' => $student->parent_email,
+                'guardian_email' => $student->guardian_email,
                 'contact_number' => $student->contact_number,
                 'created_at' => $student->created_at?->toIso8601String(),
             ],
@@ -238,7 +241,7 @@ class AdminStudentController extends Controller
                         $student->grade,
                         $student->section,
                         $student->guardian,
-                        $student->parent_email,
+                        $student->guardian_email,
                         $student->contact_number,
                     ]);
                 }

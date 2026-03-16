@@ -62,28 +62,27 @@
             >
               <td class="py-3 px-4">
                 <div class="flex items-center gap-3">
-                  <div v-if="t.profile_photo || t.name"
-                    class="w-8 h-8 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center text-xs font-medium text-slate-600 shrink-0"
+                  <div
+                    class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-200 shrink-0 shadow-sm"
                   >
                     <img
                       v-if="t.profile_photo && !photoLoadError[t.id]"
-                      :src="t.profile_photo"
+                      :src="getPhotoUrl(t.profile_photo)"
                       alt=""
                       class="w-full h-full object-cover"
-                      @error="photoLoadError[t.id] = true"
+                      @error="handlePhotoError(t.id)"
                     />
-                    <span
+                    <div
                       v-else
-                      class="w-full h-full flex items-center justify-center text-blue-900 font-medium"
+                      class="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-400 to-slate-500 text-white font-semibold text-sm"
                     >
-                      {{ t.name?.charAt(0) || 'T' }}
-                    </span>
-                  </div>
-                  <div v-else class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-xs font-medium text-blue-700">
-                    {{ t.name?.charAt(0) || 'T' }}
+                      <img v-if="photoLoadError[t.id]" :src="'/images/default-avatar.png'" class="w-full h-full object-cover" @error="photoLoadError[t.id] = 'failed_twice'" />
+                      <span v-else>{{ t.name?.charAt(0) || 'T' }}</span>
+                    </div>
                   </div>
                   <div class="min-w-0">
-                    <div class="font-medium text-slate-900 truncate">{{ t.name }}</div>
+                    <div class="font-semibold text-slate-900 truncate">{{ t.name }}</div>
+                    <div class="text-xs text-slate-500 truncate">{{ t.job_title || 'Teacher' }}</div>
                   </div>
                 </div>
               </td>
@@ -303,6 +302,12 @@
                 Profile photo
                 <span class="text-xs text-stone-500 font-normal">(optional, JPG/PNG, max 2&nbsp;MB)</span>
               </label>
+              <div class="flex items-center gap-4 mb-3" v-if="editForm.profile_photo">
+                <div class="w-16 h-16 rounded-lg overflow-hidden border border-stone-200 bg-stone-100 shadow-sm">
+                  <img :src="getPhotoUrl(editForm.profile_photo)" class="w-full h-full object-cover" />
+                </div>
+                <div class="text-[10px] text-stone-400">Current photo</div>
+              </div>
               <div class="flex items-center gap-3">
                 <label class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-stone-300 text-sm font-medium text-stone-700 cursor-pointer hover:bg-stone-50">
                   Choose file
@@ -393,6 +398,17 @@ const editPhotoInput = ref(null);
 
 const photoLoadError = ref({});
 
+function getPhotoUrl(path) {
+  if (!path) return '/images/default-avatar.png';
+  // Strip 'public/' or 'storage/' or leading slashes
+  const cleanPath = path.replace(/^(public\/|storage\/|\/storage\/|\/public\/)/, '').replace(/^\//, '');
+  return '/storage/' + cleanPath;
+}
+
+function handlePhotoError(id) {
+  photoLoadError.value[id] = true;
+}
+
 const jobTitleOptions = [
   { label: 'Accountant III',                            value: 'ACTIII'  },
   { label: 'Administrative Aide VI',                    value: 'AIDVI'   },
@@ -452,6 +468,7 @@ function openEditModal(t) {
     employee_id: t.employee_id || '',
     school_name: t.school_name || '',
     job_title: t.job_title || '',
+    profile_photo: t.profile_photo || null,
     password: '',
     password_confirmation: '',
   };

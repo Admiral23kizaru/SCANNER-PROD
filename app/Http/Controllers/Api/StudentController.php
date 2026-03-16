@@ -55,6 +55,7 @@ class StudentController extends Controller
                 'guardian' => $s->guardian,
                 'guardian_email' => $s->guardian_email,
                 'contact_number' => $s->contact_number,
+                'photo_path' => $s->photo_path,
                 'created_at' => $s->created_at?->toIso8601String(),
             ];
         });
@@ -82,6 +83,7 @@ class StudentController extends Controller
             'guardian_email' => ['nullable', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
             'photo' => ['nullable', 'file', 'mimes:png', 'max:5120'],
+            'school_id' => ['nullable', 'exists:schools,id'],
         ], [
             'student_number.unique' => 'LRN already exists.',
         ]);
@@ -112,10 +114,13 @@ class StudentController extends Controller
             'emergency_contact' => $request->contact_number ?: null,
             'teacher_id' => $user->role?->name === 'Teacher' ? $user->id : null,
             'created_by' => $user->id,
+            'school_id' => $user->school_id,
         ]);
 
         if ($request->hasFile('photo')) {
-            $this->saveStudentPhoto($request->file('photo'), $student->student_number);
+            $path = $this->saveStudentPhoto($request->file('photo'), $student->student_number);
+            $student->photo_path = $path;
+            $student->save();
         }
 
         $fullName = trim($student->first_name . ' ' . ($student->middle_name ?? '') . ' ' . $student->last_name);
@@ -186,7 +191,9 @@ class StudentController extends Controller
         $student->save();
 
         if ($request->hasFile('photo')) {
-            $this->saveStudentPhoto($request->file('photo'), $student->student_number);
+            $path = $this->saveStudentPhoto($request->file('photo'), $student->student_number);
+            $student->photo_path = $path;
+            $student->save();
         }
 
         $fullName = trim($student->first_name . ' ' . ($student->middle_name ?? '') . ' ' . $student->last_name);
@@ -263,6 +270,7 @@ class StudentController extends Controller
                 'emergency_contact' => $get(['contact_number', 'contact']) ?: null,
                 'teacher_id' => $user->role?->name === 'Teacher' ? $user->id : null,
                 'created_by' => $user->id,
+                'school_id' => $user->school_id,
             ]);
             $imported++;
         }
@@ -287,27 +295,23 @@ class StudentController extends Controller
                 return response()->json(['message' => 'Forbidden.'], 403);
             }
         }
-        $request->validate(['photo' => ['required', 'file', 'mimes:png', 'max:5120']]);
-        $this->saveStudentPhoto($request->file('photo'), $student->student_number);
-        return response()->json(['message' => 'Photo updated.']);
+        $request->validate(['photo' => ['required', 'file', 'mimes:jpg,jpeg,png', 'max:5120']]);
+        $path = $this->saveStudentPhoto($request->file('photo'), $student->student_number);
+        $student->photo_path = $path;
+        $student->save();
+        return response()->json(['message' => 'Photo updated.', 'photo_path' => $path]);
     }
 
-    private function saveStudentPhoto(\Illuminate\Http\UploadedFile $file, string $studentNumber): void
+    private function saveStudentPhoto(\Illuminate\Http\UploadedFile $file, string $studentNumber): string
     {
-        $dir = public_path('school');
-        if (!File::isDirectory($dir)) {
-            File::makeDirectory($dir, 0755, true);
-        }
-        // Always save as .png so IdCardController can find and render it correctly
-        $path = $dir . '/' . $studentNumber . '.png';
-        // Remove old jpg/png versions first
-        foreach (['.jpg', '.jpeg', '.png'] as $ext) {
-            $old = $dir . '/' . $studentNumber . $ext;
-            if (file_exists($old)) {
-                @unlink($old);
-            }
-        }
-        $file->move($dir, $studentNumber . '.png');
+        // Save to storage/app/public/students/
+        $path = \Illuminate\Support\Facades\Storage::disk('public')->putFileAs(
+            'students',
+            $file,
+            $studentNumber . '.' . $file->getClientOriginalExtension()
+        );
+
+        return $path; // Returns 'students/lrn.ext'
     }
 
     private function studentToArray(Student $student, ?string $fullName = null): array
@@ -326,6 +330,7 @@ class StudentController extends Controller
             'guardian' => $student->guardian,
             'guardian_email' => $student->guardian_email,
             'contact_number' => $student->contact_number,
+            'photo_path' => $student->photo_path,
             'created_at' => $student->created_at?->toIso8601String(),
         ];
     }

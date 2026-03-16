@@ -25,6 +25,13 @@ export async function fetchRecentAttendancePublic() {
     return data;
 }
 
+export async function fetchGuardStatsPublic() {
+    const { data } = await axios.get('/api/guard/stats', {
+        headers: { Accept: 'application/json' },
+    });
+    return data;
+}
+
 export async function scanAttendance(studentId) {
     const { data } = await axios.post(
         '/api/attendance/scan',

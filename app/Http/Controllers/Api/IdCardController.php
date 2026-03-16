@@ -155,11 +155,25 @@ class IdCardController extends Controller
         ];
 
         // ── Locate student photo ──────────────────────────────────────────────
-        $photoPath = public_path('school/' . $student->student_number . '.png');
-        if (!is_file($photoPath)) {
-            $photoPath = public_path('school/' . $student->student_number . '.jpg');
-            if (!is_file($photoPath)) {
-                $photoPath = null;
+        $photoPath = null;
+        if ($student->photo_path) {
+            $cleanStdPath = ltrim(str_replace(['public/', 'storage/'], '', (string)$student->photo_path), '/');
+            $candidate = public_path('storage/' . $cleanStdPath);
+            if (is_file($candidate) && is_readable($candidate)) {
+                $photoPath = $candidate;
+            }
+        }
+        
+        if (!$photoPath) {
+            // Fallback to legacy LRN-based path in public/school/
+            $candidate = public_path('school/' . $student->student_number . '.png');
+            if (is_file($candidate)) {
+                $photoPath = $candidate;
+            } else {
+                $candidate = public_path('school/' . $student->student_number . '.jpg');
+                if (is_file($candidate)) {
+                    $photoPath = $candidate;
+                }
             }
         }
 
@@ -274,7 +288,8 @@ class IdCardController extends Controller
 
         $photoPath = null;
         if ($teacher->profile_photo) {
-            $candidate = public_path(ltrim((string) $teacher->profile_photo, '/'));
+            $cleanPath = ltrim(str_replace(['public/', 'storage/'], '', (string)$teacher->profile_photo), '/');
+            $candidate = public_path('storage/' . $cleanPath);
             if (is_file($candidate) && is_readable($candidate)) {
                 $photoPath = $candidate;
             }

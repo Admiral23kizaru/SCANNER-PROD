@@ -40,4 +40,24 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Role::class);
     }
+
+    public function getSchoolIdAttribute()
+    {
+        // 1. Try to find via Teacher profile if this user is a teacher
+        $teacher = \App\Models\Teacher::where('email', $this->email)->first();
+        if ($teacher && $teacher->school_id) {
+            return $teacher->school_id;
+        }
+
+        // 2. Try to find via school_name field in users table
+        if ($this->school_name) {
+            $school = \App\Models\School::where('name', 'like', '%' . $this->school_name . '%')->first();
+            if ($school) {
+                return $school->id;
+            }
+        }
+
+        // 3. Fallback to first school
+        return \App\Models\School::first()?->id;
+    }
 }

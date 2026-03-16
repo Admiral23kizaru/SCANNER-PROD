@@ -48,6 +48,7 @@
         <table class="w-full text-sm text-left border-separate border-spacing-0">
           <thead class="bg-slate-50 text-slate-500 text-xs font-medium">
             <tr>
+              <th class="py-3 px-4 border-b border-slate-200">Photo</th>
               <th class="py-3 px-4 border-b border-slate-200">Full Name</th>
               <th class="py-3 px-4 border-b border-slate-200">LRN</th>
               <th class="py-3 px-4 border-b border-slate-200">Grade / Section</th>
@@ -61,14 +62,27 @@
               :key="row.id"
               class="border-b border-slate-100 hover:bg-slate-50 transition"
             >
+               <td class="py-3 px-4">
+                <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-200 shrink-0 shadow-sm">
+                  <img
+                    v-if="row.photo_path && !photoLoadError[row.id]"
+                    :src="getPhotoUrl(row.photo_path)"
+                    alt=""
+                    class="w-full h-full object-cover"
+                    @error="photoLoadError[row.id] = true"
+                  />
+                  <div
+                    v-else
+                    class="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-400 to-blue-500 text-white font-semibold text-xs"
+                  >
+                    <img v-if="photoLoadError[row.id]" :src="'/images/default-avatar.png'" class="w-full h-full object-cover" />
+                    <span v-else>{{ row.first_name?.charAt(0) || '?' }}</span>
+                  </div>
+                </div>
+              </td>
               <td class="py-3 px-4">
-                <div class="flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-xs font-semibold text-blue-700 shrink-0">
-                    {{ row.first_name?.charAt(0) || '?' }}
-                  </div>
-                  <div class="min-w-0">
-                    <div class="font-medium text-slate-900 truncate">{{ row.full_name }}</div>
-                  </div>
+                <div class="min-w-0">
+                  <div class="font-medium text-slate-900 truncate">{{ row.full_name }}</div>
                 </div>
               </td>
               <td class="py-3 px-4 font-mono text-slate-700 whitespace-nowrap">{{ row.student_number }}</td>
@@ -186,7 +200,7 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">Guardian Email</label>
-              <input v-model="form.parent_email" type="email" placeholder="parent@gmail.com" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
+              <input v-model="form.guardian_email" type="email" placeholder="parent@gmail.com" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
             <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">Contact Number</label>
@@ -249,6 +263,14 @@ const searchInput = ref('');
 const showDeleteModal = ref(false);
 const deleteTarget = ref(null);
 const deleting = ref(false);
+const photoLoadError = ref({});
+
+function getPhotoUrl(path) {
+  if (!path) return '/images/default-avatar.png';
+  // Strip 'public/' or 'storage/' or leading slashes
+  const cleanPath = path.replace(/^(public\/|storage\/|\/storage\/|\/public\/)/, '').replace(/^\//, '');
+  return '/storage/' + cleanPath;
+}
 
 const showFormModal = ref(false);
 const editingId = ref(null);
@@ -260,7 +282,7 @@ const form = ref({
   grade: '',
   section: '',
   guardian: '',
-  parent_email: '',
+  guardian_email: '',
   contact_number: '',
 });
 const formError = ref('');
@@ -331,7 +353,7 @@ function openCreateModal() {
   form.value = {
     first_name: '', last_name: '', middle_name: '',
     student_number: '', grade: '', section: '',
-    guardian: '', parent_email: '', contact_number: '',
+    guardian: '', guardian_email: '', contact_number: '',
   };
   formError.value = '';
   showFormModal.value = true;
@@ -347,7 +369,7 @@ function openEditModal(row) {
     grade: row.grade ?? '',
     section: row.section ?? '',
     guardian: row.guardian ?? '',
-    parent_email: row.parent_email ?? row.guardian_email ?? '',
+    guardian_email: row.guardian_email ?? '',
     contact_number: row.contact_number ?? '',
   };
   formError.value = '';
@@ -369,7 +391,7 @@ async function submitForm() {
     grade: form.value.grade || '',
     section: form.value.section || '',
     guardian: form.value.guardian || '',
-    guardian_email: form.value.parent_email || '',
+    guardian_email: form.value.guardian_email || '',
     contact_number: form.value.contact_number || '',
   };
   try {

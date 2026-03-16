@@ -1,135 +1,186 @@
 <template>
   <div class="flex flex-col h-screen w-full bg-slate-900 text-slate-100 overflow-hidden">
-    <header class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-800/80">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold">G</div>
+    <!-- Enhanced Header with Clock -->
+    <header class="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-700 bg-slate-800/80 backdrop-blur-md">
+      <div class="flex items-center gap-4">
+        <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-black text-xl shadow-lg ring-2 ring-emerald-500/20">G</div>
         <div>
-          <p class="text-xs text-slate-400">Ozamiz Schools QR-ID System · Live Attendance</p>
+          <h1 class="text-lg font-black text-white leading-none">Guard Terminal</h1>
+          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Live Attendance System</p>
         </div>
+      </div>
+      <div class="text-right">
+        <div class="text-3xl font-black text-white tabular-nums tracking-tighter">{{ currentTime }}</div>
+        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{{ currentDate }}</div>
       </div>
     </header>
-    <div class="flex flex-1 min-h-0 overflow-hidden">
-    <section class="flex flex-col flex-1 min-w-0 p-4 border-r border-slate-700">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-base font-semibold text-white">Scanner</h2>
-        <span
-          v-if="cameraStatus"
-          class="text-xs px-2 py-1 rounded"
-          :class="{
-            'bg-emerald-900/50 text-emerald-300': cameraStatus === 'active',
-            'bg-amber-900/50 text-amber-300': cameraStatus === 'starting',
-            'bg-red-900/50 text-red-300': cameraStatus === 'error',
-          }"
-        >
-          {{ cameraStatus === 'active' ? 'Live' : cameraStatus }}
-        </span>
-      </div>
-      <div class="relative flex-1 min-h-[280px] min-w-0 flex items-center justify-center bg-black rounded-lg overflow-hidden">
-        <div
-          id="qr-reader"
-          ref="qrReaderEl"
-          class="w-full h-full min-h-[240px] max-h-full max-w-full"
-        />
-        <!-- Scan overlay corners -->
-        <div
-          class="absolute inset-0 pointer-events-none flex items-center justify-center"
-          aria-hidden="true"
-        >
-          <div class="relative w-[min(60vw,60vh)] aspect-square max-w-full" v-if="cameraStatus === 'active'">
-            <div
-              class="absolute inset-0 border-2 border-white/60 rounded-lg"
-              style="box-shadow: 0 0 0 9999px rgba(0,0,0,0.30);"
-            />
-            <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg" />
-            <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg" />
-            <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
-            <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-400 rounded-br-lg" />
+
+    <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <!-- Top Stats Row -->
+      <section class="shrink-0 p-4 border-b border-slate-700 bg-slate-800/20">
+        <div class="grid grid-cols-4 gap-4 max-w-7xl mx-auto">
+          <div class="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 flex flex-col items-center justify-center">
+            <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Total Today</p>
+            <p class="text-3xl font-black text-white leading-none tabular-nums">{{ stats.total_today || 0 }}</p>
+          </div>
+          <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex flex-col items-center justify-center">
+            <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Present</p>
+            <p class="text-3xl font-black text-white leading-none tabular-nums">{{ stats.present_count || 0 }}</p>
+          </div>
+          <div class="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex flex-col items-center justify-center">
+            <p class="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-1">Late</p>
+            <p class="text-3xl font-black text-white leading-none tabular-nums">{{ stats.late_count || 0 }}</p>
+          </div>
+          <div class="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex flex-col items-center justify-center">
+            <p class="text-[10px] font-black text-red-400 uppercase tracking-widest mb-1">Absent</p>
+            <p class="text-3xl font-black text-white leading-none tabular-nums">{{ stats.absent_count || 0 }}</p>
           </div>
         </div>
-        <!-- Success pulse -->
-        <div
-          v-if="successPulse"
-          class="absolute inset-0 flex items-center justify-center pointer-events-none bg-emerald-500/20 animate-pulse rounded-lg"
-          style="animation-duration: 0.6s;"
-        />
-        <!-- Camera init overlay -->
-        <div
-          v-if="cameraStatus === 'starting'"
-          class="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-lg gap-3"
-        >
-          <svg class="animate-spin h-10 w-10 text-emerald-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-          </svg>
-          <p class="text-sm text-slate-300">Starting camera…</p>
-        </div>
-        <!-- Error overlay with auto-retry countdown -->
-        <div
-          v-if="cameraStatus === 'error'"
-          class="absolute inset-0 flex flex-col items-center justify-center bg-black/80 rounded-lg gap-4 p-6"
-        >
-          <svg class="h-12 w-12 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.069A1 1 0 0121 8.82V15.18a1 1 0 01-1.447.91L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
-          </svg>
-          <p class="text-sm text-red-300 text-center">Camera unavailable</p>
-          <p v-if="autoRetryCountdown > 0" class="text-xs text-slate-400 text-center">
-            Auto-retry in <span class="font-bold text-amber-300">{{ autoRetryCountdown }}s</span>…
-          </p>
-          <p v-else class="text-xs text-slate-400 text-center">Retrying…</p>
-          <button
-            type="button"
-            class="w-full rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 transition disabled:opacity-50"
-            :disabled="starting || stopping"
-            @click="manualRetry"
-          >
-            Retry Now
-          </button>
-        </div>
+      </section>
+
+      <div class="flex flex-1 min-h-0 overflow-hidden">
+        <!-- Main Scanner Area -->
+        <section class="flex-1 flex flex-col p-6 min-w-0 bg-slate-900/50">
+          <div class="flex gap-6 h-full min-h-0">
+            <!-- Left: Camera (Scanner) -->
+            <div class="flex-1 flex flex-col gap-4">
+              <div class="flex items-center justify-between">
+                <h2 class="text-xs font-black text-slate-400 uppercase tracking-wider">Scanner View</h2>
+                <div v-if="cameraStatus" class="flex items-center gap-2">
+                  <div class="w-2 h-2 rounded-full" :class="cameraStatus === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'" />
+                  <span class="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{{ cameraStatus === 'active' ? 'System Live' : 'Offline' }}</span>
+                </div>
+              </div>
+
+              <div class="relative w-full aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl ring-1 ring-slate-800 backdrop-blur-3xl group">
+                <div id="qr-reader" ref="qrReaderEl" class="w-full h-full" />
+                
+                <!-- Laser Scanning Effect -->
+                <div v-if="cameraStatus === 'active'" class="absolute inset-0 pointer-events-none opacity-40">
+                  <div class="absolute inset-x-0 h-[2px] bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)] animate-scan-laser" />
+                  <div class="absolute inset-0 border-[40px] border-black/30" />
+                </div>
+
+                <!-- Overlay UI -->
+                <div class="absolute inset-0 pointer-events-none p-8 flex flex-col items-center justify-center">
+                  <div v-if="cameraStatus === 'active'" class="w-64 h-64 border-2 border-white/20 rounded-3xl relative">
+                    <div class="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl" />
+                    <div class="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl" />
+                    <div class="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl" />
+                    <div class="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-emerald-400 rounded-br-xl" />
+                  </div>
+                </div>
+
+                <!-- Status Overlays -->
+                <Transition name="fade">
+                  <div v-if="unknownAlert" class="absolute inset-0 flex items-center justify-center bg-red-600/90 text-white font-black text-2xl uppercase tracking-widest text-center px-6">
+                    🚨 Unknown ID - Not Found 🚨
+                  </div>
+                </Transition>
+
+                <Transition name="fade">
+                  <div v-if="successPulse" class="absolute inset-0 bg-emerald-500/20 animate-ping" />
+                </Transition>
+
+                <div v-if="cameraStatus === 'starting'" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/95 gap-4">
+                  <div class="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
+                  <p class="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">Hardware Init</p>
+                </div>
+              </div>
+
+              <!-- Status Messages -->
+              <Transition name="slide-up">
+                <div v-if="scanMessage.text" 
+                     class="px-4 py-3 rounded-2xl flex items-center gap-3 border shadow-lg transition-all duration-300"
+                     :class="{
+                       'bg-red-500/10 border-red-500/30 text-red-400': scanMessage.type === 'error',
+                       'bg-emerald-500/10 border-emerald-500/30 text-emerald-400': scanMessage.type === 'success',
+                       'bg-amber-500/10 border-amber-500/30 text-amber-500': scanMessage.type === 'warning'
+                     }">
+                  <div class="w-2 h-2 rounded-full animate-pulse" 
+                       :class="{
+                         'bg-red-500': scanMessage.type === 'error',
+                         'bg-emerald-500': scanMessage.type === 'success',
+                         'bg-amber-500': scanMessage.type === 'warning'
+                       }" />
+                  <span class="text-xs font-black uppercase tracking-wider">{{ scanMessage.text }}</span>
+                </div>
+              </Transition>
+            </div>
+
+            <!-- Right: Display Box -->
+            <div class="w-80 flex flex-col gap-4">
+              <h2 class="text-xs font-black text-slate-400 uppercase tracking-wider">Scanning Result</h2>
+              <div class="flex-1 rounded-3xl bg-slate-800/40 border border-slate-700/50 p-6 flex flex-col items-center justify-center text-center relative overflow-hidden group">
+                <Transition name="zoom" mode="out-in">
+                  <div v-if="lastScanDetails" :key="lastScanDetails.id" class="w-full flex flex-col items-center">
+                    <div class="relative mb-6">
+                      <img :src="getPhotoUrl(lastScanDetails.photo_path)" 
+                           class="w-40 h-40 rounded-3xl object-cover border-4 border-emerald-500 shadow-2xl rotate-3 group-hover:rotate-0 transition-transform duration-500"
+                           @error="(e) => e.target.src = '/images/default-avatar.png'" />
+                      <div class="absolute -bottom-2 -right-2 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase shadow-xl"
+                           :class="lastScanDetails.status === 'late' ? 'bg-amber-500 text-amber-950' : 'bg-emerald-500 text-emerald-950'">
+                        {{ lastScanDetails.status === 'late' ? 'LATE' : 'Present' }}
+                      </div>
+                    </div>
+                    <h3 class="text-2xl font-black text-white leading-tight mb-1">{{ lastScanDetails.full_name }}</h3>
+                    <p class="text-xs font-black text-emerald-400 uppercase tracking-widest mb-4">{{ lastScanDetails.grade_section }}</p>
+                    <div class="w-full h-px bg-slate-700/50 my-4" />
+                    <div class="flex items-center gap-2 text-slate-400">
+                      <Clock class="w-4 h-4" />
+                      <span class="text-sm font-black tabular-nums">{{ formatTime(new Date().toISOString()) }}</span>
+                    </div>
+                  </div>
+                  <div v-else class="flex flex-col items-center opacity-40">
+                    <div class="w-24 h-24 rounded-3xl border-2 border-dashed border-slate-600 mb-4 flex items-center justify-center">
+                      <User class="w-8 h-8 text-slate-600" />
+                    </div>
+                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Waiting for Scan</p>
+                  </div>
+                </Transition>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Attendance Feed Section -->
+        <section class="w-[420px] shrink-0 bg-slate-800/30 backdrop-blur-3xl border-l border-slate-700 flex flex-col overflow-hidden">
+          <div class="p-6 border-b border-slate-700 flex items-center justify-between">
+            <h2 class="text-sm font-black text-white uppercase tracking-[0.2em]">Recent Activity</h2>
+            <div class="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-[9px] font-black text-emerald-500 uppercase">Live Feed</div>
+          </div>
+
+          <div class="flex-1 overflow-auto scrollbar-hide p-4 space-y-3">
+            <TransitionGroup name="list">
+              <div v-for="row in attendanceList" :key="row.id" 
+                   class="bg-slate-800/40 hover:bg-slate-700/40 p-3 rounded-2xl border border-slate-700/50 transition-all flex items-center gap-4 group">
+                <div class="relative shrink-0">
+                  <img :src="getPhotoUrl(row.photo_path)" 
+                       class="w-12 h-12 rounded-xl object-cover border-2 border-slate-700 group-hover:border-emerald-500/50 transition-all"
+                       @error="(e) => e.target.src = '/images/default-avatar.png'" />
+                  <div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-800" 
+                       :class="row.status === 'late' ? 'bg-amber-500' : 'bg-emerald-500'" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-black text-slate-100 truncate leading-none mb-1">{{ row.full_name }}</p>
+                  <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">{{ row.grade_section }}</p>
+                </div>
+                <div class="text-right shrink-0">
+                  <p class="text-xs font-black text-white tabular-nums">{{ formatTime(row.time_in) }}</p>
+                  <p class="text-[8px] font-black text-slate-500 uppercase">Arrived</p>
+                </div>
+              </div>
+            </TransitionGroup>
+
+            <div v-if="attendanceList.length === 0" class="py-20 text-center">
+              <div class="w-12 h-12 rounded-2xl border-2 border-slate-700 mx-auto mb-4 flex items-center justify-center animate-pulse">
+                <Search class="w-5 h-5 text-slate-700" />
+              </div>
+              <p class="text-[10px] font-black text-slate-600 uppercase tracking-widest">Scanning History is Empty</p>
+            </div>
+          </div>
+        </section>
       </div>
-      <div
-        v-if="scanMessage.text"
-        class="mt-2 text-sm px-3 py-2 rounded"
-        :class="scanMessage.isError ? 'bg-red-900/50 text-red-200' : 'bg-emerald-900/50 text-emerald-200'"
-      >
-        {{ scanMessage.text }}
-      </div>
-    </section>
-    <section class="flex flex-col w-[420px] shrink-0 border-l border-slate-700 bg-slate-800/50">
-      <div class="p-3 border-b border-slate-700">
-        <h2 class="text-lg font-semibold text-white">Live Attendance</h2>
-        <p class="text-xs text-slate-400 mt-0.5">Most recent first</p>
-      </div>
-      <div class="flex-1 min-h-0 overflow-auto">
-        <table class="w-full text-sm border-collapse">
-          <thead class="sticky top-0 bg-slate-800 z-10">
-            <tr class="text-left text-slate-400 border-b border-slate-600">
-              <th class="w-10 py-2 px-2 font-medium">#</th>
-              <th class="py-2 px-2 font-medium">Full Name</th>
-              <th class="py-2 px-2 font-medium">Grade/Section</th>
-              <th class="py-2 px-2 font-medium">Time In</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(row, index) in attendanceList"
-              :key="row.id"
-              class="border-b border-slate-700/80 hover:bg-slate-700/30"
-            >
-              <td class="py-2 px-2 text-slate-300">{{ index + 1 }}</td>
-              <td class="py-2 px-2 font-medium text-white">{{ row.full_name }}</td>
-              <td class="py-2 px-2 text-slate-300">{{ row.grade_section }}</td>
-              <td class="py-2 px-2 text-slate-400 tabular-nums">{{ formatTime(row.time_in) }}</td>
-            </tr>
-            <tr v-if="attendanceList.length === 0 && !loadingRecent">
-              <td colspan="4" class="py-8 px-4 text-center text-slate-500">No attendance yet</td>
-            </tr>
-            <tr v-if="loadingRecent && attendanceList.length === 0">
-              <td colspan="4" class="py-8 px-4 text-center text-slate-500">Loading…</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
     </div>
   </div>
 </template>
@@ -137,17 +188,18 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { Html5Qrcode } from 'html5-qrcode';
-import { scanAttendancePublic, fetchRecentAttendancePublic } from '../services/attendanceService';
+import { Clock, User, Search, Play, Pause, RefreshCw } from 'lucide-vue-next';
+import { scanAttendancePublic, fetchRecentAttendancePublic, fetchGuardStatsPublic } from '../services/attendanceService';
 
-const DEBOUNCE_MS = 2000;
-const REFRESH_INTERVAL_MS = 5000;
-const AUTO_RETRY_DELAY_S = 8; // seconds before auto-retry on error
+const DEBOUNCE_MS = 2500;
+const REFRESH_INTERVAL_MS = 8000;
+const AUTO_RETRY_DELAY_S = 8;
 
 const qrReaderEl = ref(null);
 const scanner = ref(null);
 const cameraStatus = ref('');
 const successPulse = ref(false);
-const scanMessage = ref({ text: '', isError: false });
+const scanMessage = ref({ text: '', type: 'success' });
 const attendanceList = ref([]);
 const loadingRecent = ref(false);
 const lastScannedAt = ref(0);
@@ -156,6 +208,17 @@ const starting = ref(false);
 const stopping = ref(false);
 const autoRetryCountdown = ref(0);
 
+// UI States
+const currentTime = ref('');
+const currentDate = ref('');
+const stats = ref({ total_today: 0, present_count: 0, late_count: 0, absent_count: 0 });
+const lastScanDetails = ref(null);
+const showHighlight = ref(false);
+const unknownAlert = ref(false);
+
+let clockInterval = null;
+let highlightTimer = null;
+let unknownTimer = null;
 let refreshTimer = null;
 let autoRetryTimer = null;
 let countdownInterval = null;
@@ -166,14 +229,82 @@ let destroyed = false;
 function formatTime(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  return d.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return d.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 }
 
-function showMessage(text, isError = false, duration = 4000) {
-  scanMessage.value = { text, isError };
-  if (duration > 0) {
-    setTimeout(() => { scanMessage.value = { text: '', isError: false }; }, duration);
-  }
+function updateClock() {
+  const now = new Date();
+  currentTime.value = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+  currentDate.value = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function getInitials(first, last) {
+  return ((first?.[0] || '') + (last?.[0] || '')).toUpperCase();
+}
+
+function getInitialsColor(name) {
+  if (!name) return '#475569';
+  const colors = ['#e11d48', '#db2777', '#c026d3', '#9333ea', '#7c3aed', '#4f46e5', '#3b82f6', '#0ea5e9', '#06b6d4', '#0d9488', '#059669', '#16a34a', '#65a30d', '#ca8a04', '#d97706', '#ea580c'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function playBeep(type = 'success') {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const audioCtx = new AudioContext();
+    
+    const playNote = (freq, start, duration, typeNode = 'sine') => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = typeNode;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime + start);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + start + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(audioCtx.currentTime + start);
+      osc.stop(audioCtx.currentTime + start + duration);
+    };
+
+    if (type === 'success') {
+      playNote(880, 0, 0.15, 'sine');
+    } else if (type === 'warning') {
+      // Double beep for already scanned
+      playNote(600, 0, 0.1, 'sine');
+      playNote(600, 0.15, 0.1, 'sine');
+    } else {
+      // Error beep
+      playNote(220, 0, 0.4, 'sawtooth');
+    }
+  } catch (e) {}
+}
+
+function getPhotoUrl(path) {
+  if (!path) return '/images/default-avatar.png';
+  if (typeof path === 'string' && path.startsWith('http')) return path;
+  const cleanPath = String(path).replace(/^\/?storage\//, '').replace(/^\//, '');
+  return '/storage/' + cleanPath;
+}
+
+function triggerHighlight(student, attendance) {
+  lastScanDetails.value = { ...student, status: attendance.status, full_name: student.full_name || `${student.first_name} ${student.last_name}` };
+  showHighlight.value = true;
+  if (highlightTimer) clearTimeout(highlightTimer);
+  highlightTimer = setTimeout(() => { showHighlight.value = false; }, 3500);
+}
+
+function triggerUnknownAlert() {
+  unknownAlert.value = true;
+  if (unknownTimer) clearTimeout(unknownTimer);
+  unknownTimer = setTimeout(() => { unknownAlert.value = false; }, 3000);
+}
+
+function showMessage(text, type = 'success', duration = 4000) {
+  scanMessage.value = { text, type };
+  if (duration > 0) setTimeout(() => { if (scanMessage.value.text === text) scanMessage.value = { text: '', type: 'success' }; }, duration);
 }
 
 function triggerSuccessPulse() {
@@ -183,159 +314,120 @@ function triggerSuccessPulse() {
 
 function isDebounceLocked(value) {
   const now = Date.now();
-  return value === lastScannedValue.value && now - lastScannedAt.value < DEBOUNCE_MS;
+  return value === lastScannedValue.value && (now - lastScannedAt.value) < DEBOUNCE_MS;
 }
 
 function prependAttendance(student, attendance) {
-  const fullName = (student && (student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' '))) || '—';
-  const gradeSection = (student && (student.grade_section ?? '—')) || '—';
-  const timeIn = (attendance && (attendance.scanned_at || attendance.time_in)) || new Date().toISOString();
-  attendanceList.value = [
-    {
-      id: (attendance && attendance.id) || Date.now(),
-      full_name: fullName,
-      grade_section: gradeSection,
-      time_in: timeIn,
-    },
-    ...attendanceList.value,
-  ];
+  const fullName = student.full_name || `${student.first_name} ${student.last_name}`;
+  attendanceList.value = [{
+    id: attendance.id || Date.now(),
+    full_name: fullName,
+    first_name: student.first_name,
+    last_name: student.last_name,
+    grade_section: student.grade_section || '—',
+    time_in: attendance.scanned_at || new Date().toISOString(),
+    status: attendance.status || 'on_time',
+    photo_path: student.photo_path
+  }, ...attendanceList.value].slice(0, 50);
 }
 
-// ─── Scan handler ─────────────────────────────────────────────────────────────
+// ─── Scan Logic ──────────────────────────────────────────────────────────────
 
 async function onScanSuccess(decodedText) {
   let raw = String(decodedText).trim();
   if (!raw) return;
   
-  // Robustly extract LRN out of legacy QR string formats if printed on card
+  // Extract LRN from formats like "LRN: 1234567890" or dirty reads
   const lrnMatch = raw.match(/LRN:\s*([\w\d-]+)/i);
   if (lrnMatch && lrnMatch[1]) {
     raw = lrnMatch[1];
   } else if (raw.includes('\n')) {
-    // Grab the first line or try to find a number if the QR code is bloated
     const numericMatch = raw.match(/\d{5,}/);
     if (numericMatch) raw = numericMatch[0];
   }
 
-  if (isDebounceLocked(raw)) {
-    showMessage('Duplicate scan — please wait.', true);
-    return;
-  }
+  if (isDebounceLocked(raw)) return;
+
   lastScannedValue.value = raw;
   lastScannedAt.value = Date.now();
+
   try {
     const res = await scanAttendancePublic(raw);
     
-    // Check if the server explicitly returned an error/duplicate status (but HTTP 200)
-    if (res && res.status && res.status !== 'success') {
-      showMessage(res.message || 'Scan failed.', true);
+    if (res && res.status !== 'success') {
+      if (res.status === 'already_scanned') {
+        playBeep('warning');
+        showMessage(res.message, 'warning');
+        return;
+      }
+      playBeep('error');
+      if (res.status === 'invalid') triggerUnknownAlert();
+      showMessage(res.message || 'Scan failed.', 'error');
       return;
     }
     
-    const student = res && res.student;
-    const attendance = res && res.attendance;
+    const { student, attendance } = res;
+    playBeep('success');
     triggerSuccessPulse();
-    const name = student && (student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' '));
-    showMessage(name ? `✓ ${name} – recorded.` : '✓ Recorded.', false);
-    if (student && attendance) prependAttendance(student, attendance);
+    triggerHighlight(student, attendance);
+    if (res.stats) stats.value = res.stats;
+    else refreshStats();
+    prependAttendance(student, attendance);
+    showMessage(`${student.first_name} recorded.`, 'success');
   } catch (err) {
+    playBeep('error');
     const status = err.response?.status;
-    const data = err.response?.data;
-    const msg = data?.message || (status === 404 ? 'Student not found.' : status === 422 ? 'Already scanned today.' : 'Scan failed.');
-    showMessage(msg, true);
+    if (status === 404) triggerUnknownAlert();
+    showMessage(err.response?.data?.message || 'Scan failed.', 'error');
   }
 }
 
-// ─── Attendance list ──────────────────────────────────────────────────────────
+// ─── Data Persistence ─────────────────────────────────────────────────────────
 
 async function loadRecent() {
+  if (loadingRecent.value) return;
   loadingRecent.value = true;
   try {
     const res = await fetchRecentAttendancePublic();
-    attendanceList.value = (res.data || []).map((row) => ({
-      id: row.id,
-      full_name: row.full_name || '—',
-      grade_section: row.grade_section || '—',
+    attendanceList.value = (res.data || []).map(row => ({
+      ...row,
       time_in: row.time_in,
     }));
-  } catch {
-    attendanceList.value = [];
+  } catch (e) {
+    console.error('List load failed', e);
   } finally {
     loadingRecent.value = false;
   }
 }
 
+async function refreshStats() {
+  try {
+    const data = await fetchGuardStatsPublic();
+    if (data) stats.value = data;
+  } catch (e) {}
+}
+
 function startRefreshTimer() {
-  if (refreshTimer) clearInterval(refreshTimer);
-  refreshTimer = setInterval(loadRecent, REFRESH_INTERVAL_MS);
+  stopRefreshTimer();
+  refreshTimer = setInterval(() => {
+    loadRecent();
+    refreshStats();
+  }, REFRESH_INTERVAL_MS);
 }
 
 function stopRefreshTimer() {
   if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
 }
 
-// ─── Auto-retry on error ──────────────────────────────────────────────────────
-
-function clearAutoRetry() {
-  if (autoRetryTimer) { clearTimeout(autoRetryTimer); autoRetryTimer = null; }
-  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-  autoRetryCountdown.value = 0;
-}
-
-function scheduleAutoRetry() {
-  clearAutoRetry();
-  if (destroyed) return;
-  autoRetryCountdown.value = AUTO_RETRY_DELAY_S;
-  countdownInterval = setInterval(() => {
-    autoRetryCountdown.value = Math.max(0, autoRetryCountdown.value - 1);
-  }, 1000);
-  autoRetryTimer = setTimeout(async () => {
-    clearAutoRetry();
-    if (!destroyed && cameraStatus.value === 'error') {
-      await startCamera();
-    }
-  }, AUTO_RETRY_DELAY_S * 1000);
-}
-
-// ─── Force-release any camera stream held by the browser ─────────────────────
-// This "steals" the camera from whatever has it, then immediately releases it.
-// After this, html5-qrcode can open it cleanly.
+// ─── Camera Management ────────────────────────────────────────────────────────
 
 async function forceReleaseCameraStream() {
   try {
     if (!navigator.mediaDevices?.getUserMedia) return;
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-    stream.getTracks().forEach((track) => track.stop());
-    await new Promise((r) => setTimeout(r, 400));
-  } catch (_) {
-    // If we can't get it either, just wait
-    await new Promise((r) => setTimeout(r, 400));
-  }
-}
-
-// ─── Scanner lifecycle ────────────────────────────────────────────────────────
-
-async function stopScannerAndRelease() {
-  if (stopping.value) {
-    // Wait for any in-progress stop
-    await new Promise((r) => {
-      const poll = setInterval(() => {
-        if (!stopping.value) { clearInterval(poll); r(); }
-      }, 50);
-    });
-    return;
-  }
-  stopping.value = true;
-  try {
-    if (scanner.value) {
-      try { if (scanner.value.isScanning) await scanner.value.stop(); } catch (_) {}
-      try { await scanner.value.clear(); } catch (_) {}
-      scanner.value = null;
-    }
-    await new Promise((r) => setTimeout(r, 500));
-  } finally {
-    stopping.value = false;
-  }
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    stream.getTracks().forEach(t => t.stop());
+    await new Promise(r => setTimeout(r, 400));
+  } catch (_) {}
 }
 
 async function startCamera() {
@@ -343,113 +435,117 @@ async function startCamera() {
   starting.value = true;
   clearAutoRetry();
   cameraStatus.value = 'starting';
-  scanMessage.value = { text: '', isError: false };
 
   await nextTick();
-
-  // 1) Stop any existing scanner
-  if (scanner.value) {
-    await stopScannerAndRelease();
-  }
-
-  // 2) Wipe the DOM container
   const container = document.getElementById('qr-reader');
-  if (!container) {
-    cameraStatus.value = 'error';
-    starting.value = false;
-    scheduleAutoRetry();
-    return;
-  }
-  container.innerHTML = '';
-  await nextTick();
-
-  // 3) Force-release any existing camera stream (handles "Device in use")
+  if (container) container.innerHTML = '';
+  
   await forceReleaseCameraStream();
 
-  // 4) Create fresh instance
-  let html5Qr;
-  try {
-    html5Qr = new Html5Qrcode('qr-reader', { verbose: false, formatsToSupport: [0] });
-  } catch (e) {
-    cameraStatus.value = 'error';
-    starting.value = false;
-    scheduleAutoRetry();
-    return;
-  }
+  const html5Qr = new Html5Qrcode('qr-reader', { verbose: false, formatsToSupport: [0] });
   scanner.value = html5Qr;
 
   const config = {
-    fps: 15, // Reverted to 15 to prevent CPU throttling on low-end devices
-    // Removed qrbox entirely to scan the ENTIRE viewport instantly
+    fps: 15,
     aspectRatio: 1.0,
-    disableFlip: false, // Allows reading inverted codes
+    disableFlip: false,
     useBarCodeDetectorIfSupported: true,
-    videoConstraints: {
-      width: { ideal: 640 },
-      height: { ideal: 480 },
-    }
+    videoConstraints: { width: { ideal: 640 }, height: { ideal: 480 } }
   };
 
-  const onSuccess = (text) => onScanSuccess(text);
-  const onFailure = () => {};
-
-  // 5) Try environment camera, then user camera
   let started = false;
-  let lastErr = null;
-
   for (const constraint of [{ facingMode: 'environment' }, { facingMode: 'user' }]) {
-    if (destroyed) break;
     try {
-      await html5Qr.start(constraint, config, onSuccess, onFailure);
+      await html5Qr.start(constraint, config, onScanSuccess, () => {});
       started = true;
       break;
-    } catch (err) {
-      lastErr = err;
-      // If "device in use", try force-releasing again before next attempt
-      const msg = err && (err.message || String(err));
-      if (/NotReadableError|device in use/i.test(msg)) {
-        await forceReleaseCameraStream();
-      } else {
-        await new Promise((r) => setTimeout(r, 500));
-      }
+    } catch (e) {
+      await new Promise(r => setTimeout(r, 400));
     }
   }
 
   if (started && !destroyed) {
     cameraStatus.value = 'active';
-    await loadRecent();
+    loadRecent();
+    refreshStats();
     startRefreshTimer();
   } else {
     cameraStatus.value = 'error';
-    try { await stopScannerAndRelease(); } catch (_) {}
     scheduleAutoRetry();
   }
-
   starting.value = false;
 }
 
-// ─── Actions ──────────────────────────────────────────────────────────────────
-
-async function manualRetry() {
-  if (starting.value || stopping.value) return;
-  clearAutoRetry();
-  stopRefreshTimer();
-  await startCamera();
+async function stopScannerAndRelease() {
+  if (stopping.value) return;
+  stopping.value = true;
+  try {
+    if (scanner.value) {
+      if (scanner.value.isScanning) await scanner.value.stop();
+      await scanner.value.clear();
+      scanner.value = null;
+    }
+  } catch (_) {}
+  finally { stopping.value = false; }
 }
 
+function scheduleAutoRetry() {
+  clearAutoRetry();
+  autoRetryCountdown.value = AUTO_RETRY_DELAY_S;
+  countdownInterval = setInterval(() => { autoRetryCountdown.value = Math.max(0, autoRetryCountdown.value - 1); }, 1000);
+  autoRetryTimer = setTimeout(() => { if (cameraStatus.value === 'error') startCamera(); }, AUTO_RETRY_DELAY_S * 1000);
+}
 
+function clearAutoRetry() {
+  if (autoRetryTimer) clearTimeout(autoRetryTimer);
+  if (countdownInterval) clearInterval(countdownInterval);
+  autoRetryCountdown.value = 0;
+}
+
+function manualRetry() { startCamera(); }
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
 onMounted(() => {
   destroyed = false;
+  updateClock();
+  clockInterval = setInterval(updateClock, 1000);
   startCamera();
 });
 
 onUnmounted(async () => {
   destroyed = true;
-  clearAutoRetry();
+  clearInterval(clockInterval);
   stopRefreshTimer();
   await stopScannerAndRelease();
 });
 </script>
+
+<style scoped>
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+.slide-up-enter-active, .slide-up-leave-active { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.slide-up-enter-from { opacity: 0; transform: translateY(20px); }
+.slide-up-leave-to { opacity: 0; transform: translateY(10px); }
+
+.list-enter-active, .list-leave-active { transition: all 0.5s ease; }
+.list-enter-from { opacity: 0; transform: translateX(-30px); }
+.list-leave-to { opacity: 0; transform: translateX(30px); }
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+.zoom-enter-active, .zoom-leave-active { transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.zoom-enter-from { opacity: 0; transform: scale(0.9) translateY(10px); }
+.zoom-leave-to { opacity: 0; transform: scale(1.05); }
+
+@keyframes scan-laser {
+  0% { top: 0; }
+  50% { top: 100%; }
+  100% { top: 0; }
+}
+.animate-scan-laser {
+  animation: scan-laser 3s linear infinite;
+}
+</style>

@@ -24,6 +24,8 @@ class Student extends Model
         'guardian_email',
         'contact_number',
         'emergency_contact',
+        'photo_path',
+        'school_id',
     ];
 
     public function teacher(): BelongsTo

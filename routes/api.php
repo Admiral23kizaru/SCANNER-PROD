@@ -20,6 +20,7 @@ Route::prefix('password')->group(function () {
     Route::post('/reset', [PasswordResetController::class, 'reset']);
 });
 
+// Publicly accessible scanner routes (but will check for tokens if present)
 Route::post('/attendance/scan', [AttendanceController::class, 'scanPublic']);
 Route::get('/attendance/public/recent', [AttendanceController::class, 'publicRecent']);
 
@@ -77,7 +78,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard', fn () => response()->json(['message' => 'Guard dashboard']));
     });
 
-    Route::middleware('role:Guard')->prefix('attendance')->group(function () {
-        Route::get('/recent', [AttendanceController::class, 'recent']);
+    Route::middleware('role:Guard,Admin,Teacher')->prefix('guard')->group(function () {
+        Route::get('/dashboard', fn () => response()->json(['message' => 'Guard dashboard']));
+        Route::get('/stats', [AttendanceController::class, 'getStats']);
     });
 });

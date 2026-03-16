@@ -13,6 +13,10 @@ class Attendance extends Model
         'student_id',
         'scanned_by',
         'scanned_at',
+        'session',
+        'status',
+        'school_year_id',
+        'school_id',
     ];
 
     protected function casts(): array

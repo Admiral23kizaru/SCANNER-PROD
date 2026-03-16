@@ -16,11 +16,8 @@ class RoleMiddleware
 
         $userRole = $request->user()->role?->name;
 
-        if ($userRole === null) {
-            return response()->json(['message' => 'Forbidden.'], 403);
-        }
-
-        if (!in_array($userRole, $roles, true)) {
+        if ($userRole === null || !in_array($userRole, $roles, true)) {
+            \Illuminate\Support\Facades\Log::warning("Role Forbidden for User ID: {$request->user()->id} ({$request->user()->email}). Has role: '" . ($userRole ?? 'NONE') . "'. Expected one of: " . implode(', ', $roles));
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
