@@ -2,11 +2,11 @@
   <div class="h-screen overflow-hidden bg-slate-50 text-slate-900 flex">
     <!-- Sidebar -->
     <aside
-      class="w-64 shrink-0 flex flex-col h-full border-r border-slate-200 bg-white fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:relative lg:transform-none"
+      class="w-64 shrink-0 flex flex-col h-full bg-white fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:relative lg:transform-none"
       :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
     >
       <!-- Brand -->
-      <div class="px-6 py-3 border-b border-slate-700" style="background-color: #050517;">
+      <div class="px-6 py-3 border-b border-r border-slate-700" style="background-color: #050517;">
         <div class="flex items-center gap-3">
           <img
             :src="logoSrc"
@@ -25,10 +25,10 @@
       </div>
 
       <!-- Navigation -->
-      <nav class="flex-1 px-3 py-4 space-y-1 text-sm overflow-y-auto">
+      <nav class="flex-1 px-3 py-4 space-y-1 text-sm overflow-y-auto border-r border-slate-200">
         <button
           type="button"
-          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent"
+          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent cursor-pointer"
           :class="
             currentPage === 'dashboard'
               ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm border-l-blue-600'
@@ -42,7 +42,7 @@
 
         <button
           type="button"
-          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent"
+          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent cursor-pointer"
           :class="
             currentPage === 'teachers'
               ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm border-l-blue-600'
@@ -56,7 +56,7 @@
 
         <button
           type="button"
-          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent"
+          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent cursor-pointer"
           :class="
             currentPage === 'students'
               ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm border-l-blue-600'
@@ -70,7 +70,7 @@
       </nav>
 
       <!-- Sidebar Footer: Logout -->
-      <div class="px-3 py-4 border-t border-slate-200">
+      <div class="px-3 py-4 border-t border-r border-slate-200">
         <button
           type="button"
           class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors"
