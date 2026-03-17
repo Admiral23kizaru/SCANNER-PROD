@@ -49,6 +49,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:Admin')->prefix('admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
         Route::get('/stats', [StatsController::class, 'index']);
+        Route::get('/dashboard/stats', [StatsController::class, 'dashboardStats']);
+        Route::get('/attendance/trends', [StatsController::class, 'attendanceTrends']);
         Route::get('/dashboard/overview', [StatsController::class, 'overview']);
         Route::get('/reports/summary-pdf', [StatsController::class, 'summaryReportPdf']);
         Route::get('/teachers/export', [TeacherManagementController::class, 'export']);
