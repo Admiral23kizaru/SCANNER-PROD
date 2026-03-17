@@ -179,18 +179,10 @@
                     <button
                       type="button"
                       class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                      @click="isProfileOpen = false"
+                      @click="handleGoToProfile"
                     >
                       <UserCircle class="h-4 w-4" />
                       <span>My Profile</span>
-                    </button>
-                    <button
-                      type="button"
-                      class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                      @click="isProfileOpen = false"
-                    >
-                      <Settings class="h-4 w-4" />
-                      <span>Settings</span>
                     </button>
                   </div>
 
@@ -226,6 +218,8 @@
           <AdminStudentsPage v-else-if="currentPage === 'students'" />
         </div>
       </main>
+
+      <AdminProfileModal v-model="showProfileModal" @profile-updated="handleProfileUpdated" />
     </div>
   </div>
 </template>
@@ -234,11 +228,12 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
-import { LayoutDashboard, Users, GraduationCap, LogOut, Menu, ChevronDown, UserCircle, Settings } from 'lucide-vue-next';
+import { LayoutDashboard, Users, GraduationCap, LogOut, Menu, ChevronDown, UserCircle } from 'lucide-vue-next';
 import { setStoredToken, getStoredToken } from '../../router';
 import AdminDashboardStats from './AdminDashboardStats.vue';
 import AdminTeachersPage from './AdminTeachersPage.vue';
 import AdminStudentsPage from './AdminStudentsPage.vue';
+import AdminProfileModal from '../AdminProfileModal.vue';
 
 const router = useRouter();
 const currentPage = ref('dashboard');
@@ -247,9 +242,18 @@ const logoSrc = '/logo/depedozamiz.png';
 const user = ref(null);
 const userPhotoError = ref(false);
 const isProfileOpen = ref(false);
+const showProfileModal = ref(false);
 
 function getPhotoUrl(path) {
   if (!path) return '/images/default-avatar.png';
+  // If API already returned a full URL, use it directly.
+  if (typeof path === 'string' && (path.startsWith('http://') || path.startsWith('https://'))) {
+    return path;
+  }
+  // If it's already a public /storage URL, use as-is.
+  if (typeof path === 'string' && path.startsWith('/storage/')) {
+    return path;
+  }
   const cleanPath = path.replace(/^(public\/|storage\/|\/storage\/|\/public\/)/, '').replace(/^\//, '');
   return '/storage/' + cleanPath;
 }
@@ -276,6 +280,17 @@ async function logout() {
     setStoredToken(null);
   }
   router.push('/login');
+}
+
+function handleGoToProfile() {
+  isProfileOpen.value = false;
+  showProfileModal.value = true;
+}
+
+function handleProfileUpdated(updated) {
+  if (!updated) return;
+  user.value = { ...(user.value || {}), ...updated };
+  userPhotoError.value = false;
 }
 
 
