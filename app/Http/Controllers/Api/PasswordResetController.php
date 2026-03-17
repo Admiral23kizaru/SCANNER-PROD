@@ -49,7 +49,15 @@ class PasswordResetController extends Controller
             'code' => $otp,
         ])->render();
 
-        $mailer->sendEmail($user->email, $subject, $body);
+        try {
+            $mailer->sendEmail($user->email, $subject, $body);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Password OTP email failed: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to send verification email. Please try again later.',
+                'debug' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
 
         return response()->json(['message' => $genericMessage]);
     }

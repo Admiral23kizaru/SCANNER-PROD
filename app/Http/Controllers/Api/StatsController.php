@@ -152,47 +152,50 @@ class StatsController extends Controller
 
     public function dashboardStats(): JsonResponse
     {
-        return Cache::remember('admin_dashboard_stats', 180, function () {
+        $data = Cache::remember('admin_dashboard_stats', 180, function () {
             $totalStudents = Student::count();
             $totalTeachers = \App\Models\Teacher::count();
             $todaysAttendance = Attendance::whereDate('scanned_at', now()->toDateString())->count();
-            
+
             // Attendance per grade
-            $attendancePerGrade = DB::table('attendances')
-                ->join('students', 'attendances.student_id', '=', 'students.id')
-                ->whereDate('attendances.scanned_at', now()->toDateString())
+            $attendancePerGrade = DB::table('attendance')
+                ->join('students', 'attendance.student_id', '=', 'students.id')
+                ->whereDate('attendance.scanned_at', now()->toDateString())
                 ->select('students.grade', DB::raw('count(*) as count'))
                 ->groupBy('students.grade')
-                ->get();
+                ->get()
+                ->toArray();
 
-            // Historical vs Today
+            // Historical average
             $historicalAverage = Attendance::whereDate('scanned_at', '<', now()->toDateString())
                 ->select(DB::raw('DATE(scanned_at) as date'), DB::raw('count(*) as count'))
                 ->groupBy('date')
                 ->get()
                 ->avg('count') ?: 0;
 
-            return response()->json([
+            return [
                 'totals' => [
                     'students' => $totalStudents,
                     'teachers' => $totalTeachers,
                     'attendance_today' => $todaysAttendance,
-                    'is_above_average' => $todaysAttendance > $historicalAverage
+                    'is_above_average' => $todaysAttendance > $historicalAverage,
                 ],
                 'attendance_by_grade' => $attendancePerGrade,
-                'historical_average' => round($historicalAverage, 2)
-            ]);
+                'historical_average' => round($historicalAverage, 2),
+            ];
         });
+
+        return response()->json($data);
     }
 
     public function attendanceTrends(Request $request): JsonResponse
     {
-        $groupBy = $request->input('group_by', 'day'); // day, week, month
+        $groupBy = $request->input('group_by', 'day');
         $grade = $request->input('grade');
         $section = $request->input('section');
 
         $query = Attendance::query()
-            ->join('students', 'attendances.student_id', '=', 'students.id');
+            ->join('students', 'attendance.student_id', '=', 'students.id');
 
         if ($grade) {
             $query->where('students.grade', $grade);
@@ -202,14 +205,14 @@ class StatsController extends Controller
         }
 
         if ($groupBy === 'month') {
-            $query->select(DB::raw("DATE_FORMAT(scanned_at, '%Y-%m') as label"), DB::raw('count(*) as count'))
-                ->where('scanned_at', '>=', now()->subMonths(12));
+            $query->select(DB::raw("DATE_FORMAT(attendance.scanned_at, '%Y-%m') as label"), DB::raw('count(*) as count'))
+                ->where('attendance.scanned_at', '>=', now()->subMonths(12));
         } elseif ($groupBy === 'week') {
-            $query->select(DB::raw("YEARWEEK(scanned_at) as label"), DB::raw('count(*) as count'))
-                ->where('scanned_at', '>=', now()->subWeeks(12));
+            $query->select(DB::raw("YEARWEEK(attendance.scanned_at) as label"), DB::raw('count(*) as count'))
+                ->where('attendance.scanned_at', '>=', now()->subWeeks(12));
         } else {
-            $query->select(DB::raw("DATE(scanned_at) as label"), DB::raw('count(*) as count'))
-                ->where('scanned_at', '>=', now()->subDays(30));
+            $query->select(DB::raw("DATE(attendance.scanned_at) as label"), DB::raw('count(*) as count'))
+                ->where('attendance.scanned_at', '>=', now()->subDays(30));
         }
 
         $trends = $query->groupBy('label')
