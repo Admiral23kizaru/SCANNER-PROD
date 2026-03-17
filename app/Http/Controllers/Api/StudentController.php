@@ -6,21 +6,33 @@ use App\Http\Controllers\Controller;
 use App\Models\Student;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
+/**
+ * StudentController — Teacher-scoped CRUD for student records.
+ *
+ * Teachers may only view and modify students they own (teacher_id) or created (created_by).
+ */
 class StudentController extends Controller
 {
+    /* ====================================================================== */
+    /*  Read                                                                   */
+    /* ====================================================================== */
+
+    /**
+     * Return a paginated list of students visible to the authenticated user.
+     *
+     * Teachers only see their own students; Admins see all.
+     */
     public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user  = $request->user();
         $query = Student::query();
 
         if ($user->role?->name === 'Teacher') {
-            $query->where(function ($q) use ($user) {
-                $q->where('teacher_id', $user->id)->orWhere('created_by', $user->id);
-            });
+            $query->where(fn ($q) => $q->where('teacher_id', $user->id)->orWhere('created_by', $user->id));
         }
 
         $search = $request->input('search');
@@ -28,325 +40,307 @@ class StudentController extends Controller
             $term = '%' . trim($search) . '%';
             $query->where(function ($q) use ($term) {
                 $q->where('first_name', 'like', $term)
-                    ->orWhere('last_name', 'like', $term)
-                    ->orWhere('middle_name', 'like', $term)
-                    ->orWhere('student_number', 'like', $term)
-                    ->orWhere('grade_section', 'like', $term)
-                    ->orWhere('grade', 'like', $term)
-                    ->orWhere('section', 'like', $term);
+                  ->orWhere('last_name', 'like', $term)
+                  ->orWhere('middle_name', 'like', $term)
+                  ->orWhere('student_number', 'like', $term)
+                  ->orWhere('grade_section', 'like', $term)
+                  ->orWhere('grade', 'like', $term)
+                  ->orWhere('section', 'like', $term);
             });
         }
 
-        $perPage = max(5, min(100, (int) $request->input('per_page', 15)));
+        $perPage  = max(5, min(100, (int) $request->input('per_page', 15)));
         $students = $query->orderBy('last_name')->orderBy('first_name')->paginate($perPage);
-
-        $items = $students->getCollection()->map(function (Student $s) {
-            $fullName = trim($s->first_name . ' ' . ($s->middle_name ?? '') . ' ' . $s->last_name);
-            return [
-                'id' => $s->id,
-                'student_number' => $s->student_number,
-                'first_name' => $s->first_name,
-                'last_name' => $s->last_name,
-                'middle_name' => $s->middle_name,
-                'full_name' => $fullName ?: $s->first_name . ' ' . $s->last_name,
-                'grade_section' => $s->grade_section ?? '—',
-                'grade' => $s->grade,
-                'section' => $s->section,
-                'guardian' => $s->guardian,
-                'guardian_email' => $s->guardian_email,
-                'contact_number' => $s->contact_number,
-                'photo_path' => $s->photo_path,
-                'created_at' => $s->created_at?->toIso8601String(),
-            ];
-        });
+        $items    = $students->getCollection()->map(fn (Student $s) => $this->studentToArray($s));
 
         return response()->json([
-            'data' => $items,
+            'data'         => $items,
             'current_page' => $students->currentPage(),
-            'last_page' => $students->lastPage(),
-            'per_page' => $students->perPage(),
-            'total' => $students->total(),
+            'last_page'    => $students->lastPage(),
+            'per_page'     => $students->perPage(),
+            'total'        => $students->total(),
         ]);
     }
 
+    /* ====================================================================== */
+    /*  Write                                                                  */
+    /* ====================================================================== */
+
+    /** Create a new student, linking them to the current teacher's account. */
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
+            'first_name'     => ['required', 'string', 'max:255'],
+            'last_name'      => ['required', 'string', 'max:255'],
+            'middle_name'    => ['nullable', 'string', 'max:255'],
             'student_number' => ['required', 'string', 'size:12', 'regex:/^\d{12}$/', 'unique:students,student_number'],
-            'grade_section' => ['nullable', 'string', 'max:64'],
-            'grade' => ['nullable', 'string', 'max:32'],
-            'section' => ['nullable', 'string', 'max:32'],
-            'guardian' => ['nullable', 'string', 'max:255'],
+            'grade_section'  => ['nullable', 'string', 'max:64'],
+            'grade'          => ['nullable', 'string', 'max:32'],
+            'section'        => ['nullable', 'string', 'max:32'],
+            'guardian'       => ['nullable', 'string', 'max:255'],
             'guardian_email' => ['nullable', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
-            'photo' => ['nullable', 'file', 'mimes:png', 'max:5120'],
-            'school_id' => ['nullable', 'exists:schools,id'],
+            'photo'          => ['nullable', 'file', 'mimes:png', 'max:5120'],
+            'school_id'      => ['nullable', 'exists:schools,id'],
         ], [
             'student_number.unique' => 'LRN already exists.',
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation failed.',
-                'errors' => $validator->errors(),
-            ], 422);
+            return response()->json(['message' => 'Validation failed.', 'errors' => $validator->errors()], 422);
         }
 
-        $user = $request->user();
-        $gradeSection = $request->grade_section ?: ($request->grade && $request->section
-            ? $request->grade . '-' . $request->section
-            : ($request->grade ?? null));
+        $user         = $request->user();
+        $gradeSection = $this->resolveGradeSection($request);
 
         $student = Student::create([
-            'first_name' => $request->first_name,
-            'last_name' => $request->last_name,
-            'middle_name' => $request->middle_name ?: null,
-            'student_number' => $request->student_number,
-            'grade_section' => $gradeSection,
-            'grade' => $request->grade ?: null,
-            'section' => $request->section ?: null,
-            'guardian' => $request->guardian ?: null,
-            'guardian_email' => $request->guardian_email ?: null,
-            'contact_number' => $request->contact_number ?: null,
+            'first_name'        => $request->first_name,
+            'last_name'         => $request->last_name,
+            'middle_name'       => $request->middle_name ?: null,
+            'student_number'    => $request->student_number,
+            'grade_section'     => $gradeSection,
+            'grade'             => $request->grade ?: null,
+            'section'           => $request->section ?: null,
+            'guardian'          => $request->guardian ?: null,
+            'guardian_email'    => $request->guardian_email ?: null,
+            'contact_number'    => $request->contact_number ?: null,
             'emergency_contact' => $request->contact_number ?: null,
-            'teacher_id' => $user->role?->name === 'Teacher' ? $user->id : null,
-            'created_by' => $user->id,
-            'school_id' => $user->school_id,
+            'teacher_id'        => $user->role?->name === 'Teacher' ? $user->id : null,
+            'created_by'        => $user->id,
+            'school_id'         => $user->school_id,
         ]);
 
         if ($request->hasFile('photo')) {
             $path = $this->saveStudentPhoto($request->file('photo'), $student->student_number);
-            $student->photo_path = $path;
-            $student->save();
+            $student->update(['photo_path' => $path]);
         }
 
-        $fullName = trim($student->first_name . ' ' . ($student->middle_name ?? '') . ' ' . $student->last_name);
-        return response()->json([
-            'message' => 'Student created.',
-            'student' => $this->studentToArray($student, $fullName),
-        ], 201);
+        return response()->json(['message' => 'Student created.', 'student' => $this->studentToArray($student)], 201);
     }
 
+    /** Update a student record (ownership-checked for teachers). */
     public function update(Request $request, int $id): JsonResponse
     {
-        $user = $request->user();
+        $user    = $request->user();
         $student = Student::find($id);
 
         if (!$student) {
             return response()->json(['message' => 'Student not found.'], 404);
         }
 
-        if ($user->role?->name === 'Teacher') {
-            $allowed = ($student->teacher_id === $user->id || $student->created_by === $user->id);
-            if (!$allowed) {
-                return response()->json(['message' => 'Forbidden.'], 403);
-            }
+        if ($user->role?->name === 'Teacher' && $student->teacher_id !== $user->id && $student->created_by !== $user->id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
         }
 
         $validator = Validator::make($request->all(), [
-            'first_name' => ['sometimes', 'required', 'string', 'max:255'],
-            'last_name' => ['sometimes', 'required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
+            'first_name'     => ['sometimes', 'required', 'string', 'max:255'],
+            'last_name'      => ['sometimes', 'required', 'string', 'max:255'],
+            'middle_name'    => ['nullable', 'string', 'max:255'],
             'student_number' => ['sometimes', 'required', 'string', 'size:12', 'regex:/^\d{12}$/', 'unique:students,student_number,' . $id],
-            'grade_section' => ['nullable', 'string', 'max:64'],
-            'grade' => ['nullable', 'string', 'max:32'],
-            'section' => ['nullable', 'string', 'max:32'],
-            'guardian' => ['nullable', 'string', 'max:255'],
+            'grade_section'  => ['nullable', 'string', 'max:64'],
+            'grade'          => ['nullable', 'string', 'max:32'],
+            'section'        => ['nullable', 'string', 'max:32'],
+            'guardian'       => ['nullable', 'string', 'max:255'],
             'guardian_email' => ['nullable', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
-            'photo' => ['nullable', 'file', 'mimes:png', 'max:5120'],
+            'photo'          => ['nullable', 'file', 'mimes:png', 'max:5120'],
         ], [
             'student_number.unique' => 'LRN already exists.',
-            'student_number.size' => 'LRN must be exactly 12 digits.',
-            'student_number.regex' => 'LRN must contain only numbers.',
+            'student_number.size'   => 'LRN must be exactly 12 digits.',
+            'student_number.regex'  => 'LRN must contain only numbers.',
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation failed.',
-                'errors' => $validator->errors(),
-            ], 422);
+            return response()->json(['message' => 'Validation failed.', 'errors' => $validator->errors()], 422);
         }
 
         $data = $request->only([
             'first_name', 'last_name', 'middle_name', 'student_number',
             'grade_section', 'grade', 'section', 'guardian', 'guardian_email', 'contact_number',
         ]);
-        if ($request->has('grade_section') && $request->grade_section === '') {
-            $data['grade_section'] = null;
-        }
+
         if ($request->has('contact_number')) {
             $data['emergency_contact'] = $request->contact_number ?: null;
         }
-        $gradeSection = $request->grade_section ?: ($request->grade && $request->section
-            ? $request->grade . '-' . $request->section
-            : ($request->grade ?? null));
-        if ($request->has('grade') || $request->has('section')) {
-            $data['grade_section'] = $gradeSection;
+        if ($request->hasAny(['grade', 'section', 'grade_section'])) {
+            $data['grade_section'] = $this->resolveGradeSection($request);
         }
-        $student->fill($data);
-        $student->save();
+
+        $student->fill($data)->save();
 
         if ($request->hasFile('photo')) {
             $path = $this->saveStudentPhoto($request->file('photo'), $student->student_number);
-            $student->photo_path = $path;
-            $student->save();
+            $student->update(['photo_path' => $path]);
         }
 
-        $fullName = trim($student->first_name . ' ' . ($student->middle_name ?? '') . ' ' . $student->last_name);
-        return response()->json([
-            'message' => 'Student updated.',
-            'student' => $this->studentToArray($student, $fullName),
-        ]);
+        return response()->json(['message' => 'Student updated.', 'student' => $this->studentToArray($student)]);
     }
 
+    /* ====================================================================== */
+    /*  Import                                                                 */
+    /* ====================================================================== */
+
+    /**
+     * Bulk-import students from a CSV or Excel spreadsheet.
+     *
+     * Rows with invalid/duplicate LRNs or missing names are skipped.
+     * Returns a count of imported and skipped records.
+     */
     public function import(Request $request): JsonResponse
     {
         $request->validate([
             'file' => ['required', 'file', 'mimes:csv,xlsx,xls', 'max:10240'],
         ]);
 
-        $user = $request->user();
-        $file = $request->file('file');
+        $user        = $request->user();
+        $spreadsheet = IOFactory::load($request->file('file')->getPathname());
+        $rows        = $spreadsheet->getActiveSheet()->toArray();
 
-        $spreadsheet = IOFactory::load($file->getPathname());
-        $rows = $spreadsheet->getActiveSheet()->toArray();
         if (empty($rows)) {
             return response()->json(['message' => 'File is empty.', 'imported' => 0, 'skipped' => 0], 422);
         }
 
-        $headers = array_map(function ($h) {
-            return strtolower(trim(str_replace([' ', '-'], '_', (string) $h)));
-        }, $rows[0] ?? []);
+        $headers  = array_map(fn ($h) => strtolower(trim(str_replace([' ', '-'], '_', (string) $h))), $rows[0] ?? []);
         $imported = 0;
-        $skipped = 0;
+        $skipped  = 0;
 
         for ($i = 1; $i < count($rows); $i++) {
-            $row = $rows[$i] ?? [];
-            $row = array_pad($row, count($headers), null);
+            $row  = array_pad($rows[$i] ?? [], count($headers), null);
             $data = array_combine($headers, $row);
+
             if (!is_array($data)) {
                 $skipped++;
                 continue;
             }
 
-            $get = fn ($keys, $default = '') => trim((string) ($data[$keys[0] ?? ''] ?? $data[$keys[1] ?? ''] ?? $default));
+            $get = fn (array $keys, string $default = '') => trim((string) ($data[$keys[0] ?? ''] ?? $data[$keys[1] ?? ''] ?? $default));
 
             $lrn = preg_replace('/\D/', '', $get(['student_number', 'lrn']));
-            if (strlen($lrn) !== 12) {
-                $skipped++;
-                continue;
-            }
-            if (Student::where('student_number', $lrn)->exists()) {
+            if (strlen($lrn) !== 12 || Student::where('student_number', $lrn)->exists()) {
                 $skipped++;
                 continue;
             }
 
             $firstName = $get(['first_name', 'firstname']);
-            $lastName = $get(['last_name', 'lastname']);
+            $lastName  = $get(['last_name', 'lastname']);
             if (!$firstName || !$lastName) {
                 $skipped++;
                 continue;
             }
 
-            $grade = $get(['grade']);
-            $section = $get(['section']);
-            $gradeSection = $grade && $section ? $grade . '-' . $section : ($grade ?: null);
+            $grade        = $get(['grade']);
+            $section      = $get(['section']);
+            $gradeSection = ($grade && $section) ? "$grade-$section" : ($grade ?: null);
 
             Student::create([
-                'first_name' => $firstName,
-                'last_name' => $lastName,
-                'middle_name' => $get(['middle_name', 'middlename']) ?: null,
-                'student_number' => $lrn,
-                'grade_section' => $gradeSection,
-                'grade' => $grade ?: null,
-                'section' => $section ?: null,
-                'guardian' => $get(['guardian']) ?: null,
-                'guardian_email' => $get(['guardian_email', 'parent_email']) ?: null,
-                'contact_number' => $get(['contact_number', 'contact']) ?: null,
+                'first_name'        => $firstName,
+                'last_name'         => $lastName,
+                'middle_name'       => $get(['middle_name', 'middlename']) ?: null,
+                'student_number'    => $lrn,
+                'grade_section'     => $gradeSection,
+                'grade'             => $grade ?: null,
+                'section'           => $section ?: null,
+                'guardian'          => $get(['guardian']) ?: null,
+                'guardian_email'    => $get(['guardian_email', 'parent_email']) ?: null,
+                'contact_number'    => $get(['contact_number', 'contact']) ?: null,
                 'emergency_contact' => $get(['contact_number', 'contact']) ?: null,
-                'teacher_id' => $user->role?->name === 'Teacher' ? $user->id : null,
-                'created_by' => $user->id,
-                'school_id' => $user->school_id,
+                'teacher_id'        => $user->role?->name === 'Teacher' ? $user->id : null,
+                'created_by'        => $user->id,
+                'school_id'         => $user->school_id,
             ]);
+
             $imported++;
         }
 
-        return response()->json([
-            'message' => "Imported {$imported} learner(s).",
-            'imported' => $imported,
-            'skipped' => $skipped,
-        ]);
+        return response()->json(['message' => "Imported {$imported} learner(s).", 'imported' => $imported, 'skipped' => $skipped]);
     }
 
+    /* ====================================================================== */
+    /*  Photo                                                                  */
+    /* ====================================================================== */
+
+    /** Upload and store a student photo (ownership-checked for teachers). */
     public function uploadPhoto(Request $request, int $id): JsonResponse
     {
-        $user = $request->user();
+        $user    = $request->user();
         $student = Student::find($id);
+
         if (!$student) {
             return response()->json(['message' => 'Student not found.'], 404);
         }
-        if ($user->role?->name === 'Teacher') {
-            $allowed = ($student->teacher_id === $user->id || $student->created_by === $user->id);
-            if (!$allowed) {
-                return response()->json(['message' => 'Forbidden.'], 403);
-            }
+
+        if ($user->role?->name === 'Teacher' && $student->teacher_id !== $user->id && $student->created_by !== $user->id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
         }
+
         $request->validate(['photo' => ['required', 'file', 'mimes:jpg,jpeg,png', 'max:5120']]);
+
         $path = $this->saveStudentPhoto($request->file('photo'), $student->student_number);
-        $student->photo_path = $path;
-        $student->save();
+        $student->update(['photo_path' => $path]);
+
         return response()->json(['message' => 'Photo updated.', 'photo_path' => $path]);
     }
 
+    /* ====================================================================== */
+    /*  QR Verification (public)                                               */
+    /* ====================================================================== */
+
+    /** Verify a student by LRN — used for QR code validation pages. */
+    public function verify(string $studentNumber): JsonResponse
+    {
+        $student = Student::where('student_number', $studentNumber)->firstOrFail();
+
+        return response()->json(['student' => $this->studentToArray($student)]);
+    }
+
+    /* ====================================================================== */
+    /*  Private helpers                                                        */
+    /* ====================================================================== */
+
+    /** Persist a student photo to public storage and return its relative path. */
     private function saveStudentPhoto(\Illuminate\Http\UploadedFile $file, string $studentNumber): string
     {
-        // Save to storage/app/public/students/
-        $path = \Illuminate\Support\Facades\Storage::disk('public')->putFileAs(
+        return Storage::disk('public')->putFileAs(
             'students',
             $file,
             $studentNumber . '.' . $file->getClientOriginalExtension()
         );
-
-        return $path; // Returns 'students/lrn.ext'
     }
 
-    private function studentToArray(Student $student, ?string $fullName = null): array
+    /** Derive grade_section from input fields with fallback logic. */
+    private function resolveGradeSection(Request $request): ?string
     {
-        $fullName = $fullName ?: trim($student->first_name . ' ' . ($student->middle_name ?? '') . ' ' . $student->last_name);
-        return [
-            'id' => $student->id,
-            'student_number' => $student->student_number,
-            'first_name' => $student->first_name,
-            'last_name' => $student->last_name,
-            'middle_name' => $student->middle_name,
-            'full_name' => $fullName ?: $student->first_name . ' ' . $student->last_name,
-            'grade_section' => $student->grade_section ?? '—',
-            'grade' => $student->grade,
-            'section' => $student->section,
-            'guardian' => $student->guardian,
-            'guardian_email' => $student->guardian_email,
-            'contact_number' => $student->contact_number,
-            'photo_path' => $student->photo_path,
-            'created_at' => $student->created_at?->toIso8601String(),
-        ];
-    }
-
-    public function verify(string $student_number)
-    {
-        $student = Student::where('student_number', $student_number)->firstOrFail();
-
-        if (request()->wantsJson()) {
-            return response()->json([
-                'student' => $this->studentToArray($student),
-            ]);
+        if ($request->grade_section) {
+            return $request->grade_section;
         }
 
-        return view('verify_student', [
-            'student' => $student,
-        ]);
+        if ($request->grade && $request->section) {
+            return $request->grade . '-' . $request->section;
+        }
+
+        return $request->grade ?: null;
+    }
+
+    /** Serialize a Student model into the standard API response shape. */
+    private function studentToArray(Student $student, ?string $fullName = null): array
+    {
+        $fullName ??= trim($student->first_name . ' ' . ($student->middle_name ?? '') . ' ' . $student->last_name);
+
+        return [
+            'id'             => $student->id,
+            'student_number' => $student->student_number,
+            'first_name'     => $student->first_name,
+            'last_name'      => $student->last_name,
+            'middle_name'    => $student->middle_name,
+            'full_name'      => $fullName ?: ($student->first_name . ' ' . $student->last_name),
+            'grade_section'  => $student->grade_section ?? '—',
+            'grade'          => $student->grade,
+            'section'        => $student->section,
+            'guardian'       => $student->guardian,
+            'guardian_email' => $student->guardian_email,
+            'contact_number' => $student->contact_number,
+            'photo_path'     => $student->photo_path,
+            'created_at'     => $student->created_at?->toIso8601String(),
+        ];
     }
 }

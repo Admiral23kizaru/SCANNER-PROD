@@ -3,13 +3,25 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * User model — represents Admin, Teacher, and Guard accounts.
+ *
+ * Teachers are stored here with role_id pointing to the "Teacher" role.
+ * The virtual `school_id` accessor resolves the school through multiple fallback layers.
+ */
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
+
+    /* ------------------------------------------------------------------ */
+    /*  Mass-Assignment                                                    */
+    /* ------------------------------------------------------------------ */
 
     protected $fillable = [
         'role_id',
@@ -29,6 +41,10 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    /* ------------------------------------------------------------------ */
+    /*  Casts                                                              */
+    /* ------------------------------------------------------------------ */
+
     protected function casts(): array
     {
         return [
@@ -36,28 +52,46 @@ class User extends Authenticatable
         ];
     }
 
-    public function role()
+    /* ------------------------------------------------------------------ */
+    /*  Relationships                                                      */
+    /* ------------------------------------------------------------------ */
+
+    /** The role assigned to this user (Admin / Teacher / Guard). */
+    public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
     }
 
-    public function getSchoolIdAttribute()
+    /** Students created by this user (when role is Teacher). */
+    public function students(): HasMany
     {
-        // 1. Try to find via Teacher profile if this user is a teacher
-        $teacher = \App\Models\Teacher::where('email', $this->email)->first();
-        if ($teacher && $teacher->school_id) {
+        return $this->hasMany(Student::class, 'created_by');
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Accessors                                                          */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * Resolve the user's school_id through a cascade:
+     *   1. Teacher profile (teachers table)
+     *   2. school_name field → schools table
+     *   3. Fallback → first school in DB
+     */
+    public function getSchoolIdAttribute(): ?int
+    {
+        $teacher = Teacher::where('email', $this->email)->first();
+        if ($teacher?->school_id) {
             return $teacher->school_id;
         }
 
-        // 2. Try to find via school_name field in users table
         if ($this->school_name) {
-            $school = \App\Models\School::where('name', 'like', '%' . $this->school_name . '%')->first();
+            $school = School::where('name', 'like', '%' . $this->school_name . '%')->first();
             if ($school) {
                 return $school->id;
             }
         }
 
-        // 3. Fallback to first school
-        return \App\Models\School::first()?->id;
+        return School::first()?->id;
     }
 }
