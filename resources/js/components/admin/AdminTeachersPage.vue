@@ -96,14 +96,6 @@
                   <button
                     type="button"
                     class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
-                    title="Print ID"
-                    @click="printTeacherId(t)"
-                  >
-                    <IdCard class="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
                     title="Edit teacher"
                     @click="openEditModal(t)"
                   >
@@ -359,8 +351,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { PencilLine, Trash2, IdCard, Plus, Download, Search, Filter } from 'lucide-vue-next';
-import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, getAdminTeacherIdUrl, exportAdminTeachers } from '../../services/adminService';
+import { PencilLine, Trash2, Plus, Download, Search, Filter } from 'lucide-vue-next';
+import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, exportAdminTeachers } from '../../services/adminService';
 
 const teachers = ref([]);
 const loading = ref(false);
@@ -649,20 +641,6 @@ function onEditPhotoChange(e) {
   } else {
     editPhotoFile.value = null;
     editPhotoFileName.value = '';
-  }
-}
-
-async function printTeacherId(t) {
-  try {
-    const res = await getAdminTeacherIdUrl(t.id);
-    const url = res?.url;
-    if (!url) {
-      throw new Error('No URL returned.');
-    }
-    window.open(url, '_blank', 'noopener');
-  } catch (err) {
-    const msg = err?.response?.data?.message || err?.message || 'Failed to generate ID.';
-    alert(msg);
   }
 }
 

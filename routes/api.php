@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AdminStudentController;
 use App\Http\Controllers\Api\AttendanceController;
+use App\Http\Controllers\Api\AdminProfileController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\IdCardController;
 use App\Http\Controllers\Api\StatsController;
@@ -30,16 +31,9 @@ Route::get('/teacher/students/{id}/id-url', [IdCardController::class, 'getSigned
 Route::get('/admin/students/{id}/id-url', [IdCardController::class, 'getSignedUrl'])
     ->middleware(['auth:sanctum', 'role:Admin']);
 
-Route::get('/admin/teachers/{id}/id-url', [IdCardController::class, 'getTeacherSignedUrl'])
-    ->middleware(['auth:sanctum', 'role:Admin']);
-
 // Secure signed route without auth middleware since it's signed with expiration
 Route::get('/media/id/{hash}', [IdCardController::class, 'generateSecure'])
     ->name('id.download')
-    ->middleware('signed');
-
-Route::get('/media/teacher-id/{hash}', [IdCardController::class, 'generateTeacherSecure'])
-    ->name('teacher-id.download')
     ->middleware('signed');
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -62,6 +56,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/students', [AdminStudentController::class, 'store']);
         Route::put('/students/{id}', [AdminStudentController::class, 'update']);
         Route::delete('/students/{id}', [AdminStudentController::class, 'destroy']);
+
+        Route::get('/profile', [AdminProfileController::class, 'show']);
+        Route::put('/profile', [AdminProfileController::class, 'update']);
+        Route::post('/profile/photo', [AdminProfileController::class, 'uploadPhoto']);
+        Route::put('/profile/password', [AdminProfileController::class, 'changePassword']);
     });
 
     Route::middleware('role:Teacher')->prefix('teacher')->group(function () {
