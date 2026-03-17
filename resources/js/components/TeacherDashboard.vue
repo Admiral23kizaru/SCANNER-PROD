@@ -536,11 +536,10 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
-import axios from 'axios';
+import { fetchUser, logoutUser } from '../services/authService';
 import QRCode from 'qrcode';
 import { LogOut, Search, Upload, Plus, User, Pencil, Users, Menu, Filter, ChevronLeft, ChevronRight, ChevronDown, UserCircle, Settings } from 'lucide-vue-next';
-import { setStoredToken, getStoredToken } from '../router';
-import { useLogout } from '../composables/useLogout';
+import { setStoredToken } from '../router';
 import { fetchStudents, createStudent, createStudentWithFormData, updateStudent, updateStudentWithFormData, uploadStudentPhoto, bulkImportStudents } from '../services/studentService';
 
 function titleCase(str) {
@@ -548,7 +547,14 @@ function titleCase(str) {
   return str.replace(/\w\S*/g, (t) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
 }
 
-const { logout } = useLogout();
+async function logout() {
+  try {
+    await logoutUser();
+  } catch (_) {}
+  setStoredToken(null);
+  // Router imported via vue-router, or if not, window.location.href works
+  window.location.href = '/login';
+}
 
 // Logo served from Laravel public/logo
 const depedLogo = '/logo/depedozamiz.png';
@@ -848,15 +854,9 @@ watch([showQrModal, qrModalStudent], async () => {
 
 
 onMounted(async () => {
-  const token = getStoredToken();
-  if (token) {
-    try {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      const res = await axios.get('/api/user');
-      user.value = res.data;
-    } catch (_) {}
-  }
-});
-
-load();
-</script>
+  try {
+    const data = await fetchUser();
+    user.value = data;
+  } catch (_) {}
+  await load();
+});</script>

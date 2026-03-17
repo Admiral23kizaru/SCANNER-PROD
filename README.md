@@ -91,10 +91,14 @@ SCANNER-PROD/
 │
 ├── resources/js/
 │   ├── composables/
-│   │   └── useScanner.js              # Guard Terminal logic (camera, debounce, feed)
+│   │   ├── useScanner.js              # Guard Terminal logic (camera, debounce, feed)
+│   │   ├── useAdminProfile.js         # Reactive admin profile state linked to profile service
+│   │   └── useLogout.js               # Reactive logout helper linked to auth service
 │   ├── services/
 │   │   ├── adminService.js            # /api/admin/* Axios calls
+│   │   ├── adminProfileService.js     # /api/admin/profile/* Axios calls
 │   │   ├── attendanceService.js       # /api/attendance/* Axios calls
+│   │   ├── authService.js             # /api/logout, /api/user Axios calls
 │   │   └── studentService.js          # /api/teacher/students/* Axios calls
 │   ├── components/
 │   │   ├── GuardScanner.vue           # Guard Terminal UI (uses useScanner)

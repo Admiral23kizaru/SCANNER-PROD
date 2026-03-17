@@ -220,9 +220,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import axios from 'axios';
-import { LayoutDashboard, Users, GraduationCap, LogOut, Menu, ChevronDown, UserCircle, Settings } from 'lucide-vue-next';
-import { setStoredToken, getStoredToken } from '../../router';
+import { setStoredToken } from '../../router';
+import { fetchUser, logoutUser } from '../../services/authService';
 import AdminDashboardStats from './AdminDashboardStats.vue';
 import AdminTeachersPage from './AdminTeachersPage.vue';
 import AdminStudentsPage from './AdminStudentsPage.vue';
@@ -254,26 +253,17 @@ const pageSubtitle = computed(() => {
 });
 
 async function logout() {
-  const token = getStoredToken();
-  if (token) {
-    try {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      await axios.post('/api/logout');
-    } catch (_) {}
-    setStoredToken(null);
-  }
+  try {
+    await logoutUser();
+  } catch (_) {}
+  setStoredToken(null);
   router.push('/login');
 }
 
-
 onMounted(async () => {
-  const token = getStoredToken();
-  if (token) {
-    try {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      const res = await axios.get('/api/user');
-      user.value = res.data;
-    } catch (_) {}
-  }
+  try {
+    const data = await fetchUser();
+    user.value = data;
+  } catch (_) {}
 });
 </script>
