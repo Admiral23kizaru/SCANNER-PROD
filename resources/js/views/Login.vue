@@ -55,7 +55,7 @@
               required
               autocomplete="email"
               class="w-full rounded-md border border-slate-600/70 bg-slate-950/40 px-3 py-2.5 text-sm text-slate-50 placeholder-slate-500 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400 shadow-sm"
-              placeholder="admin@gmail.com"
+              placeholder="username@example.com"
             />
           </div>
 
@@ -71,6 +71,7 @@
                 required
                 autocomplete="current-password"
                 class="w-full rounded-md border border-slate-600/70 bg-slate-950/40 px-3 py-2.5 pr-10 text-sm text-slate-50 placeholder-slate-500 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400 shadow-sm"
+                placeholder="********"
               />
               <button
                 type="button"
@@ -217,7 +218,7 @@
             type="email"
             autocomplete="email"
             class="w-full rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-sm text-slate-50 placeholder-slate-500 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400"
-            placeholder="admin@example.com"
+            placeholder="username@example.com"
           />
           <button
             type="button"
