@@ -2,11 +2,11 @@
   <div class="h-screen overflow-hidden bg-slate-50 text-slate-900 flex">
     <!-- Sidebar -->
     <aside
-      class="w-64 shrink-0 flex flex-col h-full border-r border-slate-200 bg-white fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:relative lg:transform-none"
+      class="w-64 shrink-0 flex flex-col h-full bg-white fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:relative lg:transform-none"
       :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
     >
       <!-- Brand -->
-      <div class="px-6 py-3 border-b border-slate-700" style="background-color: #050517;">
+      <div class="px-6 py-3 border-b border-r border-slate-700" style="background-color: #050517;">
         <div class="flex items-center gap-3">
           <img
             :src="logoSrc"
@@ -25,10 +25,10 @@
       </div>
 
       <!-- Navigation -->
-      <nav class="flex-1 px-3 py-4 space-y-1 text-sm overflow-y-auto">
+      <nav class="flex-1 px-3 py-4 space-y-1 text-sm overflow-y-auto border-r border-slate-200">
         <button
           type="button"
-          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent"
+          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent cursor-pointer"
           :class="
             currentPage === 'dashboard'
               ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm border-l-blue-600'
@@ -42,7 +42,7 @@
 
         <button
           type="button"
-          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent"
+          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent cursor-pointer"
           :class="
             currentPage === 'teachers'
               ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm border-l-blue-600'
@@ -56,7 +56,7 @@
 
         <button
           type="button"
-          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent"
+          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent cursor-pointer"
           :class="
             currentPage === 'students'
               ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm border-l-blue-600'
@@ -70,7 +70,16 @@
       </nav>
 
       <!-- Sidebar Footer: Logout -->
-      <div class="px-3 py-4 border-t border-slate-200"></div>
+      <div class="px-3 py-4 border-t border-r border-slate-200">
+        <button
+          type="button"
+          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+          @click="logout"
+        >
+          <LogOut class="h-4 w-4" />
+          <span>Log out</span>
+        </button>
+      </div>
     </aside>
 
     <!-- Mobile sidebar overlay -->
@@ -157,10 +166,18 @@
                     <button
                       type="button"
                       class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                      @click="handleGoToProfile"
+                      @click="isProfileOpen = false"
                     >
                       <UserCircle class="h-4 w-4" />
                       <span>My Profile</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                      @click="isProfileOpen = false"
+                    >
+                      <Settings class="h-4 w-4" />
+                      <span>Settings</span>
                     </button>
                   </div>
 
@@ -196,8 +213,6 @@
           <AdminStudentsPage v-else-if="currentPage === 'students'" />
         </div>
       </main>
-
-      <AdminProfileModal v-model="showProfileModal" @profile-updated="handleProfileUpdated" />
     </div>
   </div>
 </template>
@@ -206,12 +221,11 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
-import { LayoutDashboard, Users, GraduationCap, LogOut, Menu, ChevronDown, UserCircle } from 'lucide-vue-next';
+import { LayoutDashboard, Users, GraduationCap, LogOut, Menu, ChevronDown, UserCircle, Settings } from 'lucide-vue-next';
 import { setStoredToken, getStoredToken } from '../../router';
 import AdminDashboardStats from './AdminDashboardStats.vue';
 import AdminTeachersPage from './AdminTeachersPage.vue';
 import AdminStudentsPage from './AdminStudentsPage.vue';
-import AdminProfileModal from '../AdminProfileModal.vue';
 
 const router = useRouter();
 const currentPage = ref('dashboard');
@@ -220,18 +234,9 @@ const logoSrc = '/logo/depedozamiz.png';
 const user = ref(null);
 const userPhotoError = ref(false);
 const isProfileOpen = ref(false);
-const showProfileModal = ref(false);
 
 function getPhotoUrl(path) {
   if (!path) return '/images/default-avatar.png';
-  // If API already returned a full URL, use it directly.
-  if (typeof path === 'string' && (path.startsWith('http://') || path.startsWith('https://'))) {
-    return path;
-  }
-  // If it's already a public /storage URL, use as-is.
-  if (typeof path === 'string' && path.startsWith('/storage/')) {
-    return path;
-  }
   const cleanPath = path.replace(/^(public\/|storage\/|\/storage\/|\/public\/)/, '').replace(/^\//, '');
   return '/storage/' + cleanPath;
 }
@@ -258,17 +263,6 @@ async function logout() {
     setStoredToken(null);
   }
   router.push('/login');
-}
-
-function handleGoToProfile() {
-  isProfileOpen.value = false;
-  showProfileModal.value = true;
-}
-
-function handleProfileUpdated(updated) {
-  if (!updated) return;
-  user.value = { ...(user.value || {}), ...updated };
-  userPhotoError.value = false;
 }
 
 

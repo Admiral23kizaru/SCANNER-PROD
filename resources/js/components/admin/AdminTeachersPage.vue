@@ -28,6 +28,7 @@
           <div class="relative">
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <input
+              v-model="searchQuery"
               type="search"
               placeholder="Search teachers..."
               class="w-64 max-w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
@@ -56,7 +57,7 @@
           </thead>
           <tbody>
             <tr
-              v-for="(t, idx) in teachers"
+              v-for="(t, idx) in filteredTeachers"
               :key="t.id"
               class="border-b border-slate-100 hover:bg-slate-50 transition"
             >
@@ -113,17 +114,19 @@
               </td>
             </tr>
             <tr v-if="loading && teachers.length === 0">
-              <td colspan="4" class="py-12 text-center text-slate-500">Loading…</td>
+              <td colspan="5" class="py-12 text-center text-slate-500">Loading…</td>
             </tr>
-            <tr v-if="!loading && teachers.length === 0">
-              <td colspan="4" class="py-12 text-center text-slate-500">No teachers yet.</td>
+            <tr v-if="!loading && filteredTeachers.length === 0">
+              <td colspan="5" class="py-12 text-center text-slate-500">
+                {{ searchQuery ? 'No teachers match your search.' : 'No teachers yet.' }}
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
       <div class="p-4 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3 bg-slate-50/60">
         <span class="text-sm text-slate-600">
-          Showing {{ teachers.length }} of {{ teachers.length }} entries
+          Showing {{ filteredTeachers.length }} of {{ teachers.length }} entries
         </span>
       </div>
     </div>
@@ -350,12 +353,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { PencilLine, Trash2, Plus, Download, Search, Filter } from 'lucide-vue-next';
-import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, exportAdminTeachers } from '../../services/adminService';
+import { ref, computed, onMounted } from 'vue';
+import { PencilLine, Trash2, IdCard, Plus, Download, Search, Filter } from 'lucide-vue-next';
+import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, getAdminTeacherIdUrl, exportAdminTeachers } from '../../services/adminService';
 
 const teachers = ref([]);
+const searchQuery = ref('');
 const loading = ref(false);
+
+const filteredTeachers = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase();
+  if (!q) return teachers.value;
+  return teachers.value.filter(t =>
+    (t.name        || '').toLowerCase().includes(q) ||
+    (t.employee_id || '').toLowerCase().includes(q) ||
+    (t.school_name || '').toLowerCase().includes(q) ||
+    (t.job_title   || '').toLowerCase().includes(q)
+  );
+});
 const exporting = ref(false);
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
