@@ -14,6 +14,21 @@ export async function fetchStats() {
     return data;
 }
 
+export async function fetchDashboardStats() {
+    const { data } = await axios.get(base + '/dashboard/stats', {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data;
+}
+
+export async function fetchAttendanceTrends(params = {}) {
+    const { data } = await axios.get(base + '/attendance/trends', {
+        params,
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data;
+}
+
 export async function fetchDashboardOverview() {
     const { data } = await axios.get(base + '/dashboard/overview', {
         headers: { ...getAuthHeaders(), Accept: 'application/json' },

@@ -7,6 +7,9 @@ use App\Models\Attendance;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class StatsController extends Controller
@@ -145,5 +148,74 @@ class StatsController extends Controller
         return response($content)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'inline; filename="summary_report.pdf"');
+    }
+
+    public function dashboardStats(): JsonResponse
+    {
+        return Cache::remember('admin_dashboard_stats', 180, function () {
+            $totalStudents = Student::count();
+            $totalTeachers = \App\Models\Teacher::count();
+            $todaysAttendance = Attendance::whereDate('scanned_at', now()->toDateString())->count();
+            
+            // Attendance per grade
+            $attendancePerGrade = DB::table('attendances')
+                ->join('students', 'attendances.student_id', '=', 'students.id')
+                ->whereDate('attendances.scanned_at', now()->toDateString())
+                ->select('students.grade', DB::raw('count(*) as count'))
+                ->groupBy('students.grade')
+                ->get();
+
+            // Historical vs Today
+            $historicalAverage = Attendance::whereDate('scanned_at', '<', now()->toDateString())
+                ->select(DB::raw('DATE(scanned_at) as date'), DB::raw('count(*) as count'))
+                ->groupBy('date')
+                ->get()
+                ->avg('count') ?: 0;
+
+            return response()->json([
+                'totals' => [
+                    'students' => $totalStudents,
+                    'teachers' => $totalTeachers,
+                    'attendance_today' => $todaysAttendance,
+                    'is_above_average' => $todaysAttendance > $historicalAverage
+                ],
+                'attendance_by_grade' => $attendancePerGrade,
+                'historical_average' => round($historicalAverage, 2)
+            ]);
+        });
+    }
+
+    public function attendanceTrends(Request $request): JsonResponse
+    {
+        $groupBy = $request->input('group_by', 'day'); // day, week, month
+        $grade = $request->input('grade');
+        $section = $request->input('section');
+
+        $query = Attendance::query()
+            ->join('students', 'attendances.student_id', '=', 'students.id');
+
+        if ($grade) {
+            $query->where('students.grade', $grade);
+        }
+        if ($section) {
+            $query->where('students.section', $section);
+        }
+
+        if ($groupBy === 'month') {
+            $query->select(DB::raw("DATE_FORMAT(scanned_at, '%Y-%m') as label"), DB::raw('count(*) as count'))
+                ->where('scanned_at', '>=', now()->subMonths(12));
+        } elseif ($groupBy === 'week') {
+            $query->select(DB::raw("YEARWEEK(scanned_at) as label"), DB::raw('count(*) as count'))
+                ->where('scanned_at', '>=', now()->subWeeks(12));
+        } else {
+            $query->select(DB::raw("DATE(scanned_at) as label"), DB::raw('count(*) as count'))
+                ->where('scanned_at', '>=', now()->subDays(30));
+        }
+
+        $trends = $query->groupBy('label')
+            ->orderBy('label')
+            ->get();
+
+        return response()->json($trends);
     }
 }
