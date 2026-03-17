@@ -87,7 +87,7 @@
         <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <button
             type="button"
-            class="group text-left rounded-2xl border border-slate-200 bg-white p-4 hover:bg-slate-50 transition"
+            class="group text-left rounded-2xl border border-slate-200 bg-white p-4 hover:bg-slate-50 transition cursor-pointer"
             @click="quickAddTeacher"
           >
             <div class="flex items-start gap-3">
@@ -103,7 +103,7 @@
 
           <button
             type="button"
-            class="group text-left rounded-2xl border border-slate-200 bg-white p-4 hover:bg-slate-50 transition"
+            class="group text-left rounded-2xl border border-slate-200 bg-white p-4 hover:bg-slate-50 transition cursor-pointer"
             @click="quickAddStudent"
           >
             <div class="flex items-start gap-3">
@@ -119,7 +119,7 @@
 
           <button
             type="button"
-            class="group text-left rounded-2xl border border-slate-200 bg-white p-4 hover:bg-slate-50 transition"
+            class="group text-left rounded-2xl border border-slate-200 bg-white p-4 hover:bg-slate-50 transition cursor-pointer"
             @click="quickPrintReports"
           >
             <div class="flex items-start gap-3">
@@ -135,7 +135,7 @@
 
           <button
             type="button"
-            class="group text-left rounded-2xl border border-slate-200 bg-white p-4 hover:bg-slate-50 transition"
+            class="group text-left rounded-2xl border border-slate-200 bg-white p-4 hover:bg-slate-50 transition cursor-pointer"
             @click="quickGoStudents"
           >
             <div class="flex items-start gap-3">
