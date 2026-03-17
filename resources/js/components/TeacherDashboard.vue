@@ -109,22 +109,9 @@
                   class="absolute right-0 mt-2 w-52 rounded-xl bg-white border border-slate-200 shadow-xl z-50 overflow-hidden"
                 >
                   <!-- User info header -->
-                  <div class="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full overflow-hidden border border-slate-200 bg-slate-200 shrink-0">
-                      <img
-                        v-if="user.profile_photo && !userPhotoError"
-                        :src="getPhotoUrl(user.profile_photo)"
-                        class="w-full h-full object-cover"
-                      />
-                      <div v-else class="w-full h-full flex items-center justify-center bg-stone-700 text-white text-sm font-bold">
-                        <img v-if="userPhotoError" :src="'/images/default-avatar.png'" class="w-full h-full object-cover" />
-                        <span v-else>{{ user.name?.charAt(0) }}</span>
-                      </div>
-                    </div>
-                    <div class="min-w-0">
-                      <p class="text-xs font-semibold text-slate-800 truncate">{{ user.name }}</p>
-                      <p class="text-[10px] text-slate-500 truncate">{{ user.email }}</p>
-                    </div>
+                  <div class="px-4 py-3 bg-slate-50 border-b border-slate-100">
+                    <p class="text-xs font-semibold text-slate-800 truncate">{{ user.name }}</p>
+                    <p class="text-[10px] text-slate-500 truncate">{{ user.email }}</p>
                   </div>
 
                   <!-- Menu items -->

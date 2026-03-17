@@ -353,9 +353,15 @@
 </template>
 
 <script setup>
+<<<<<<< HEAD
 import { ref, computed, onMounted } from 'vue';
 import { PencilLine, Trash2, IdCard, Plus, Download, Search, Filter } from 'lucide-vue-next';
 import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, getAdminTeacherIdUrl, exportAdminTeachers } from '../../services/adminService';
+=======
+import { ref, onMounted } from 'vue';
+import { PencilLine, Trash2, Plus, Download, Search, Filter } from 'lucide-vue-next';
+import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, exportAdminTeachers } from '../../services/adminService';
+>>>>>>> ian-branch
 
 const teachers = ref([]);
 const searchQuery = ref('');
