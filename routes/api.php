@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AdminStudentController;
 use App\Http\Controllers\Api\AttendanceController;
+use App\Http\Controllers\Api\AdminProfileController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\IdCardController;
 use App\Http\Controllers\Api\PasswordResetController;
@@ -34,6 +35,7 @@ Route::controller(AttendanceController::class)->group(function () {
 /*  Signed media routes (no auth — URL expiry takes care of security)     */
 /* ====================================================================== */
 
+
 Route::controller(IdCardController::class)->group(function () {
     Route::get('/media/id/{hash}', 'generateSecure')->name('id.download')->middleware('signed');
     Route::get('/media/teacher-id/{hash}', 'generateTeacherSecure')->name('teacher-id.download')->middleware('signed');
@@ -42,6 +44,12 @@ Route::controller(IdCardController::class)->group(function () {
 /* ====================================================================== */
 /*  Authenticated routes (Sanctum)                                        */
 /* ====================================================================== */
+
+// Secure signed route without auth middleware since it's signed with expiration
+Route::get('/media/id/{hash}', [IdCardController::class, 'generateSecure'])
+    ->name('id.download')
+    ->middleware('signed');
+
 
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -65,6 +73,7 @@ Route::middleware('auth:sanctum')->group(function () {
     /* ------------------------------------------------------------------ */
 
     Route::middleware('role:Admin')->prefix('admin')->group(function () {
+
 
         Route::controller(AdminController::class)->group(function () {
             Route::get('/dashboard', 'dashboard');
@@ -94,6 +103,30 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/{id}', 'update');
             Route::delete('/{id}', 'destroy');
         });
+
+        Route::get('/dashboard', [AdminController::class, 'dashboard']);
+        Route::get('/stats', [StatsController::class, 'index']);
+        Route::get('/dashboard/stats', [StatsController::class, 'dashboardStats']);
+        Route::get('/attendance/trends', [StatsController::class, 'attendanceTrends']);
+        Route::get('/dashboard/overview', [StatsController::class, 'overview']);
+        Route::get('/reports/summary-pdf', [StatsController::class, 'summaryReportPdf']);
+        Route::get('/teachers/export', [TeacherManagementController::class, 'export']);
+        Route::get('/teachers', [TeacherManagementController::class, 'index']);
+        Route::post('/teachers', [TeacherManagementController::class, 'store']);
+        Route::put('/teachers/{id}', [TeacherManagementController::class, 'update']);
+        Route::post('/teachers/{id}/photo', [TeacherManagementController::class, 'uploadPhoto']);
+        Route::delete('/teachers/{id}', [TeacherManagementController::class, 'destroy']);
+        Route::get('/students/export', [AdminStudentController::class, 'export']);
+        Route::get('/students', [AdminStudentController::class, 'index']);
+        Route::post('/students', [AdminStudentController::class, 'store']);
+        Route::put('/students/{id}', [AdminStudentController::class, 'update']);
+        Route::delete('/students/{id}', [AdminStudentController::class, 'destroy']);
+
+        Route::get('/profile', [AdminProfileController::class, 'show']);
+        Route::put('/profile', [AdminProfileController::class, 'update']);
+        Route::post('/profile/photo', [AdminProfileController::class, 'uploadPhoto']);
+        Route::put('/profile/password', [AdminProfileController::class, 'changePassword']);
+
     });
 
     /* ------------------------------------------------------------------ */

@@ -3,13 +3,13 @@
 <head>
     <meta charset="utf-8">
     <style>
-        body { margin: 0; padding: 0; font-family: helvetica, sans-serif; }
+        body { margin: 0; padding: 0; font-family: helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         
-        /* Container Scaling: PVC size high resolution */
+        /* Container Scaling: PVC size high resolution (portrait) */
         .card-container {
             position: relative;
-            width: 1011px;
-            height: 638px;
+            width: 638px;
+            height: 1011px;
             overflow: hidden;
             display: block;
         }
@@ -19,8 +19,8 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 1011px;
-            height: 638px;
+            width: 638px;
+            height: 1011px;
             z-index: 1;
         }
 
@@ -73,6 +73,33 @@
             font-weight: bold;
             color: #ffffff;
             margin-top: 15px;
+        }
+
+        /* Print-specific fixes to make user info visible when the browser/printer omits background images */
+        @media print {
+            /* Ensure colors and images are printed as intended */
+            body, .bg-template, img { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+            /* If background images are not printed by the browser, provide a solid backdrop for text */
+            .text-group {
+                background: #ffffff; /* white background so dark text remains visible */
+                padding: 6px 10px;
+                border-radius: 2px;
+                box-sizing: border-box;
+                z-index: 3;
+            }
+
+            /* Force text to dark color for legibility when backgrounds may not appear */
+            .teacher-name, .job-title, .employee-id {
+                color: #000000 !important;
+                text-shadow: none !important;
+            }
+
+            /* Keep layout sizing consistent for print */
+            .card-container { width: 638px; height: 1011px; }
+
+            /* Prevent page breaks inside the card */
+            .card-container { page-break-inside: avoid; }
         }
     </style>
 </head>
