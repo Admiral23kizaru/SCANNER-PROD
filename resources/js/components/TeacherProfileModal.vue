@@ -17,10 +17,10 @@
         <!-- Header -->
         <div class="bg-[#0f1f3d] px-5 py-4 text-white relative">
           <div class="flex items-start justify-between gap-4">
-            <div>
-              <div class="text-base font-semibold">Teacher Profile</div>
-              <div class="text-xs text-white/80">Manage your account information and password.</div>
-            </div>
+              <div>
+                <div class="text-base font-semibold">Teacher Profile</div>
+                <div class="text-xs text-white/80">Manage your account information.</div>
+              </div>
 
             <div class="flex items-center gap-3">
               <button
@@ -79,15 +79,27 @@
                 <form class="space-y-4" @submit.prevent="saveAll">
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label class="block text-xs font-medium text-slate-700 mb-1">Full Name</label>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">First Name</label>
                     <input
-                      v-model="teacherForm.name"
+                      v-model="teacherForm.first_name"
                       type="text"
                       class="w-full rounded-md border border-[#d1d5db] px-3 py-2 text-sm focus:outline-none focus:ring-0 focus:border-[#0f1f3d]"
                       required
                     />
                   </div>
                   <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">Last Name</label>
+                    <input
+                      v-model="teacherForm.last_name"
+                      type="text"
+                      class="w-full rounded-md border border-[#d1d5db] px-3 py-2 text-sm focus:outline-none focus:ring-0 focus:border-[#0f1f3d]"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div class="sm:col-span-2">
                     <label class="block text-xs font-medium text-slate-700 mb-1">Email</label>
                     <input
                       v-model="teacherForm.email"
@@ -97,43 +109,6 @@
                     />
                   </div>
                 </div>
-
-                <div class="border-t border-slate-200" />
-
-                  <div>
-                    <label class="block text-xs font-medium text-slate-700 mb-1">Current Password</label>
-                    <input
-                      v-model="teacherPwd.current_password"
-                      type="password"
-                      class="w-full rounded-md border border-[#d1d5db] px-3 py-2 text-sm focus:outline-none focus:ring-0 focus:border-[#0f1f3d]"
-                    />
-                  </div>
-
-                  <div>
-                    <label class="block text-xs font-medium text-slate-700 mb-1">New Password</label>
-                    <input
-                      v-model="teacherPwd.password"
-                      type="password"
-                      class="w-full rounded-md border border-[#d1d5db] px-3 py-2 text-sm focus:outline-none focus:ring-0 focus:border-[#0f1f3d]"
-                    />
-                    <div class="mt-2 space-y-1">
-                      <div class="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
-                        <div class="h-full transition-all" :class="strengthBarClass" :style="{ width: strengthWidth }" />
-                      </div>
-                      <div class="text-[11px] text-slate-600">
-                        Password strength: <span class="font-medium">{{ strengthLabel }}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label class="block text-xs font-medium text-slate-700 mb-1">Confirm New Password</label>
-                    <input
-                      v-model="teacherPwd.password_confirmation"
-                      type="password"
-                      class="w-full rounded-md border border-[#d1d5db] px-3 py-2 text-sm focus:outline-none focus:ring-0 focus:border-[#0f1f3d]"
-                    />
-                  </div>
 
                   <div v-if="errorText" class="text-xs text-red-600">{{ errorText }}</div>
 
@@ -187,7 +162,7 @@ const props = defineProps({
 });
 const emit = defineEmits(['update:modelValue', 'profile-updated']);
 
-const { teacherProfile, teacherLoading, teacherError, fetchTeacherData, updateTeacherData, uploadTeacherPhotoData, changeTeacherPasswordData } = useTeacherProfile();
+const { teacherProfile, teacherLoading, teacherError, fetchTeacherData, updateTeacherData, uploadTeacherPhotoData } = useTeacherProfile();
 
 const avatarError = ref(false);
 const fileInput = ref(null);
@@ -197,8 +172,7 @@ const uploading = ref(false);
 const errorText = ref('');
 
 // Independent State Isolation: Using teacher-specific names to avoid overriding any Admin logic.
-const teacherForm = ref({ name: '', email: '' });
-const teacherPwd = ref({ current_password: '', password: '', password_confirmation: '' });
+const teacherForm = ref({ first_name: '', last_name: '', email: '' });
 
 const toast = ref({ visible: false, message: '' });
 
@@ -214,7 +188,8 @@ function showToast(message) {
 }
 
 const initials = computed(() => {
-  const name = (teacherProfile.value?.name || '').trim();
+  const name = `${teacherForm.value.first_name || ''} ${teacherForm.value.last_name || ''}`.trim()
+    || (teacherProfile.value?.name || '').trim();
   if (!name) return 'T';
   const parts = name.split(/\s+/).filter(Boolean);
   const first = parts[0]?.[0] || '';
@@ -244,35 +219,13 @@ const displayPhotoUrl = computed(() => {
   return photoPreview.value || resolveProfilePhotoUrl(teacherProfile.value?.profile_photo);
 });
 
-const strengthScore = computed(() => {
-  const p = teacherPwd.value.password || '';
-  let s = 0;
-  if (p.length >= 8) s += 1;
-  if (/[A-Z]/.test(p)) s += 1;
-  if (/[0-9]/.test(p)) s += 1;
-  if (/[^A-Za-z0-9]/.test(p)) s += 1;
-  return s;
-});
+const hasProfileChanges = computed(() => {
+  const currentName = (teacherProfile.value?.name || '').trim();
+  const currentEmail = (teacherProfile.value?.email || '').trim();
+  const nextName = `${teacherForm.value.first_name || ''} ${teacherForm.value.last_name || ''}`.trim();
+  const nextEmail = (teacherForm.value.email || '').trim();
 
-const strengthLabel = computed(() => {
-  const s = strengthScore.value;
-  if (s <= 1) return 'Weak';
-  if (s <= 3) return 'Fair';
-  return 'Strong';
-});
-
-const strengthWidth = computed(() => {
-  const l = strengthLabel.value;
-  if (l === 'Weak') return '30%';
-  if (l === 'Fair') return '60%';
-  return '100%';
-});
-
-const strengthBarClass = computed(() => {
-  const l = strengthLabel.value;
-  if (l === 'Weak') return 'bg-red-500';
-  if (l === 'Fair') return 'bg-amber-500';
-  return 'bg-emerald-500';
+  return currentName !== nextName || currentEmail !== nextEmail;
 });
 
 function close() {
@@ -322,8 +275,11 @@ function onFileChange(e) {
 // Data Flow: Safely populate state from the reactive composable object after DB response.
 async function hydrateFromProfile() {
   if (teacherProfile.value) {
+    const fullName = (teacherProfile.value.name || '').trim();
+    const parts = fullName.split(/\s+/).filter(Boolean);
     teacherForm.value = {
-      name: teacherProfile.value.name || '',
+      first_name: parts.shift() || '',
+      last_name: parts.join(' '),
       email: teacherProfile.value.email || '',
     };
   }
@@ -334,84 +290,66 @@ async function hydrateFromProfile() {
 // Fixed Data Loss: Ensures fields are ONLY reset if the API update is 100% successful.
 async function saveProfile() {
   errorText.value = '';
+  const fullName = `${teacherForm.value.first_name} ${teacherForm.value.last_name}`.trim();
+
+  if (!fullName) {
+    errorText.value = 'First name and last name are required.';
+    showToast(errorText.value);
+    return false;
+  }
+
   try {
-    const updated = await updateTeacherData({
-      name: teacherForm.value.name,
-      email: teacherForm.value.email,
-    });
-    teacherProfile.value = updated;
-
-    if (selectedFile.value) {
-      uploading.value = true;
-      try {
-        const res = await uploadTeacherPhotoData(selectedFile.value);
-        if (res?.profile_photo) {
-          teacherProfile.value = { ...(teacherProfile.value || {}), profile_photo: res.profile_photo };
-        }
-      } finally {
-        uploading.value = false;
-        selectedFile.value = null;
-        photoPreview.value = null;
-        if (fileInput.value) fileInput.value.value = '';
-        avatarError.value = false;
-      }
+    if (hasProfileChanges.value) {
+      const updated = await updateTeacherData({
+        name: fullName,
+        email: teacherForm.value.email,
+      });
+      teacherProfile.value = updated;
     }
-
-    emit('profile-updated', teacherProfile.value);
-    showToast('Profile updated successfully.');
+    return true;
   } catch (err) {
     errorText.value = teacherError.value || err?.response?.data?.message || 'Failed to update profile.';
     showToast(errorText.value);
+    return false;
   }
 }
 
-async function savePassword() {
+async function savePhoto() {
+  if (!selectedFile.value) {
+    return false;
+  }
+
   errorText.value = '';
-  const hasAny =
-    !!teacherPwd.value.current_password || !!teacherPwd.value.password || !!teacherPwd.value.password_confirmation;
 
-  if (!hasAny) {
-    return;
-  }
-
-  if (!teacherPwd.value.current_password || !teacherPwd.value.password || !teacherPwd.value.password_confirmation) {
-    errorText.value = 'Fill in all password fields to change your password.';
-    showToast(errorText.value);
-    return;
-  }
-
-  if (teacherPwd.value.password.length < 8) {
-    errorText.value = 'New password must be at least 8 characters.';
-    showToast(errorText.value);
-    return;
-  }
-
-  if (teacherPwd.value.password !== teacherPwd.value.password_confirmation) {
-    errorText.value = 'New password and confirmation do not match.';
-    showToast(errorText.value);
-    return;
-  }
-
+  uploading.value = true;
   try {
-    await changeTeacherPasswordData({
-      current_password: teacherPwd.value.current_password,
-      password: teacherPwd.value.password,
-      password_confirmation: teacherPwd.value.password_confirmation,
-    });
-    // Data flow context reset: ONLY wipe passwords after a successful 200 server response.
-    teacherPwd.value = { current_password: '', password: '', password_confirmation: '' };
-    showToast('Password changed successfully.');
+    const res = await uploadTeacherPhotoData(selectedFile.value);
+    if (res?.profile_photo) {
+      teacherProfile.value = { ...(teacherProfile.value || {}), profile_photo: res.profile_photo };
+    }
+    return true;
   } catch (err) {
-    errorText.value = teacherError.value || err?.response?.data?.message || 'Failed to change password.';
+    errorText.value = teacherError.value || err?.response?.data?.message || 'Failed to upload profile photo.';
     showToast(errorText.value);
+    return false;
+  } finally {
+    uploading.value = false;
+    selectedFile.value = null;
+    photoPreview.value = null;
+    if (fileInput.value) fileInput.value.value = '';
+    avatarError.value = false;
   }
 }
 
 async function saveAll() {
-  await saveProfile();
+  const profileSaved = hasProfileChanges.value ? await saveProfile() : true;
+  const photoSaved = selectedFile.value ? await savePhoto() : false;
 
-  if (teacherPwd.value.current_password || teacherPwd.value.password || teacherPwd.value.password_confirmation) {
-    await savePassword();
+  if (profileSaved || photoSaved) {
+    emit('profile-updated', teacherProfile.value);
+    showToast(photoSaved && !hasProfileChanges.value
+      ? 'Profile photo updated successfully.'
+      : 'Profile updated successfully.');
   }
 }
 

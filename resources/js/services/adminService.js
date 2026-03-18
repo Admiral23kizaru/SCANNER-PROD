@@ -281,6 +281,7 @@ export async function getAdminStudentIdUrl(id) {
     return data;
 }
 
+
 /**
  * Request a time-limited signed URL to download a teacher ID card PDF.
  *
@@ -293,5 +294,4 @@ export async function getAdminTeacherIdUrl(id) {
     });
     return data;
 }
-
 

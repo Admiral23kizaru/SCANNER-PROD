@@ -217,7 +217,7 @@
             type="email"
             autocomplete="email"
             class="w-full rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-sm text-slate-50 placeholder-slate-500 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400"
-            placeholder=""
+            placeholder="username@example.com"
           />
           <button
             type="button"
