@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\AdminProfileController;
 use App\Http\Controllers\Api\AdminStudentController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
@@ -94,6 +95,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/{id}', 'update');
             Route::delete('/{id}', 'destroy');
         });
+
+        Route::controller(AdminProfileController::class)->group(function () {
+            Route::get('/profile', 'show');
+            Route::put('/update-profile', 'update');
+            Route::post('/update-profile/photo', 'uploadPhoto');
+            Route::put('/update-profile/password', 'changePassword');
+        });
     });
 
     /* ------------------------------------------------------------------ */
@@ -104,13 +112,20 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/dashboard', fn () => response()->json(['message' => 'Teacher dashboard']));
 
-        Route::controller(StudentController::class)->prefix('students')->group(function () {
-            Route::get('/', 'index');
-            Route::post('/import', 'import');
-            Route::post('/', 'store');
-            Route::put('/{id}', 'update');
-            Route::post('/{id}', 'update');
-            Route::post('/{id}/photo', 'uploadPhoto');
+        Route::controller(StudentController::class)->group(function () {
+            Route::get('/students', 'index');
+            Route::post('/students/import', 'import');
+            Route::post('/students', 'store');
+            Route::put('/students/{id}', 'update');
+            Route::post('/students/{id}', 'update');
+            Route::post('/students/{id}/photo', 'uploadPhoto');
+        });
+
+        Route::controller(\App\Http\Controllers\Api\TeacherProfileController::class)->group(function () {
+            Route::get('/profile', 'show');
+            Route::put('/update-profile', 'update');
+            Route::post('/update-profile/photo', 'uploadPhoto');
+            Route::put('/update-profile/password', 'changePassword');
         });
     });
 

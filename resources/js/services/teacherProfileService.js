@@ -1,22 +1,20 @@
 /**
- * @fileoverview adminProfileService.js
+ * @fileoverview teacherProfileService.js
  * 
- * Target Role: Admin
- * Source: AdminProfileModal.vue
- * Destination: Laravel /api/admin/update-profile
- * Function: Dedicated Axios service for Admin Profile management. Isolated from Teacher state to ensure security and prevent data overlap.
+ * Target Role: Teacher
+ * Source: TeacherProfileModal.vue
+ * Destination: Laravel /api/teacher/update-profile
+ * Function: Dedicated Axios service for Teacher Profile management. Isolated from Admin state to ensure security and prevent data overlap.
  */
 
 import axios from 'axios';
 import { getStoredToken } from '../router';
 
-// NOTE: Admin profile endpoints are under the `/api/admin` prefix (see `routes/api.php`).
-// Using `/api/profile` causes "PUT not supported" because that route only supports GET/HEAD.
-const base = '/api/admin';
+const base = '/api/teacher';
 
 /**
- * Target Role: Admin
- * Source: AdminProfileModal.vue
+ * Target Role: Teacher
+ * Source: TeacherProfileModal.vue
  * Destination: Axios request headers
  * Function: Builds the Authorization header from the stored Bearer token.
  *
@@ -28,34 +26,35 @@ function getAuthHeaders() {
 }
 
 /**
- * Fetch the real system admin profile data instead of defaults.
+ * Fetch the Teacher profile data.
  * 
- * Source: AdminProfileModal.vue -> useAdminProfile()
- * Destination: GET /api/admin/profile 
- * Function: Pulls the "System Admin" (admin@gmail.com) account data.
+ * Target Role: Teacher
+ * Source: TeacherProfileModal.vue -> useTeacherProfile()
+ * Destination: GET /api/teacher/profile 
+ * Function: Pulls the active Teacher's account data.
  * 
  * @returns {Promise<Object>} Formatted user profile block 
  */
-export async function fetchAdminProfile() {
+export async function fetchTeacherProfile() {
     const { data } = await axios.get(`${base}/profile`, {
         headers: { ...getAuthHeaders(), Accept: 'application/json' },
     });
-    // Data Flow: Axios resolves with {"id": 1, "name": "System Admin", "email": "admin@gmail.com"}
+    // Data Flow: Axios resolves the active Teacher's profile parameters
     return data;
 }
 
 /**
  * Update the basic profile (Name, Email).
  * 
- * Target Role: Admin
+ * Target Role: Teacher
  * Source: Save Changes button in modal (if name/email modified).
- * Destination: PUT /api/admin/update-profile (Users table)
+ * Destination: PUT /api/teacher/update-profile (Users table)
  * Function: Saves the updated basic string fields independently.
  * 
  * @param {Object} payload - { name: '...', email: '...' }
  * @returns {Promise<Object>} Returns newly updated record
  */
-export async function updateAdminProfile(payload) {
+export async function updateTeacherProfile(payload) {
     const { data } = await axios.put(`${base}/update-profile`, payload, {
         headers: {
             ...getAuthHeaders(),
@@ -68,17 +67,17 @@ export async function updateAdminProfile(payload) {
 }
 
 /**
- * Upload a picture for the admin avatar.
+ * Upload a picture for the teacher avatar.
  * 
- * Target Role: Admin
+ * Target Role: Teacher
  * Source: Change Photo -> onFileChange
- * Destination: POST /api/admin/update-profile/photo
- * Function: Posts a File Blob as multipart/form-data specifically for Admin.
+ * Destination: POST /api/teacher/update-profile/photo
+ * Function: Posts a File Blob as multipart/form-data specifically for Teacher.
  * 
  * @param {File} file - Validated < 2MB Image (JPG/PNG/WebP)
  * @returns {Promise<Object>} Contains `{ profile_photo: "..." }`
  */
-export async function uploadAdminProfilePhoto(file) {
+export async function uploadTeacherProfilePhoto(file) {
     // Data Flow: Wrap the raw browser File blob in FormData for multipart upload.
     const formData = new FormData();
     // Data Flow: Field name MUST match Laravel's expected request key (`photo`).
@@ -96,17 +95,17 @@ export async function uploadAdminProfilePhoto(file) {
 }
 
 /**
- * Change the admin account password.
+ * Change the teacher account password.
  * 
- * Target Role: Admin
+ * Target Role: Teacher
  * Source: Save Changes button (if password filled)
- * Destination: PUT /api/admin/update-profile/password
- * Function: Updates the hash for Admin in the DB securely.
+ * Destination: PUT /api/teacher/update-profile/password
+ * Function: Updates the hash for Teacher in the DB securely.
  * 
  * @param {Object} payload - { current_password, password, password_confirmation }
  * @returns {Promise<Object>} Success boolean / message
  */
-export async function changeAdminPassword(payload) {
+export async function changeTeacherPassword(payload) {
     const { data } = await axios.put(`${base}/update-profile/password`, payload, {
         headers: {
             ...getAuthHeaders(),

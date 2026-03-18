@@ -398,6 +398,44 @@ Authorization: Bearer <token>
 
 ---
 
+## Troubleshooting
+
+### 1. `405 (Method Not Allowed)` on Axios PUT/POST Requests
+**Symptoms:** 
+When making an Axios `PUT` or `POST` request (e.g., saving an admin profile), Laravel returns a 405 status code with the message "The PUT method is not supported for this route. Supported methods: GET, HEAD."
+
+**Root Cause:**
+This issue frequently occurs when hosting on local XAMPP/Apache servers due to how trailing slashes are parsed. If a route group uses `Route::prefix('profile')` and contains a nested `Route::get('/')`, Laravel registers the target URL as `/profile/` (with a trailing slash). If the frontend sends an Axios request to `/profile` (no slash), the server redirects the mismatched route implicitly, converting the `PUT` or `POST` request into a `GET`, subsequently triggering a 405 error because the targeted logic only supported `PUT` or `POST`.
+
+**The Fix:**
+Avoid using empty nested routes (`/`) behind a `prefix()`. Explicitly define the full URI paths in the route group so both the frontend and backend match strings exactly without implicit slash handling.
+
+*Instead of this:*
+```php
+Route::controller(AdminProfileController::class)->prefix('profile')->group(function () {
+    Route::get('/', 'show');
+    Route::put('/', 'update');
+    // Laravel registers these as GET /profile/ and PUT /profile/ 
+});
+```
+
+*Do this:*
+```php
+Route::controller(AdminProfileController::class)->group(function () {
+    Route::get('/profile', 'show');
+    Route::put('/profile', 'update');
+    // Laravel registers these directly as GET /profile and PUT /profile (no hidden trailing slashes)
+});
+```
+
+**Final Steps after fixing routes:**
+Whenever editing `routes/api.php`, always clear Laravel's internal route cache:
+```bash
+php artisan optimize:clear
+```
+
+---
+
 ## License
 
 For academic and institutional use within the Division of Ozamiz City, DEPED Region X.

@@ -71,7 +71,7 @@
               <button
                 type="button"
                 class="hidden sm:flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/10 transition-colors cursor-pointer"
-                @click="isProfileOpen = !isProfileOpen"
+                @click.stop="isProfileOpen = !isProfileOpen"
               >
                 <div class="text-right">
                   <p class="text-[11px] font-medium text-white">{{ user.name }}</p>
@@ -114,12 +114,11 @@
                     <p class="text-[10px] text-slate-500 truncate">{{ user.email }}</p>
                   </div>
 
-                  <!-- Menu items -->
                   <div class="py-1">
                     <button
                       type="button"
                       class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                      @click="isProfileOpen = false"
+                      @click="isProfileOpen = false; showProfileModal = true"
                     >
                       <UserCircle class="h-4 w-4" />
                       <span>My Profile</span>
@@ -127,7 +126,7 @@
                     <button
                       type="button"
                       class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                      @click="isProfileOpen = false"
+                      @click="isProfileOpen = false; showProfileModal = true"
                     >
                       <Settings class="h-4 w-4" />
                       <span>Settings</span>
@@ -151,7 +150,7 @@
               <div
                 v-if="isProfileOpen"
                 class="fixed inset-0 z-40"
-                @click="isProfileOpen = false"
+                @click.stop="isProfileOpen = false"
               />
             </div>
         </div>
@@ -531,6 +530,7 @@
         </div>
       </div>
     </div>
+    <TeacherProfileModal v-model="showProfileModal" :user="user" @profile-updated="onProfileUpdated" />
   </div>
 </template>
 
@@ -541,6 +541,7 @@ import QRCode from 'qrcode';
 import { LogOut, Search, Upload, Plus, User, Pencil, Users, Menu, Filter, ChevronLeft, ChevronRight, ChevronDown, UserCircle, Settings } from 'lucide-vue-next';
 import { setStoredToken } from '../router';
 import { fetchStudents, createStudent, createStudentWithFormData, updateStudent, updateStudentWithFormData, uploadStudentPhoto, bulkImportStudents } from '../services/studentService';
+import TeacherProfileModal from './TeacherProfileModal.vue';
 
 function titleCase(str) {
   if (!str || typeof str !== 'string') return '';
@@ -573,9 +574,21 @@ const isSidebarOpen = ref(false);
 const user = ref(null);
 const userPhotoError = ref(false);
 const isProfileOpen = ref(false);
+const showProfileModal = ref(false);
+
+function onProfileUpdated(updatedProfile) {
+  if (user.value && updatedProfile) {
+    user.value = { ...user.value, ...updatedProfile };
+  }
+}
 
 function getPhotoUrl(path) {
   if (!path) return '/images/default-avatar.png';
+  // Target Role: Teacher
+  // Source: Storage/Database
+  // Destination: Profile Header
+  // Function: Identifies if path is already absolute URL, preventing prepending duplicate storage paths.
+  if (/^https?:\/\//i.test(path)) return path;
   const cleanPath = path.replace(/^(public\/|storage\/|\/storage\/|\/public\/)/, '').replace(/^\//, '');
   return '/storage/' + cleanPath;
 }

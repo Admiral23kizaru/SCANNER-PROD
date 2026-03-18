@@ -18,7 +18,7 @@
         <div class="bg-[#0f1f3d] px-5 py-4 text-white relative">
           <div class="flex items-start justify-between gap-4">
             <div>
-              <div class="text-base font-semibold">Admin Profile</div>
+              <div class="text-base font-semibold">Teacher Profile</div>
               <div class="text-xs text-white/80">Manage your account information and password.</div>
             </div>
 
@@ -81,7 +81,7 @@
                   <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">Full Name</label>
                     <input
-                      v-model="form.name"
+                      v-model="teacherForm.name"
                       type="text"
                       class="w-full rounded-md border border-[#d1d5db] px-3 py-2 text-sm focus:outline-none focus:ring-0 focus:border-[#0f1f3d]"
                       required
@@ -90,7 +90,7 @@
                   <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">Email</label>
                     <input
-                      v-model="form.email"
+                      v-model="teacherForm.email"
                       type="email"
                       class="w-full rounded-md border border-[#d1d5db] px-3 py-2 text-sm focus:outline-none focus:ring-0 focus:border-[#0f1f3d]"
                       required
@@ -103,7 +103,7 @@
                   <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">Current Password</label>
                     <input
-                      v-model="pwd.current_password"
+                      v-model="teacherPwd.current_password"
                       type="password"
                       class="w-full rounded-md border border-[#d1d5db] px-3 py-2 text-sm focus:outline-none focus:ring-0 focus:border-[#0f1f3d]"
                     />
@@ -112,7 +112,7 @@
                   <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">New Password</label>
                     <input
-                      v-model="pwd.password"
+                      v-model="teacherPwd.password"
                       type="password"
                       class="w-full rounded-md border border-[#d1d5db] px-3 py-2 text-sm focus:outline-none focus:ring-0 focus:border-[#0f1f3d]"
                     />
@@ -129,7 +129,7 @@
                   <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">Confirm New Password</label>
                     <input
-                      v-model="pwd.password_confirmation"
+                      v-model="teacherPwd.password_confirmation"
                       type="password"
                       class="w-full rounded-md border border-[#d1d5db] px-3 py-2 text-sm focus:outline-none focus:ring-0 focus:border-[#0f1f3d]"
                     />
@@ -180,35 +180,33 @@
 
 <script setup>
 import { computed, ref, watch, onMounted } from 'vue';
-import { useAdminProfile } from '../composables/useAdminProfile';
+import { useTeacherProfile } from '../composables/useTeacherProfile';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
 });
 const emit = defineEmits(['update:modelValue', 'profile-updated']);
 
-const { profile, loading, error, fetchProfile, updateProfile, uploadPhoto, changePassword } = useAdminProfile();
+const { teacherProfile, teacherLoading, teacherError, fetchTeacherData, updateTeacherData, uploadTeacherPhotoData, changeTeacherPasswordData } = useTeacherProfile();
 
 const avatarError = ref(false);
 const fileInput = ref(null);
 const selectedFile = ref(null);
-const photoPreview = ref(null); // Data Flow: local DataURL preview only (never store server path here).
+const photoPreview = ref(null);
 const uploading = ref(false);
 const errorText = ref('');
 
-const form = ref({ name: '', email: '' });
-const pwd = ref({ current_password: '', password: '', password_confirmation: '' });
+// Independent State Isolation: Using teacher-specific names to avoid overriding any Admin logic.
+const teacherForm = ref({ name: '', email: '' });
+const teacherPwd = ref({ current_password: '', password: '', password_confirmation: '' });
 
 const toast = ref({ visible: false, message: '' });
 
 /**
- * Target Role: Admin
- * Source: AdminProfileModal.vue (toast UI)
+ * Target Role: Teacher
+ * Source: TeacherProfileModal.vue
  * Destination: N/A (client only)
- * Function: Shows a short-lived message without mutating form state.
- *
- * @param {string} message
- * @returns {void}
+ * Function: Shows a short-lived message.
  */
 function showToast(message) {
   toast.value = { visible: true, message };
@@ -216,34 +214,23 @@ function showToast(message) {
 }
 
 const initials = computed(() => {
-  const name = (profile.value?.name || '').trim();
-  if (!name) return 'A';
+  const name = (teacherProfile.value?.name || '').trim();
+  if (!name) return 'T';
   const parts = name.split(/\s+/).filter(Boolean);
   const first = parts[0]?.[0] || '';
   const last = parts.length > 1 ? parts[parts.length - 1]?.[0] : '';
-  return (first + last).toUpperCase() || 'A';
+  return (first + last).toUpperCase() || 'T';
 });
 
-const isBusy = computed(() => loading.value || uploading.value);
+const isBusy = computed(() => teacherLoading.value || uploading.value);
 
-/**
- * Target Role: Admin
- * Source: AdminProfileModal.vue (avatar <img>)
- * Destination: N/A (client only)
- * Function: Normalizes backend storage paths into a browser-loadable URL.
- *
- * @param {unknown} rawPath
- * @returns {string|null} Resolved URL (e.g. `/storage/...`) or null.
- */
 function resolveProfilePhotoUrl(rawPath) {
   if (!rawPath) return null;
   const str = String(rawPath).trim();
   if (!str) return null;
 
-  // Data Flow: If API returns an absolute URL, keep it as-is.
   if (/^https?:\/\//i.test(str)) return str;
 
-  // Data Flow: Laravel commonly stores paths like `public/profile_photos/x.jpg`.
   const clean = str
     .replace(/^public\//, '')
     .replace(/^storage\//, '')
@@ -254,12 +241,11 @@ function resolveProfilePhotoUrl(rawPath) {
 }
 
 const displayPhotoUrl = computed(() => {
-  // Data Flow: Prefer local preview while selecting/uploading; otherwise show server photo.
-  return photoPreview.value || resolveProfilePhotoUrl(profile.value?.profile_photo);
+  return photoPreview.value || resolveProfilePhotoUrl(teacherProfile.value?.profile_photo);
 });
 
 const strengthScore = computed(() => {
-  const p = pwd.value.password || '';
+  const p = teacherPwd.value.password || '';
   let s = 0;
   if (p.length >= 8) s += 1;
   if (/[A-Z]/.test(p)) s += 1;
@@ -297,14 +283,6 @@ function close() {
   emit('update:modelValue', false);
 }
 
-/**
- * Target Role: Admin
- * Source: AdminProfileModal.vue (backdrop click)
- * Destination: N/A (client only)
- * Function: Prevents accidental modal close while saving/uploading.
- *
- * @returns {void}
- */
 function onBackdropClick() {
   close();
 }
@@ -341,33 +319,34 @@ function onFileChange(e) {
   reader.readAsDataURL(file);
 }
 
+// Data Flow: Safely populate state from the reactive composable object after DB response.
 async function hydrateFromProfile() {
-  form.value = {
-    name: profile.value?.name || '',
-    email: profile.value?.email || '',
-  };
-  // Data Flow: `photoPreview` is for local DataURL only; server path is resolved via `displayPhotoUrl`.
+  if (teacherProfile.value) {
+    teacherForm.value = {
+      name: teacherProfile.value.name || '',
+      email: teacherProfile.value.email || '',
+    };
+  }
   photoPreview.value = null;
   avatarError.value = false;
 }
 
+// Fixed Data Loss: Ensures fields are ONLY reset if the API update is 100% successful.
 async function saveProfile() {
   errorText.value = '';
   try {
-    const updated = await updateProfile({
-      name: form.value.name,
-      email: form.value.email,
+    const updated = await updateTeacherData({
+      name: teacherForm.value.name,
+      email: teacherForm.value.email,
     });
-    profile.value = updated;
+    teacherProfile.value = updated;
 
     if (selectedFile.value) {
       uploading.value = true;
       try {
-        // Data Flow: `uploadPhoto` posts multipart/form-data and returns `{ profile_photo: "..." }`.
-        const res = await uploadPhoto(selectedFile.value);
+        const res = await uploadTeacherPhotoData(selectedFile.value);
         if (res?.profile_photo) {
-          // Data Flow: Patch only the photo field so name/email inputs remain untouched.
-          profile.value = { ...(profile.value || {}), profile_photo: res.profile_photo };
+          teacherProfile.value = { ...(teacherProfile.value || {}), profile_photo: res.profile_photo };
         }
       } finally {
         uploading.value = false;
@@ -378,10 +357,10 @@ async function saveProfile() {
       }
     }
 
-    emit('profile-updated', profile.value);
+    emit('profile-updated', teacherProfile.value);
     showToast('Profile updated successfully.');
   } catch (err) {
-    errorText.value = error.value || err?.response?.data?.message || 'Failed to update profile.';
+    errorText.value = teacherError.value || err?.response?.data?.message || 'Failed to update profile.';
     showToast(errorText.value);
   }
 }
@@ -389,55 +368,54 @@ async function saveProfile() {
 async function savePassword() {
   errorText.value = '';
   const hasAny =
-    !!pwd.value.current_password || !!pwd.value.password || !!pwd.value.password_confirmation;
+    !!teacherPwd.value.current_password || !!teacherPwd.value.password || !!teacherPwd.value.password_confirmation;
 
-  // If all password fields are empty, treat as "no password change".
   if (!hasAny) {
     return;
   }
 
-  if (!pwd.value.current_password || !pwd.value.password || !pwd.value.password_confirmation) {
+  if (!teacherPwd.value.current_password || !teacherPwd.value.password || !teacherPwd.value.password_confirmation) {
     errorText.value = 'Fill in all password fields to change your password.';
     showToast(errorText.value);
     return;
   }
 
-  if (pwd.value.password.length < 8) {
+  if (teacherPwd.value.password.length < 8) {
     errorText.value = 'New password must be at least 8 characters.';
     showToast(errorText.value);
     return;
   }
 
-  if (pwd.value.password !== pwd.value.password_confirmation) {
+  if (teacherPwd.value.password !== teacherPwd.value.password_confirmation) {
     errorText.value = 'New password and confirmation do not match.';
     showToast(errorText.value);
     return;
   }
 
   try {
-    await changePassword({
-      current_password: pwd.value.current_password,
-      password: pwd.value.password,
-      password_confirmation: pwd.value.password_confirmation,
+    await changeTeacherPasswordData({
+      current_password: teacherPwd.value.current_password,
+      password: teacherPwd.value.password,
+      password_confirmation: teacherPwd.value.password_confirmation,
     });
-    pwd.value = { current_password: '', password: '', password_confirmation: '' };
+    // Data flow context reset: ONLY wipe passwords after a successful 200 server response.
+    teacherPwd.value = { current_password: '', password: '', password_confirmation: '' };
     showToast('Password changed successfully.');
   } catch (err) {
-    errorText.value = error.value || err?.response?.data?.message || 'Failed to change password.';
+    errorText.value = teacherError.value || err?.response?.data?.message || 'Failed to change password.';
     showToast(errorText.value);
   }
 }
 
 async function saveAll() {
-  // Save profile first, then password if fields are filled
   await saveProfile();
 
-  if (pwd.value.current_password || pwd.value.password || pwd.value.password_confirmation) {
+  if (teacherPwd.value.current_password || teacherPwd.value.password || teacherPwd.value.password_confirmation) {
     await savePassword();
   }
 }
 
-// Pre-hydrate immediately when Modal mounts from locally cached profile state
+// Pre-Hydrate immediately when Modal mounts so it's not blank while loading
 onMounted(() => {
   hydrateFromProfile();
 });
@@ -448,13 +426,12 @@ watch(
     if (!open) return;
     errorText.value = '';
     try {
-      await fetchProfile();
+      await fetchTeacherData();
       await hydrateFromProfile();
     } catch (err) {
-      errorText.value = error.value || err?.response?.data?.message || 'Failed to load profile.';
+      errorText.value = teacherError.value || err?.response?.data?.message || 'Failed to load profile.';
       showToast(errorText.value);
     }
   },
 );
 </script>
-

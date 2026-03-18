@@ -118,7 +118,7 @@
               <button
                 type="button"
                 class="hidden sm:flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/10 transition-colors cursor-pointer"
-                @click="isProfileOpen = !isProfileOpen"
+                @click.stop="isProfileOpen = !isProfileOpen"
               >
                 <div class="text-right">
                   <p class="text-xs font-medium text-white">{{ user.name }}</p>
@@ -166,7 +166,7 @@
                     <button
                       type="button"
                       class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                      @click="isProfileOpen = false"
+                      @click="isProfileOpen = false; showProfileModal = true"
                     >
                       <UserCircle class="h-4 w-4" />
                       <span>My Profile</span>
@@ -174,7 +174,7 @@
                     <button
                       type="button"
                       class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                      @click="isProfileOpen = false"
+                      @click="isProfileOpen = false; showProfileModal = true"
                     >
                       <Settings class="h-4 w-4" />
                       <span>Settings</span>
@@ -198,7 +198,7 @@
               <div
                 v-if="isProfileOpen"
                 class="fixed inset-0 z-40"
-                @click="isProfileOpen = false"
+                @click.stop="isProfileOpen = false"
               />
             </div>
           </div>
@@ -214,17 +214,21 @@
         </div>
       </main>
     </div>
+    <!-- Profile Edit Modal -->
+    <AdminProfileModal v-model="showProfileModal" @profile-updated="onProfileUpdated" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { setStoredToken } from '../../router';
-import { fetchUser, logoutUser } from '../../services/authService';
+import { LayoutDashboard, Users, GraduationCap, LogOut, Menu, ChevronDown, UserCircle, Settings } from 'lucide-vue-next';
+import { fetchUser } from '../../services/authService';
+import { useLogout } from '../../composables/useLogout';
 import AdminDashboardStats from './AdminDashboardStats.vue';
 import AdminTeachersPage from './AdminTeachersPage.vue';
 import AdminStudentsPage from './AdminStudentsPage.vue';
+import AdminProfileModal from '../AdminProfileModal.vue';
 
 const router = useRouter();
 const currentPage = ref('dashboard');
@@ -233,9 +237,24 @@ const logoSrc = '/logo/depedozamiz.png';
 const user = ref(null);
 const userPhotoError = ref(false);
 const isProfileOpen = ref(false);
+const showProfileModal = ref(false);
+
+const { logout } = useLogout();
+
+function onProfileUpdated(updatedProfile) {
+  if (user.value && updatedProfile) {
+    user.value = { ...user.value, ...updatedProfile };
+  }
+}
+
 
 function getPhotoUrl(path) {
   if (!path) return '/images/default-avatar.png';
+  // Target Role: Admin
+  // Source: Storage/Database
+  // Destination: Profile Header
+  // Function: Identifies if path is already absolute URL, or formats local storage paths.
+  if (/^https?:\/\//i.test(path)) return path;
   const cleanPath = path.replace(/^(public\/|storage\/|\/storage\/|\/public\/)/, '').replace(/^\//, '');
   return '/storage/' + cleanPath;
 }
@@ -252,13 +271,7 @@ const pageSubtitle = computed(() => {
   return 'Overview of Ozamiz Schools QR-ID System activity';
 });
 
-async function logout() {
-  try {
-    await logoutUser();
-  } catch (_) {}
-  setStoredToken(null);
-  router.push('/login');
-}
+
 
 onMounted(async () => {
   try {
