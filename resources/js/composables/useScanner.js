@@ -78,6 +78,9 @@ export function useScanner() {
     /** Triggers the "Unknown ID" red overlay for 3 seconds. */
     const unknownAlert = ref(false);
 
+    /** True while an API scan request is in-flight (UI should show Processing...). */
+    const scanProcessing = ref(false);
+
     // ── Internal timers (not reactive — no need to be refs) ─────────────────
     let clockInterval     = null;
     let highlightTimer    = null;
@@ -293,6 +296,8 @@ export function useScanner() {
         lastScannedAt.value    = Date.now();
 
         try {
+            scanProcessing.value = true;
+            showMessage('Processing...', 'warning', 0);
             const res = await scanAttendancePublic(raw);
 
             if (res?.status !== 'success') {
@@ -317,12 +322,17 @@ export function useScanner() {
             else refreshStats();
 
             prependAttendance(student, attendance);
-            showMessage(`${student.first_name} recorded.`, 'success');
+            const methodString = (res.notification_method && res.notification_method !== 'None')
+                ? ` Notification sent via ${res.notification_method}.`
+                : '';
+            showMessage(`${student.first_name} recorded.${methodString}`, 'success');
 
         } catch (err) {
             playBeep('error');
             if (err.response?.status === 404) triggerUnknownAlert();
             showMessage(err.response?.data?.message || 'Scan failed.', 'error');
+        } finally {
+            scanProcessing.value = false;
         }
     }
 
@@ -493,6 +503,7 @@ export function useScanner() {
         stats,
         lastScanDetails,
         unknownAlert,
+        scanProcessing,
         // Utilities
         formatTime,
         getPhotoUrl,

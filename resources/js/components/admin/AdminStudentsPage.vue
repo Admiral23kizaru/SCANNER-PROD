@@ -206,6 +206,16 @@
               <label class="block text-sm font-medium text-stone-700 mb-1">Contact Number</label>
               <input v-model="form.contact_number" type="text" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
+            <div>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Notification Method</label>
+              <select
+                v-model="form.notification_preference"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
+              >
+                <option value="email">Email (Free)</option>
+                <option value="sms">SMS (Paid)</option>
+              </select>
+            </div>
           </div>
           <div v-if="formError" class="mt-2 text-sm text-red-600">{{ formError }}</div>
           <div class="mt-4 flex justify-end gap-2">
@@ -284,6 +294,7 @@ const form = ref({
   guardian: '',
   guardian_email: '',
   contact_number: '',
+  notification_preference: 'email',
 });
 const formError = ref('');
 
@@ -371,6 +382,7 @@ function openEditModal(row) {
     guardian: row.guardian ?? '',
     guardian_email: row.guardian_email ?? '',
     contact_number: row.contact_number ?? '',
+    notification_preference: row.notification_preference ?? 'email',
   };
   formError.value = '';
   showFormModal.value = true;
@@ -393,6 +405,7 @@ async function submitForm() {
     guardian: form.value.guardian || '',
     guardian_email: form.value.guardian_email || '',
     contact_number: form.value.contact_number || '',
+    notification_preference: form.value.notification_preference || 'email',
   };
   try {
     if (editingId.value) {

@@ -8,20 +8,24 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('admins', function (Blueprint $table) {
-            if (!Schema::hasColumn('admins', 'profile_photo')) {
-                $table->string('profile_photo')->nullable()->after('email');
-            }
-        });
+        if (Schema::hasTable('admins')) {
+            Schema::table('admins', function (Blueprint $table) {
+                if (!Schema::hasColumn('admins', 'profile_photo')) {
+                    $table->string('profile_photo')->nullable()->after('email');
+                }
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('admins', function (Blueprint $table) {
-            if (Schema::hasColumn('admins', 'profile_photo')) {
-                $table->dropColumn('profile_photo');
-            }
-        });
+        if (Schema::hasTable('admins')) {
+            Schema::table('admins', function (Blueprint $table) {
+                if (Schema::hasColumn('admins', 'profile_photo')) {
+                    $table->dropColumn('profile_photo');
+                }
+            });
+        }
     }
 };
 

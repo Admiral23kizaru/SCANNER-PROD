@@ -12,34 +12,40 @@ class MailerService
 
     public function __construct()
     {
-        $this->mail = new PHPMailer(true);
+        try {
+            $this->mail = new PHPMailer(true);
 
-        $host = config('mail.mailers.smtp.host') ?: env('MAIL_HOST', 'smtp.gmail.com');
-        $port = (int) (config('mail.mailers.smtp.port') ?: env('MAIL_PORT', 587));
-        $username = config('mail.mailers.smtp.username') ?: env('MAIL_USERNAME');
-        $password = config('mail.mailers.smtp.password') ?: env('MAIL_PASSWORD');
-        $encryption = config('mail.mailers.smtp.encryption') ?: env('MAIL_ENCRYPTION', 'tls');
-        $fromAddress = config('mail.from.address') ?: env('MAIL_FROM_ADDRESS');
-        $fromName = config('mail.from.name') ?: env('MAIL_FROM_NAME', 'QR Scanner');
+            $host        = config('mail.mailers.smtp.host') ?: env('MAIL_HOST', 'smtp.gmail.com');
+            $port        = (int) (config('mail.mailers.smtp.port') ?: env('MAIL_PORT', 587));
+            $username    = config('mail.mailers.smtp.username') ?: env('MAIL_USERNAME');
+            $password    = config('mail.mailers.smtp.password') ?: env('MAIL_PASSWORD');
+            $encryption  = config('mail.mailers.smtp.encryption') ?: env('MAIL_ENCRYPTION', 'tls');
+            $fromAddress = config('mail.from.address') ?: env('MAIL_FROM_ADDRESS');
+            $fromName    = config('mail.from.name') ?: env('MAIL_FROM_NAME', 'QR Scanner');
 
-        $this->mail->isSMTP();
-        $this->mail->Host = $host;
-        $this->mail->SMTPAuth = true;
-        $this->mail->Username = $username;
-        $this->mail->Password = $password;
-        $this->mail->SMTPSecure = $encryption === 'tls' ? PHPMailer::ENCRYPTION_STARTTLS : PHPMailer::ENCRYPTION_SMTPS;
-        $this->mail->Port = $port;
-        $this->mail->CharSet = 'UTF-8';
+            $this->mail->isSMTP();
+            $this->mail->Host       = $host;
+            $this->mail->SMTPAuth   = true;
+            $this->mail->Username   = $username;
+            $this->mail->Password   = $password;
+            $this->mail->SMTPSecure = $encryption === 'tls' ? PHPMailer::ENCRYPTION_STARTTLS : PHPMailer::ENCRYPTION_SMTPS;
+            $this->mail->Port       = $port;
+            $this->mail->CharSet    = 'UTF-8';
 
-        // If fromAddress is missing or a placeholder, fall back to the SMTP username
-        if (!$fromAddress || str_contains($fromAddress, 'your_email')) {
-            $fromAddress = $username;
-        }
+            // If fromAddress is missing or a placeholder, fall back to the SMTP username
+            if (!$fromAddress || str_contains((string) $fromAddress, 'your_email')) {
+                $fromAddress = $username;
+            }
 
-        if ($fromAddress) {
-            $this->mail->setFrom($fromAddress, $fromName);
+            if ($fromAddress) {
+                $this->mail->setFrom($fromAddress, $fromName);
+            }
+        } catch (\Exception $e) {
+            Log::warning('MailerService: Could not initialize PHPMailer — ' . $e->getMessage());
+            $this->mail = new PHPMailer(true); // bare instance, won't send but won't crash DI
         }
     }
+
 
     public function sendEmail(string $to, string $subject, string $body): bool
     {
