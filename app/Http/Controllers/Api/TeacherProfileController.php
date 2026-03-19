@@ -7,7 +7,8 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class TeacherProfileController extends Controller
@@ -23,7 +24,7 @@ class TeacherProfileController extends Controller
             'phone'         => $teacher_profile->phone,
             'position'      => $teacher_profile->position,
             'profile_photo' => $teacher_profile->profile_photo
-                ? $this->fullPhotoUrl(Storage::url($teacher_profile->profile_photo))
+                ? $this->fullPhotoUrl($teacher_profile->profile_photo)
                 : null,
         ]);
     }
@@ -53,7 +54,7 @@ class TeacherProfileController extends Controller
             'phone'         => $teacher_profile->phone,
             'position'      => $teacher_profile->position,
             'profile_photo' => $teacher_profile->profile_photo
-                ? $this->fullPhotoUrl(Storage::url($teacher_profile->profile_photo))
+                ? $this->fullPhotoUrl($teacher_profile->profile_photo)
                 : null,
         ]);
     }
@@ -66,16 +67,16 @@ class TeacherProfileController extends Controller
             'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
-        if ($teacher_profile->profile_photo && Storage::disk('public')->exists($teacher_profile->profile_photo)) {
-            Storage::disk('public')->delete($teacher_profile->profile_photo);
-        }
-
-        $path = $validated['photo']->store('teacher_photos', 'public');
+        $path = $this->storePublicStorageImage(
+            $validated['photo'],
+            'teacher_photos',
+            $teacher_profile->profile_photo
+        );
 
         $teacher_profile->profile_photo = $path;
         $teacher_profile->save();
 
-        $publicUrl = $this->fullPhotoUrl(Storage::url($path));
+        $publicUrl = $this->fullPhotoUrl($path);
 
         return response()->json([
             'profile_photo' => $publicUrl,
@@ -108,7 +109,33 @@ class TeacherProfileController extends Controller
 
     private function fullPhotoUrl(string $maybeRelative): string
     {
-        return url($maybeRelative);
+        $clean = ltrim(preg_replace('#^(public/|storage/|/storage/)#', '', $maybeRelative) ?? $maybeRelative, '/');
+        return url('/storage/' . $clean);
+    }
+
+    /**
+     * Store an uploaded image directly under public/storage/<dir> and return a relative path (<dir>/<filename>).
+     */
+    private function storePublicStorageImage(\Illuminate\Http\UploadedFile $file, string $dir, ?string $previousRelativePath = null): string
+    {
+        $base = public_path('storage' . DIRECTORY_SEPARATOR . $dir);
+        if (!File::exists($base)) {
+            File::makeDirectory($base, 0755, true);
+        }
+
+        if ($previousRelativePath) {
+            $prevClean = ltrim(preg_replace('#^(public/|storage/|/storage/)#', '', $previousRelativePath) ?? $previousRelativePath, '/');
+            $prevAbs = public_path('storage' . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $prevClean));
+            if (File::exists($prevAbs)) {
+                @File::delete($prevAbs);
+            }
+        }
+
+        $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+        $filename = Str::uuid()->toString() . '.' . $ext;
+        $file->move($base, $filename);
+
+        return $dir . '/' . $filename;
     }
 }
 

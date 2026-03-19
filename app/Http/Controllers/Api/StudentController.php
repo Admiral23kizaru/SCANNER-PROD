@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Student;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -300,11 +302,21 @@ class StudentController extends Controller
     /** Persist a student photo to public storage and return its relative path. */
     private function saveStudentPhoto(\Illuminate\Http\UploadedFile $file, string $studentNumber): string
     {
-        return Storage::disk('public')->putFileAs(
-            'students',
-            $file,
-            $studentNumber . '.' . $file->getClientOriginalExtension()
-        );
+        $dir = 'students';
+        $base = public_path('storage' . DIRECTORY_SEPARATOR . $dir);
+        if (!File::exists($base)) {
+            File::makeDirectory($base, 0755, true);
+        }
+
+        $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+        $filename = $studentNumber . '.' . $ext;
+        $abs = $base . DIRECTORY_SEPARATOR . $filename;
+        if (File::exists($abs)) {
+            $filename = $studentNumber . '-' . Str::lower(Str::random(6)) . '.' . $ext;
+        }
+
+        $file->move($base, $filename);
+        return $dir . '/' . $filename;
     }
 
     /** Derive grade_section from input fields with fallback logic. */
