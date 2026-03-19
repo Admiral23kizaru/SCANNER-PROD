@@ -27,8 +27,10 @@ Route::controller(PasswordResetController::class)->prefix('password')->group(fun
 });
 
 Route::controller(AttendanceController::class)->group(function () {
-    Route::post('/attendance/scan', 'scanPublic');
+    // Protocol Comment: Source: API Router; Destination: AttendanceController; Function: Creating the bridge for QR scanning.
+    Route::post('/attendance/scan', [AttendanceController::class, 'scan']);
     Route::get('/attendance/public/recent', 'publicRecent');
+    Route::get('/attendance/public/stats', 'publicStats');  // public stats for Guard Terminal
 });
 
 /* ====================================================================== */
@@ -119,6 +121,17 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/students/{id}', 'update');
             Route::post('/students/{id}', 'update');
             Route::post('/students/{id}/photo', 'uploadPhoto');
+        });
+
+        /*
+         * Target Role: Attendance Guard / Parent.
+         * Source: QR Scanner (Teacher Dashboard).
+         * Function: Authenticated scan route — preference-based routing (SMS vs Email).
+         * Destination: Guardian contact (SMS via Semaphore or Email via PHPMailer).
+         */
+        Route::controller(AttendanceController::class)->group(function () {
+            Route::post('/attendance/scan', 'teacherScan');    // teacher-side QR scan
+            Route::get('/attendance/recent', 'recent'); // teacher's own scan history
         });
 
         Route::controller(\App\Http\Controllers\Api\TeacherProfileController::class)->group(function () {

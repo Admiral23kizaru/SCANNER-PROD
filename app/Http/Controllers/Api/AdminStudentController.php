@@ -70,6 +70,7 @@ class AdminStudentController extends Controller
             'guardian'       => ['nullable', 'string', 'max:255'],
             'guardian_email' => ['nullable', 'string', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
+            'notification_preference' => ['nullable', 'in:email,sms'],
             'school_id'      => ['nullable', 'exists:schools,id'],
         ], [
             'student_number.unique' => 'LRN already exists.',
@@ -92,6 +93,7 @@ class AdminStudentController extends Controller
             'guardian'       => $request->guardian ?: null,
             'guardian_email' => $request->guardian_email ?: null,
             'contact_number' => $request->contact_number ?: null,
+            'notification_preference' => $request->notification_preference ?: 'email',
             'school_id'      => $request->user()->school_id,
             'created_by'     => $request->user()->id,
         ]);
@@ -118,6 +120,7 @@ class AdminStudentController extends Controller
             'guardian'       => ['nullable', 'string', 'max:255'],
             'guardian_email' => ['nullable', 'string', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
+            'notification_preference' => ['nullable', 'in:email,sms'],
         ], [
             'student_number.unique' => 'LRN already exists.',
         ]);
@@ -129,7 +132,7 @@ class AdminStudentController extends Controller
         $data = $request->only([
             'first_name', 'last_name', 'middle_name', 'student_number',
             'grade_section', 'grade', 'section',
-            'guardian', 'guardian_email', 'contact_number',
+            'guardian', 'guardian_email', 'contact_number', 'notification_preference',
         ]);
 
         if ($request->hasAny(['grade', 'section', 'grade_section'])) {

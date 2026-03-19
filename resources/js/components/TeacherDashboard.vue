@@ -403,6 +403,16 @@
               />
             </div>
             <div>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Notification Method</label>
+              <select
+                v-model="form.notification_preference"
+                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700 bg-white"
+              >
+                <option value="email">Email (Free)</option>
+                <option value="sms">SMS (Paid)</option>
+              </select>
+            </div>
+            <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">LRN <span class="text-xs text-stone-500 font-normal">(exactly 12 digits)</span></label>
               <input
                 v-model="form.student_number"
@@ -609,6 +619,7 @@ const form = ref({
   guardian_email: '',
   contact_number: '',
   student_number: '',
+  notification_preference: 'email',
 });
 const formError = ref('');
 const qrModalStudent = ref(null);
@@ -717,7 +728,7 @@ function openAddModal() {
   editingId.value = null;
   form.value = {
     first_name: '', last_name: '', middle_name: '', grade: '', section: '',
-    grade_section: '', guardian: '', guardian_email: '', contact_number: '', student_number: '',
+    grade_section: '', guardian: '', guardian_email: '', contact_number: '', student_number: '', notification_preference: 'email',
   };
   formError.value = '';
   photoFile.value = null;
@@ -727,6 +738,12 @@ function openAddModal() {
   showFormModal.value = true;
 }
 
+/**
+ * Target Role: Attendance Guard / Parent.
+ * Source: Student Preference Data
+ * Destination: Semaphore API / PHPMailer
+ * Function: Routing the alert based on the parent's chosen method (SMS vs Email).
+ */
 function openEditModal(row) {
   editingId.value = row.id;
   form.value = {
@@ -740,6 +757,7 @@ function openEditModal(row) {
     guardian_email: row.guardian_email ?? '',
     contact_number: row.contact_number ?? '',
     student_number: row.student_number ?? '',
+    notification_preference: row.notification_preference ?? 'email',
   };
   formError.value = '';
   photoFile.value = null;
@@ -759,6 +777,7 @@ function buildFormData() {
   fd.append('guardian', form.value.guardian || '');
   fd.append('guardian_email', form.value.guardian_email || '');
   fd.append('contact_number', form.value.contact_number || '');
+  fd.append('notification_preference', form.value.notification_preference || 'email');
   if (photoFile.value) fd.append('photo', photoFile.value);
   return fd;
 }
@@ -781,6 +800,7 @@ async function submitForm() {
           guardian: form.value.guardian || '',
           guardian_email: form.value.guardian_email || '',
           contact_number: form.value.contact_number || '',
+          notification_preference: form.value.notification_preference || 'email',
         };
         res = await updateStudent(editingId.value, payload);
       }
@@ -807,6 +827,7 @@ async function submitForm() {
           guardian: form.value.guardian || '',
           guardian_email: form.value.guardian_email || '',
           contact_number: form.value.contact_number || '',
+          notification_preference: form.value.notification_preference || 'email',
         });
         students.value = [res.student, ...students.value];
         total.value = (total.value || 0) + 1;

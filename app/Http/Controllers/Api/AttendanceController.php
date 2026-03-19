@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\SendSmsNotification;
+use App\Jobs\SendEmailNotification;
 use App\Models\Attendance;
 use App\Models\Role;
 use App\Models\School;
@@ -25,7 +26,7 @@ use Illuminate\Support\Facades\Validator;
  */
 class AttendanceController extends Controller
 {
-    public function __construct(protected readonly MailerService $mailer)
+    public function __construct(protected readonly ?MailerService $mailer = null)
     {
     }
 
@@ -34,19 +35,30 @@ class AttendanceController extends Controller
     /* ====================================================================== */
 
     /**
-     * Process a QR scan submitted by the Guard scanner terminal.
+     * Target Role: Attendance Guard / Scanner UI.
+     * Source: QR Scan Event.
+     * Destination: Attendance Table & Notification API.
+     * Function: High-speed attendance logging with background notification routing.
      *
-     * Accepts a student_number or employee_id, determines session (morning/afternoon),
-     * prevents duplicate scans, resolves school context, records attendance,
-     * and dispatches an SMS to the student's guardian.
+     * Action: Bypassing duplicate SMS check for testing; Formatting number to 63 prefix.
+     * Source: AttendanceController@scan
+     *
+     * Note: Priority is Scanner Speed. SMS delivery is secondary to logging.
+     *
+     * @param \Illuminate\Http\Request $request
+     *        - student_number: The ID (LRN) of the student from the QR scanner.
+     *        - session: (morning, lunch_out, etc.). 
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function scanPublic(Request $request): JsonResponse
+    public function scan(Request $request): JsonResponse
     {
         try {
             $validator = Validator::make($request->all(), [
-                'student_id' => ['required', 'string'],
+                'student_number' => ['required', 'string'],
+                'session'        => ['required', 'string'],
             ], [
-                'student_id.required' => 'Invalid QR code.',
+                'student_number.required' => 'Invalid QR code.',
+                'session.required'        => 'Session determines the log period.',
             ]);
 
             if ($validator->fails()) {
@@ -57,14 +69,14 @@ class AttendanceController extends Controller
                 ], 422);
             }
 
-            $input  = trim((string) $request->student_id);
+            $input  = trim((string) $request->student_number);
             $person = null;
             $personType = 'student';
 
-            // Resolve person from QR input
-            $student = is_numeric($input)
-                ? Student::find((int) $input)
-                : Student::where('student_number', $input)->first();
+            // Resolve person from QR input: always prioritize student_number (LRN).
+            $student = Student::where('student_number', $input)
+                ->orWhere('id', $input)
+                ->first();
 
             if ($student) {
                 $person = $student;
@@ -90,8 +102,8 @@ class AttendanceController extends Controller
                 return response()->json(['status' => 'duplicate', 'message' => 'Duplicate scan. Please wait.'], 422);
             }
 
-            // Determine session based on time of day
-            $session = now()->hour < 12 ? 'morning' : 'afternoon';
+            // Determine session from the request payload (avoid Request::session() name collision)
+            $session = (string) $request->input('session');
 
             // Prevent double-entry for same session per student
             if ($personType === 'student') {
@@ -117,6 +129,10 @@ class AttendanceController extends Controller
             $status     = $this->resolveStatus($settings, $scannedAt);
 
             // Record attendance only for students
+            $notificationMethodUsed = 'None';
+            $notificationPreference = null;
+            $notificationPayload = null;
+            $formattedNumber = null;
             if ($personType === 'student') {
                 $attendance = Attendance::create([
                     'student_id'     => $person->id,
@@ -128,9 +144,26 @@ class AttendanceController extends Controller
                     'school_year_id' => $schoolYear?->id,
                 ]);
 
-                // Dispatch async SMS to guardian
-                if ($person->contact_number || $person->emergency_contact) {
-                    SendSmsNotification::dispatch($person, $scannedAt->format('h:i A'), ucfirst($session));
+                // Prepare notification data, but do NOT block the scanner response.
+                $notificationPreference = $person->notification_preference ?? 'email';
+                $notificationPayload = [
+                    'time'    => $scannedAt->format('h:i A'),
+                    'session' => ucfirst((string) $session),
+                ];
+                if ($notificationPreference === 'sms') {
+                    /**
+                     * Source: Student DB; Destination: Semaphore API; Action: Converting local 09 format to international 63 format for carrier compatibility.
+                     */
+                    $guardianContact = $person->contact_number ?: $person->emergency_contact;
+                    if (!empty($guardianContact)) {
+                        $digits = preg_replace('/\D/', '', (string) $guardianContact);
+                        // If it starts with "0", replace leading "0" with "63" (e.g., 0946... -> 63946...).
+                        $formattedNumber = preg_replace('/^0/', '63', $digits);
+                        // If it already starts with "63", keep as-is (preg_replace won't change it).
+                    }
+                    $notificationMethodUsed = !empty($formattedNumber) ? 'SMS_QUEUED' : 'None';
+                } else {
+                    $notificationMethodUsed = ($person->guardian_email) ? 'EMAIL_QUEUED' : 'None';
                 }
             } else {
                 // Teachers are verified — mock attendance object for frontend compatibility
@@ -143,9 +176,11 @@ class AttendanceController extends Controller
 
             $photoPath  = $this->resolvePhotoUrl($person, $personType);
 
-            return response()->json([
+            // Return immediately once the attendance row is confirmed saved.
+            $response = response()->json([
                 'status'     => 'success',
                 'message'    => $personType === 'teacher' ? 'Teacher verified.' : 'Attendance recorded.',
+                'notification_method' => $notificationMethodUsed ?? 'None',
                 'attendance' => [
                     'id'         => $attendance->id,
                     'status'     => $attendance->status ?? 'on_time',
@@ -163,6 +198,30 @@ class AttendanceController extends Controller
                 ],
                 'stats' => $this->calculateStats($schoolId),
             ], 201);
+
+            // Dispatch notifications after the response is sent (scanner speed first).
+            if ($personType === 'student' && $notificationPreference && is_array($notificationPayload)) {
+                $student = $person; // clarity: $person is Student in this branch
+                app()->terminating(function () use ($student, $notificationPreference, $notificationPayload, $formattedNumber) {
+                    try {
+                        if ($notificationPreference === 'sms') {
+                            // Validation: do not attempt SMS when no number is available.
+                            if (!empty($formattedNumber)) {
+                                SendSmsNotification::dispatch($student, $notificationPayload['time'], $notificationPayload['session'], $formattedNumber)
+                                    ->afterResponse();
+                            }
+                            return;
+                        }
+                        if ($student->guardian_email) {
+                            SendEmailNotification::dispatch($student, $notificationPayload['time'], $notificationPayload['session'])->afterResponse();
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning('Attendance notification dispatchAfterResponse failed: ' . $e->getMessage());
+                    }
+                });
+            }
+
+            return $response;
 
         } catch (\Throwable $e) {
             Log::error('Critical error in scanPublic: ' . $e->getMessage(), [
@@ -189,17 +248,48 @@ class AttendanceController extends Controller
         return response()->json(['data' => $items]);
     }
 
+    /** Return today's attendance stats for the public Guard Terminal (no auth required). */
+    public function publicStats(): JsonResponse
+    {
+        $today   = now()->toDateString();
+        $present = Attendance::whereDate('scanned_at', $today)->where('session', 'morning')->count();
+        $late    = Attendance::whereDate('scanned_at', $today)->where('session', 'morning')->where('status', 'late')->count();
+        $total   = Student::count();
+        $absent  = max(0, $total - $present);
+
+        return response()->json([
+            'total_today'   => $total,
+            'present_count' => $present,
+            'late_count'    => $late,
+            'absent_count'  => $absent,
+        ]);
+    }
+
     /* ====================================================================== */
     /*  Teacher-side scanner (authenticated)                                  */
     /* ====================================================================== */
 
     /**
-     * Record attendance from the teacher-side scanner interface.
+     * Record attendance from the Teacher Dashboard QR scanner (authenticated route).
      *
-     * Unlike the public scanner, this endpoint is auth-protected
-     * and does not trigger SMS or session-based duplicate guards.
+     * -----------------------------------------------------------------------
+     * -----------------------------------------------------------------------
+     * Target Role  : Attendance Guard / Parent.
+     * Source       : QR Scanner UI
+     * Function     : Entry point for student attendance logging and notification triggering.
+     * Destination  : AttendanceController@scan
+     * -----------------------------------------------------------------------
+     *
+     * Differences from scanPublic():
+     *   - Requires a valid Sanctum token (Teacher role).
+     *   - Uses a 2-second rapid-fire cooldown instead of 5 seconds.
+     *   - No session-guard (allows AM + PM entries for the same student).
+     *   - Still dispatches async SMS/Email based on notification_preference.
+     *
+     * @param  \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function scan(Request $request): JsonResponse
+    public function teacherScan(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'student_id' => ['required', 'string'],
@@ -214,16 +304,16 @@ class AttendanceController extends Controller
             ], 422);
         }
 
-        $input   = trim($request->student_id);
-        $student = is_numeric($input)
-            ? Student::find((int) $input)
-            : Student::where('student_number', $input)->first();
+        $input   = trim($request->student_number ?? $request->student_id);
+        $student = Student::where('student_number', $input)
+            ->orWhere('id', $input)
+            ->first();
 
         if (!$student) {
             return response()->json(['message' => 'Student not found.'], 404);
         }
 
-        // Prevent double-scan by same teacher within 2 seconds
+        // Prevent rapid double-scan by the same teacher within 2 seconds
         $recent = Attendance::where('student_id', $student->id)
             ->where('scanned_by', $request->user()->id)
             ->where('scanned_at', '>=', now()->subSeconds(2))
@@ -233,11 +323,55 @@ class AttendanceController extends Controller
             return response()->json(['message' => 'Duplicate scan. Please wait before scanning again.'], 422);
         }
 
+        // Resolve school & year context (same helpers used by scanPublic)
+        $teacher    = $request->user();
+        $scannedAt  = now();
+        $session    = $scannedAt->hour < 12 ? 'morning' : 'afternoon';
+        $schoolId   = $this->resolveSchoolId($teacher, $student, 'student');
+        $settings   = SchoolSetting::where('school_id', $schoolId)->first();
+        $schoolYear = SchoolYear::where('school_id', $schoolId)->where('is_active', true)->first();
+        $status     = $this->resolveStatus($settings, $scannedAt);
+
         $attendance = Attendance::create([
-            'student_id' => $student->id,
-            'scanned_by' => $request->user()->id,
-            'scanned_at' => now(),
+            'student_id'     => $student->id,
+            'scanned_by'     => $teacher->id,
+            'scanned_at'     => $scannedAt,
+            'status'         => $status,
+            'session'        => $session,
+            'school_id'      => $schoolId,
+            'school_year_id' => $schoolYear?->id,
         ]);
+
+        // Queue notifications after response (teacher scan should remain fast).
+        $pref = $student->notification_preference ?? 'email';
+        $timeStr = $scannedAt->format('h:i A');
+        $sessionLabel = ucfirst($session);
+        $formattedNumber = null;
+        if ($pref === 'sms') {
+            /**
+             * Source: Student DB; Destination: Semaphore API; Action: Converting local 09 format to international 63 format for carrier compatibility.
+             */
+            $guardianContact = $student->contact_number ?: $student->emergency_contact;
+            if (!empty($guardianContact)) {
+                $digits = preg_replace('/\D/', '', (string) $guardianContact);
+                $formattedNumber = preg_replace('/^0/', '63', $digits);
+            }
+        }
+        app()->terminating(function () use ($student, $pref, $timeStr, $sessionLabel, $formattedNumber) {
+            try {
+                if ($pref === 'sms') {
+                    if (!empty($formattedNumber)) {
+                        SendSmsNotification::dispatch($student, $timeStr, $sessionLabel, $formattedNumber)->afterResponse();
+                    }
+                    return;
+                }
+                if ($student->guardian_email) {
+                    SendEmailNotification::dispatch($student, $timeStr, $sessionLabel)->afterResponse();
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Teacher scan notification dispatchAfterResponse failed: ' . $e->getMessage());
+            }
+        });
 
         $student->load('teacher');
 
@@ -245,6 +379,7 @@ class AttendanceController extends Controller
             'message'    => 'Attendance recorded.',
             'attendance' => [
                 'id'         => $attendance->id,
+                'status'     => $attendance->status,
                 'scanned_at' => $attendance->scanned_at->toIso8601String(),
             ],
             'student' => [
@@ -256,6 +391,7 @@ class AttendanceController extends Controller
             ],
         ], 201);
     }
+
 
     /** Return attendance records scanned by the current teacher. */
     public function recent(Request $request): JsonResponse

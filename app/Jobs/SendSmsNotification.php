@@ -37,7 +37,8 @@ class SendSmsNotification implements ShouldQueue
     public function __construct(
         public readonly Student $student,
         public readonly string $time,
-        public readonly string $session = 'Morning'
+        public readonly string $session = 'Morning',
+        public readonly ?string $formattedNumber = null
     ) {}
 
     /**
@@ -51,8 +52,11 @@ class SendSmsNotification implements ShouldQueue
      */
     public function handle(): void
     {
+        // Testing mode: allow repeated sends in local env (bypass duplicate/cooldowns).
+        $bypassDuplicateChecks = app()->environment('local');
+
         // ── 1. Resolve the contact number ────────────────────────────────────
-        $contact = $this->student->contact_number ?: $this->student->emergency_contact;
+        $contact = $this->formattedNumber ?: ($this->student->contact_number ?: $this->student->emergency_contact);
 
         if (!$contact) {
             Log::info("SMS Cancelled: No contact number for student {$this->student->id}");
@@ -63,8 +67,8 @@ class SendSmsNotification implements ShouldQueue
         // Prevents duplicate SMS when a student passes the scanner twice quickly
         // or when a teacher accidentally re-scans. Cache key is per student ID.
         $cooldownKey = "sms_cooldown_{$this->student->id}";
-        if (Cache::has($cooldownKey)) {
-            Log::info("SMS Blocked: Rapid-fire cooldown active for student {$this->student->id}");
+        if (!$bypassDuplicateChecks && Cache::has($cooldownKey)) {
+            Log::info("SMS Skipped: Rapid-fire cooldown active for student {$this->student->id}");
             return;
         }
 
@@ -72,7 +76,7 @@ class SendSmsNotification implements ShouldQueue
         // Saves Semaphore tokens: even if a student is scanned 10 times in one
         // session, only the very first scan dispatches an SMS to the guardian.
         $sessionKey = "sms_sent_{$this->student->id}_{$this->session}_" . date('Y-m-d');
-        if (Cache::has($sessionKey)) {
+        if (!$bypassDuplicateChecks && Cache::has($sessionKey)) {
             Log::info("SMS Skipped: Already sent for student {$this->student->id} in {$this->session} session today.");
             return;
         }
@@ -84,10 +88,10 @@ class SendSmsNotification implements ShouldQueue
         //   - 9XXXXXXXXX  (10-digit without zero)  → 639XXXXXXXXX
         //   - 639XXXXXXXXX (already correct)        → unchanged
         $contact = preg_replace('/\D/', '', $contact); // strip everything non-numeric
-        if (str_starts_with($contact, '09') && strlen($contact) === 11) {
-            $contact = '639' . substr($contact, 2);    // 09XX → 639XX
-        } elseif (str_starts_with($contact, '9') && strlen($contact) === 10) {
-            $contact = '639' . substr($contact, 1);    // 9XX → 639XX
+        // Accept local "09..." format and convert to "63..." (Semaphore-compatible).
+        $contact = preg_replace('/^0/', '63', $contact);
+        if (str_starts_with($contact, '9') && strlen($contact) === 10) {
+            $contact = '63' . $contact; // 9XXXXXXXXX → 639XXXXXXXXX
         }
 
         // ── 5. Load Semaphore credentials from config ─────────────────────────
@@ -109,12 +113,15 @@ class SendSmsNotification implements ShouldQueue
 
         // ── 7. Send via Semaphore API ─────────────────────────────────────────
         try {
-            $response = Http::post('https://semaphore.co/api/v4/messages', [
+            Log::info("SMS Triggered: Sending to {$contact} via Semaphore.");
+            $response = Http::timeout(5)->post('https://semaphore.co/api/v4/messages', [
                 'apikey'     => $apiKey,
                 'number'     => $contact,
                 'message'    => $message,
                 'sendername' => $sender,
             ]);
+
+            Log::info('Semaphore Response: ' . $response->body());
 
             if ($response->successful()) {
                 // Semaphore returns an array of message objects
@@ -129,6 +136,7 @@ class SendSmsNotification implements ShouldQueue
                 Cache::put($sessionKey, true, now()->addHours(12));   // 12-hour session lock
             } else {
                 Log::error("SMS Failed for student {$this->student->id}. HTTP {$response->status()}: {$response->body()}");
+                Log::error('Semaphore Error: ' . $response->body());
             }
         } catch (\Exception $e) {
             Log::error("SMS Exception for student {$this->student->id}: {$e->getMessage()}");

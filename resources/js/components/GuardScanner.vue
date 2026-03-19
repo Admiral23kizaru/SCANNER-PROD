@@ -131,6 +131,7 @@
                          'bg-emerald-500': scanMessage.type === 'success',
                          'bg-amber-500': scanMessage.type === 'warning',
                        }" />
+                  <div v-if="scanProcessing" class="w-3 h-3 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
                   <span class="text-xs font-black uppercase tracking-wider">{{ scanMessage.text }}</span>
                 </div>
               </Transition>
@@ -250,6 +251,7 @@ const {
     stats,
     lastScanDetails,
     unknownAlert,
+    scanProcessing,
     // Utilities used in template expressions
     formatTime,
     getPhotoUrl,
