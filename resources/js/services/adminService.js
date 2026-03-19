@@ -280,18 +280,9 @@ export async function getAdminStudentIdUrl(id) {
     });
     return data;
 }
-
-
-/**
- * Request a time-limited signed URL to download a teacher ID card PDF.
- *
- * @param {number} id - Teacher's database ID.
- * @returns {Promise<{ url: string }>}
- */
 export async function getAdminTeacherIdUrl(id) {
     const { data } = await axios.get(base + '/teachers/' + id + '/id-url', {
         headers: { ...getAuthHeaders(), Accept: 'application/json' },
     });
     return data;
 }
-
