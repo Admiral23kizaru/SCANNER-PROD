@@ -241,7 +241,10 @@ function resolveProfilePhotoUrl(rawPath) {
   if (!str) return null;
 
   // Data Flow: If API returns an absolute URL, keep it as-is.
-  if (/^https?:\/\//i.test(str)) return str;
+  if (/^https?:\/\//i.test(str)) {
+    // sometimes Laravel's local URLs duplicate the /storage, simplify it
+    return str;
+  }
 
   // Data Flow: Laravel commonly stores paths like `public/profile_photos/x.jpg`.
   const clean = str
