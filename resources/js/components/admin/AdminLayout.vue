@@ -70,16 +70,6 @@
       </nav>
 
       <!-- Sidebar Footer: Logout -->
-      <div class="px-3 py-4 border-t border-r border-slate-200">
-        <button
-          type="button"
-          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors"
-          @click="logout"
-        >
-          <LogOut class="h-4 w-4" />
-          <span>Log out</span>
-        </button>
-      </div>
     </aside>
 
     <!-- Mobile sidebar overlay -->
@@ -170,14 +160,6 @@
                     >
                       <UserCircle class="h-4 w-4" />
                       <span>My Profile</span>
-                    </button>
-                    <button
-                      type="button"
-                      class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                      @click="isProfileOpen = false; showProfileModal = true"
-                    >
-                      <Settings class="h-4 w-4" />
-                      <span>Settings</span>
                     </button>
                   </div>
 

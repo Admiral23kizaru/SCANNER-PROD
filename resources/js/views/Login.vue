@@ -54,8 +54,8 @@
               type="email"
               required
               autocomplete="email"
-              class="w-full rounded-md border border-slate-600/70 bg-slate-950/40 px-3 py-2.5 text-sm text-slate-50 placeholder-slate-500 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400 shadow-sm"
-              placeholder="admin@gmail.com"
+              class="w-full rounded-md border border-slate-600/70 bg-slate-950/40 px-3 py-2.5 text-sm text-slate-50 placeholder:text-slate-500 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400 shadow-sm"
+              placeholder="username@example.com"
             />
           </div>
 
@@ -70,7 +70,8 @@
                 :type="showPassword ? 'text' : 'password'"
                 required
                 autocomplete="current-password"
-                class="w-full rounded-md border border-slate-600/70 bg-slate-950/40 px-3 py-2.5 pr-10 text-sm text-slate-50 placeholder-slate-500 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400 shadow-sm"
+                class="w-full rounded-md border border-slate-600/70 bg-slate-950/40 px-3 py-2.5 pr-10 text-sm text-slate-50 placeholder:text-slate-500 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400 shadow-sm"
+                placeholder="********"
               />
               <button
                 type="button"
@@ -216,7 +217,7 @@
             v-model="resetEmail"
             type="email"
             autocomplete="email"
-            class="w-full rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-sm text-slate-50 placeholder-slate-500 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400"
+            class="w-full rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-sm text-slate-50 placeholder:text-slate-500 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400"
             placeholder="username@example.com"
           />
           <button
@@ -228,7 +229,7 @@
             {{ resetLoading ? 'Sending code…' : 'Send OTP' }}
           </button>
         </div>
-
+        
         <!-- Step 2: OTP -->
         <div v-else-if="resetStep === 2" class="space-y-3">
           <label class="block text-xs font-medium text-slate-200 mb-1" for="reset-otp">
@@ -240,7 +241,7 @@
             type="text"
             inputmode="numeric"
             maxlength="6"
-            class="w-full tracking-[0.5em] text-center rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-sm text-slate-50 placeholder-slate-500 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400"
+            class="w-full tracking-[0.5em] text-center rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-sm text-slate-50 placeholder:text-slate-500 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400"
             placeholder="••••••"
           />
           <button
@@ -263,7 +264,7 @@
             v-model="resetPassword"
             type="password"
             autocomplete="new-password"
-            class="w-full rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-sm text-slate-50 placeholder-slate-500 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400"
+            class="w-full rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-sm text-slate-50 placeholder:text-slate-500 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400"
             placeholder="Enter a strong password"
           />
           <button
