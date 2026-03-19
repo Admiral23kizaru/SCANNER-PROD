@@ -46,9 +46,10 @@ const jsonHeaders = { 'Content-Type': 'application/json', Accept: 'application/j
  * }>} Full scan response from the backend.
  */
 export async function scanAttendancePublic(studentId) {
+    const sessionName = new Date().getHours() < 12 ? 'morning' : 'dismissal';
     const { data } = await axios.post(
         '/api/attendance/scan',
-        { student_id: studentId },
+        { student_number: studentId, session: sessionName },
         { headers: jsonHeaders }
     );
     return data;
@@ -83,7 +84,7 @@ export async function fetchRecentAttendancePublic() {
  * }>}
  */
 export async function fetchGuardStatsPublic() {
-    const { data } = await axios.get('/api/guard/stats', {
+    const { data } = await axios.get('/api/attendance/public/stats', {
         headers: { Accept: 'application/json' },
     });
     return data;
@@ -102,7 +103,7 @@ export async function fetchGuardStatsPublic() {
  */
 export async function scanAttendance(studentId) {
     const { data } = await axios.post(
-        '/api/attendance/scan',
+        '/api/teacher/attendance/scan',
         { student_id: studentId },
         { headers: { ...getAuthHeaders(), ...jsonHeaders } }
     );
@@ -115,7 +116,7 @@ export async function scanAttendance(studentId) {
  * @returns {Promise<{ data: Array<{ id: number, full_name: string, grade_section: string, time_in: string }> }>}
  */
 export async function fetchRecentAttendance() {
-    const { data } = await axios.get('/api/attendance/recent', {
+    const { data } = await axios.get('/api/teacher/attendance/recent', {
         headers: { ...getAuthHeaders(), Accept: 'application/json' },
     });
     return data;

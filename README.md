@@ -18,6 +18,7 @@
 9. [Environment Variables](#9-environment-variables)
 10. [Running the Queue Worker](#10-running-the-queue-worker)
 11. [API Reference](#11-api-reference)
+12. [Quick Commands Reference](#12-quick-commands-reference)
 
 ---
 
@@ -432,6 +433,138 @@ Route::controller(AdminProfileController::class)->group(function () {
 Whenever editing `routes/api.php`, always clear Laravel's internal route cache:
 ```bash
 php artisan optimize:clear
+```
+
+---
+
+## 12. Quick Commands Reference
+
+A consolidated list of every command used during development and deployment of this project.
+
+### 🟩 Laravel / PHP Artisan
+
+```bash
+# Run all pending database migrations
+php artisan migrate
+
+# Run migrations and force-run in production (skip prompts)
+php artisan migrate --force
+
+# Check migration status (Pending / Ran / Batch)
+php artisan migrate:status
+
+# Generate a new migration file for a specific table
+php artisan make:migration add_notification_preference_to_students_table --table=students
+
+# Generate a new queued Job class
+php artisan make:job SendSmsNotification
+php artisan make:job SendEmailNotification
+
+# Clear ALL cached config, routes, views, and events at once
+php artisan optimize:clear
+
+# Clear only config cache (use after editing .env)
+php artisan config:clear
+
+# Clear route cache
+php artisan route:clear
+
+# Link public/storage to storage/app/public (run once after fresh install)
+php artisan storage:link
+
+# Generate application encryption key (run once after copying .env)
+php artisan key:generate
+```
+
+---
+
+### 🟦 Queue Worker (SMS / Email Notifications)
+
+> The queue worker **must be running** for SMS and email notifications to be delivered.
+
+```bash
+# Start the queue worker (basic — keeps running until you stop it)
+php artisan queue:work
+
+# Recommended for development (with retries, timeout, and sleep)
+php artisan queue:work --tries=3 --timeout=60 --sleep=3
+
+# View all failed jobs
+php artisan queue:failed
+
+# Retry a specific failed job by its ID
+php artisan queue:retry {id}
+
+# Retry ALL failed jobs at once
+php artisan queue:retry all
+
+# Flush (permanently delete) all failed jobs
+php artisan queue:flush
+```
+
+---
+
+### 🟨 Node.js / npm (Frontend)
+
+```bash
+# Install all JavaScript dependencies from package.json
+npm install
+
+# Start the Vite development server with hot module replacement (HMR)
+npm run dev
+
+# Build the production bundle (minified assets for deployment)
+npm run build
+```
+
+---
+
+### 🟧 Debugging / Utility Scripts
+
+These PHP scripts are placed in the project root for quick diagnosis. Run them with `php`:
+
+```bash
+# Check student record details (contact, email, preference)
+php check_student_7.php
+
+# Reset scan state for testing: clears attendance record + SMS cache locks
+php reset_test.php
+
+# Check column existence on the students table
+php check_student_cols.php
+```
+
+---
+
+### 🔴 Monitoring Logs (PowerShell / Windows)
+
+```powershell
+# Tail the last 50 lines of the Laravel log
+Get-Content -Path storage/logs/laravel.log -Tail 50
+
+# Live stream new log entries (like tail -f on Linux)
+Get-Content -Path storage/logs/laravel.log -Wait
+
+# Filter log for SMS-related entries only
+Get-Content -Path storage/logs/laravel.log -Tail 100 | Select-String "SMS"
+
+# Filter log for errors only
+Get-Content -Path storage/logs/laravel.log -Tail 100 | Select-String "ERROR"
+```
+
+---
+
+### 🛠️ Composer (PHP Packages)
+
+```bash
+# Install all PHP dependencies from composer.json
+composer install
+
+# Install a new package
+composer require vendor/package-name
+
+# Dump the autoload files (after adding new classes manually)
+composer dump-autoload
 ```
 
 ---

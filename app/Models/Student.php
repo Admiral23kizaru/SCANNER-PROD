@@ -36,6 +36,7 @@ class Student extends Model
         'emergency_contact',
         'photo_path',
         'school_id',
+        'notification_preference',
     ];
 
     /* ------------------------------------------------------------------ */

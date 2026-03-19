@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 16, 2026 at 03:08 AM
+-- Generation Time: Mar 19, 2026 at 01:59 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -50,9 +50,9 @@ INSERT INTO `attendance` (`id`, `student_id`, `scanned_by`, `scanned_at`, `sessi
 (20, 9, 3, '2026-03-11 23:39:02', 'morning', 'on_time', 2, '2026-03-11 23:39:02', '2026-03-11 23:39:02', 3),
 (21, 7, 3, '2026-03-11 23:39:23', 'morning', 'on_time', 2, '2026-03-11 23:39:23', '2026-03-11 23:39:23', 3),
 (22, 7, 3, '2026-03-13 02:54:23', 'morning', 'on_time', 2, '2026-03-13 02:54:23', '2026-03-13 02:54:23', 3),
-(23, 9, 3, '2026-03-13 02:56:18', 'morning', 'on_time', 2, '2026-03-13 02:56:18', '2026-03-13 02:56:18', 3),
-(28, 7, 14, '2026-03-15 16:20:16', 'morning', 'on_time', 2, '2026-03-15 16:20:16', '2026-03-15 16:20:16', 3),
-(29, 9, 14, '2026-03-15 16:20:25', 'morning', 'on_time', 2, '2026-03-15 16:20:25', '2026-03-15 16:20:25', 3);
+(44, 7, 7, '2026-03-16 03:36:03', 'morning', 'late', 2, '2026-03-16 03:36:03', '2026-03-16 03:36:03', 3),
+(45, 9, 7, '2026-03-16 03:37:02', 'morning', 'late', 2, '2026-03-16 03:37:02', '2026-03-16 03:37:02', 3),
+(46, 7, 7, '2026-03-16 16:58:58', 'morning', 'on_time', 2, '2026-03-16 16:58:58', '2026-03-16 16:58:58', 3);
 
 -- --------------------------------------------------------
 
@@ -152,9 +152,8 @@ CREATE TABLE `personal_access_tokens` (
 --
 
 INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `name`, `token`, `abilities`, `last_used_at`, `expires_at`, `created_at`, `updated_at`) VALUES
-(3, 'App\\Models\\User', 1, 'api-token', '1decc873e975bda8037c4607897fbdb87dccd77abd0795daad131da04128bc1e', '[\"*\"]', '2026-02-22 00:45:59', NULL, '2026-02-22 00:45:58', '2026-02-22 00:45:59'),
-(145, 'App\\Models\\User', 13, 'api-token', '0aaf8f8426e58c24395ab4f6e5752ad48490a012875d765fbd1d7a63c4b3b772', '[\"*\"]', '2026-03-15 17:18:14', NULL, '2026-03-15 04:43:57', '2026-03-15 17:18:14'),
-(146, 'App\\Models\\User', 7, 'api-token', 'b8ae38cbeb2432927b47a4bac7070bd8485ac32f4ed402f450b35a0b724602c3', '[\"*\"]', '2026-03-15 17:09:30', NULL, '2026-03-15 16:06:08', '2026-03-15 17:09:30');
+(167, 'App\\Models\\User', 1, 'api-token', '5bb40622df6588e0834875f3f795492e44f41525484a6e18e4d6412a053d7113', '[\"*\"]', '2026-03-17 22:12:10', NULL, '2026-03-17 19:48:57', '2026-03-17 22:12:10'),
+(168, 'App\\Models\\User', 7, 'api-token', 'bc8a7449b8bf87582f95393275cf77fb9a464bf6eda4ff0f11e015d7c2338b9c', '[\"*\"]', '2026-03-18 16:40:16', NULL, '2026-03-17 21:18:37', '2026-03-18 16:40:16');
 
 -- --------------------------------------------------------
 
@@ -317,8 +316,9 @@ CREATE TABLE `students` (
 
 INSERT INTO `students` (`id`, `teacher_id`, `created_by`, `student_number`, `grade_section`, `first_name`, `last_name`, `middle_name`, `grade`, `section`, `guardian`, `guardian_email`, `contact_number`, `emergency_contact`, `guardian_contact`, `photo_path`, `qr_version`, `created_at`, `updated_at`, `deleted_at`, `school_id`) VALUES
 (6, 8, 8, '9371618383', NULL, 'aaron', 'gemang', 'L', 'Grade 8', 'molave', 'joera', NULL, NULL, NULL, '999383833', NULL, 1, '2026-02-22 16:50:07', '2026-03-11 23:43:13', NULL, 2),
-(7, 7, 7, '128164200066', 'Grade 2-molave', 'xyion', 'catedral', 'p', 'Grade 2', 'molave', 'Regie Akiatan Catedral', NULL, NULL, NULL, '999383833', NULL, 1, '2026-02-22 21:57:01', '2026-03-15 04:43:36', NULL, 3),
-(9, 7, 7, '334343434234', NULL, 'ZEPHYR', 'Z', 'E', 'Grade 2', 'molave', 'aaron', NULL, NULL, NULL, '09461075459', NULL, 1, '2026-03-08 21:08:26', '2026-03-08 21:08:26', NULL, 3);
+(7, 7, 7, '128164200066', 'Grade 2-molave', 'xyion', 'catedral', 'p', 'Grade 2', 'molave', 'Regie Akiatan Catedral', 'zzephyr934@gmail.com', '09461075459', '09461075459', '999383833', 'students/128164200066.png', 1, '2026-02-22 21:57:01', '2026-03-15 19:33:15', NULL, 3),
+(9, 7, 7, '334343434234', 'Grade 2-molave', 'ZEPHYR', 'Z', 'E', 'Grade 2', 'molave', 'aaron', NULL, NULL, NULL, '09461075459', 'students/334343434234.png', 1, '2026-03-08 21:08:26', '2026-03-15 18:21:19', NULL, 3),
+(10, 7, 7, '124523212131', 'grade 7-rose', 'jasfer', 'maghanoy', 't', 'grade 7', 'rose', 'pandero jylie', 'zzephyr934@gmail.com', '09461075459', '09461075459', NULL, 'students/124523212131.png', 1, '2026-03-15 19:21:05', '2026-03-15 19:21:05', NULL, 3);
 
 -- --------------------------------------------------------
 
@@ -387,15 +387,15 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `role_id`, `status`, `name`, `email`, `password`, `designation`, `employee_id`, `school_id`, `profile_photo`, `created_at`, `updated_at`, `deleted_at`, `job_title`, `school_name`) VALUES
-(1, 1, 'active', 'System Admin', 'admin@scanup.local', '$2y$12$mfr0KvDBIZUmdniNBsFItu7afg.kmkEwCNW2BqduPR9OLwFwQb3qa', NULL, NULL, NULL, NULL, '2026-02-22 08:42:45', '2026-02-22 02:28:18', NULL, NULL, NULL),
+(1, 1, 'active', 'System Admin', 'admin@gmail.com', '$2y$12$1NhyIF7j/HJdNFs7iGluN.adJGxfkW95kekgadZqgRpTCjLapH97K', NULL, NULL, NULL, 'admin_photos/tz6Zc7fVNbsIWeAERHQVZTC8Yx3hBe9cDzW4kAuY.jpg', '2026-02-22 08:42:45', '2026-03-17 17:26:56', NULL, NULL, NULL),
 (2, 2, 'active', 'Jane Teacher', 'teacher@scanup.local', '$2y$12$kwi3aQVD7wnThL9HobR5JOWE6R0.7eLn7XJviU0F5RdsXAwTBU.CO', NULL, '2323232', 2, 'teachers/teacher_2.png', '2026-02-22 08:42:45', '2026-03-15 16:34:01', NULL, 'ADASIII', NULL),
 (7, 2, 'active', 'Aaron', 'aaron@gmail.com', '$2y$12$YKFaHu6tpcJIog.mL/dqwed78J0J/X1Rd9tY9YFZX1yxt2mOjfO8G', 'Principal', '34342424242', 3, 'teachers/teacher_7.jpg', '2026-02-22 03:24:54', '2026-03-15 16:34:01', NULL, 'DENTII', NULL),
 (8, 2, 'active', 'Berdon Ian', 'berdon@gmail.com', '$2y$12$vi3/pXRU0xmD9/z7CaOny.4Mh92X1RnF0fTo76YaRLw5NkTt2q6u.', NULL, NULL, NULL, 'teachers/teacher_8.png', '2026-02-22 14:01:22', '2026-03-15 16:34:01', NULL, NULL, NULL),
 (9, 2, 'active', 'jasfer maghanoy', 'jasfer@gmail.com', '$2y$12$6QWl1tqEbGdEluQC.zuYP.v7vlglaYP7dTfD2qB/nLgWBXhTS0bcu', NULL, NULL, NULL, NULL, '2026-02-23 16:57:33', '2026-02-23 16:57:33', NULL, NULL, NULL),
 (10, 2, 'active', 'Akashi', 'daikiaaron54@gmail.com', '$2y$12$hD5A192zlhmshBSYLKuoPuZBUsmKg9h94ORnh7GVQfZYBin3omNoG', 'Adviser', '232323', 4, 'teachers/teacher_10.png', '2026-03-02 04:41:30', '2026-03-15 16:34:01', NULL, NULL, NULL),
-(11, 2, 'active', 'neil', 'neilchristian.pangasian@nmsc.edu.ph', '$2y$12$DpCoosuAj4zc5hgVgvmBU.1ojtip9KTOgvVHzMdR4bDvrcyYcwLxy', 'adviser', '443424241', NULL, 'teachers/teacher_11.png', '2026-03-02 20:58:26', '2026-03-15 16:34:01', NULL, 'AOII', NULL),
+(11, 2, 'active', 'neil', 'neilchristian.pangasian@nmsc.edu.ph', '$2y$12$ISnOUuVjL8F9xj6NtTW4vusHdkbT9bgmkWsk0XGudt0tmjLOzEGGG', 'adviser', '443424241', NULL, 'teachers/teacher_11.png', '2026-03-02 20:58:26', '2026-03-16 23:45:11', NULL, 'AOII', NULL),
 (12, 2, 'active', 'Joera Vicente', '42424242@deped.local', '$2y$12$pLM6dDP6vuETU9WqCug3BuWvW1G60RV5h.zL8blwttYcnpBgMbvfO', NULL, '42424242', NULL, NULL, '2026-03-11 21:29:09', '2026-03-11 21:29:09', NULL, 'AOV', NULL),
-(13, 1, 'active', 'System Admin', 'admin@gmail.com', '$2y$12$bc0mFvIj/ynJEr08VRsZJuYX36XxQhoXG6HgwPUiMJrplw9/FqRma', NULL, NULL, NULL, NULL, '2026-03-12 06:03:40', '2026-03-11 22:07:47', NULL, NULL, NULL),
+(13, 1, 'active', 'Aaron', 'aaronryo@gmail.com', '$2y$12$bc0mFvIj/ynJEr08VRsZJuYX36XxQhoXG6HgwPUiMJrplw9/FqRma', NULL, NULL, NULL, 'admin_photos/GGvRuWqMBRMWTrWd58HINar1dDblK1Ne8B24QtVw.jpg', '2026-03-12 06:03:40', '2026-03-17 17:01:07', NULL, NULL, NULL),
 (14, 4, 'active', 'Guard Terminal', 'guard@system.local', '$2y$12$11mFSb2arUuQ3EIj4YbxnOXy8r6gre3V8CmUIvnmiNT1CXPMYTQiS', NULL, NULL, NULL, NULL, '2026-03-15 04:04:34', '2026-03-15 04:04:34', NULL, NULL, NULL);
 
 --
@@ -525,7 +525,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `attendance`
 --
 ALTER TABLE `attendance`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
 
 --
 -- AUTO_INCREMENT for table `audit_logs`
@@ -549,7 +549,7 @@ ALTER TABLE `migrations`
 -- AUTO_INCREMENT for table `personal_access_tokens`
 --
 ALTER TABLE `personal_access_tokens`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=147;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=169;
 
 --
 -- AUTO_INCREMENT for table `roles`
@@ -585,7 +585,7 @@ ALTER TABLE `school_years`
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `teachers`
