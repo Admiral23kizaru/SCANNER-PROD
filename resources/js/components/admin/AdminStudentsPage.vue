@@ -207,14 +207,16 @@
               <input v-model="form.contact_number" type="text" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">Notification Method</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Notification Preference</label>
               <select
-                v-model="form.notification_preference"
+                v-model.number="form.notification_preference"
                 class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
               >
-                <option value="email">Email (Free)</option>
-                <option value="sms">SMS (Paid)</option>
+                <option :value="0">No SMS — Email only (free, unlimited)</option>
+                <option :value="1">Regular SMS — 1 SMS per day + Email</option>
+                <option :value="2">VIP SMS — Every scan SMS + Email</option>
               </select>
+              <p class="mt-1 text-xs text-stone-400">Email is always sent on every scan regardless of this setting.</p>
             </div>
           </div>
           <div v-if="formError" class="mt-2 text-sm text-red-600">{{ formError }}</div>
@@ -294,7 +296,7 @@ const form = ref({
   guardian: '',
   guardian_email: '',
   contact_number: '',
-  notification_preference: 'email',
+  notification_preference: 0,
 });
 const formError = ref('');
 
@@ -365,6 +367,7 @@ function openCreateModal() {
     first_name: '', last_name: '', middle_name: '',
     student_number: '', grade: '', section: '',
     guardian: '', guardian_email: '', contact_number: '',
+    notification_preference: 0,
   };
   formError.value = '';
   showFormModal.value = true;
@@ -382,7 +385,7 @@ function openEditModal(row) {
     guardian: row.guardian ?? '',
     guardian_email: row.guardian_email ?? '',
     contact_number: row.contact_number ?? '',
-    notification_preference: row.notification_preference ?? 'email',
+    notification_preference: row.notification_preference ?? 0,
   };
   formError.value = '';
   showFormModal.value = true;
@@ -405,7 +408,7 @@ async function submitForm() {
     guardian: form.value.guardian || '',
     guardian_email: form.value.guardian_email || '',
     contact_number: form.value.contact_number || '',
-    notification_preference: form.value.notification_preference || 'email',
+    notification_preference: form.value.notification_preference ?? 0,
   };
   try {
     if (editingId.value) {

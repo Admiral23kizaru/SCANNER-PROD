@@ -70,7 +70,7 @@ class AdminStudentController extends Controller
             'guardian'       => ['nullable', 'string', 'max:255'],
             'guardian_email' => ['nullable', 'string', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
-            'notification_preference' => ['nullable', 'in:email,sms'],
+            'notification_preference' => ['nullable', 'integer', 'in:0,1,2'],
             'school_id'      => ['nullable', 'exists:schools,id'],
         ], [
             'student_number.unique' => 'LRN already exists.',
@@ -93,7 +93,7 @@ class AdminStudentController extends Controller
             'guardian'       => $request->guardian ?: null,
             'guardian_email' => $request->guardian_email ?: null,
             'contact_number' => $request->contact_number ?: null,
-            'notification_preference' => $request->notification_preference ?: 'email',
+            'notification_preference' => (int) ($request->notification_preference ?? 0),
             'school_id'      => $request->user()->school_id,
             'created_by'     => $request->user()->id,
         ]);
@@ -120,7 +120,7 @@ class AdminStudentController extends Controller
             'guardian'       => ['nullable', 'string', 'max:255'],
             'guardian_email' => ['nullable', 'string', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
-            'notification_preference' => ['nullable', 'in:email,sms'],
+            'notification_preference' => ['nullable', 'integer', 'in:0,1,2'],
         ], [
             'student_number.unique' => 'LRN already exists.',
         ]);
@@ -252,6 +252,7 @@ class AdminStudentController extends Controller
             'section'        => $student->section,
             'guardian'       => $student->guardian,
             'guardian_email' => $student->guardian_email,
+            'notification_preference' => (int) ($student->notification_preference ?? 0),
             'contact_number' => $student->contact_number,
             'photo_path'     => $student->photo_path,
             'created_at'     => $student->created_at?->toIso8601String(),

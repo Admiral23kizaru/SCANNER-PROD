@@ -15,46 +15,50 @@ use Illuminate\Support\Facades\Log;
 /**
  * SendSmsNotification — queued job that notifies a student's guardian via Semaphore SMS.
  *
- * === SMS Flow ===
- * 1. AttendanceController::scanPublic() detects a new student QR scan.
- * 2. If the student has a contact_number or emergency_contact, it dispatches this job.
- * 3. The job is picked up by the Laravel queue worker (php artisan queue:work).
- * 4. The job applies two layers of cooldown to conserve Semaphore tokens:
- *      a) Rapid-fire cooldown (1 min) — prevents double-firing on accidental re-scans.
- *      b) Per-session lock (12 hrs) — ensures only one SMS per session per day.
- * 5. The contact number is normalised to Semaphore format (639XXXXXXXXX).
- * 6. An HTTP POST is made to https://semaphore.co/api/v4/messages.
- * 7. Success/failure is logged to storage/logs/laravel.log.
+ * === Notification Preference Values ===
+ *   0 = No SMS   — This job should never be dispatched for pref 0.
+ *   1 = Regular  — 1 SMS per day. Controller marks last_sms_sent_date BEFORE dispatching.
+ *                  This job only applies a rapid-fire cooldown (1 min) as extra safety.
+ *   2 = VIP      — SMS on every scan. Only rapid-fire cooldown applies.
+ *
+ * === SMS Message Format ===
+ * "[FirstName] [LastName] has [checked IN/OUT] at [SchoolShortName] - [HH:MM AM/PM]."
+ * Hard limit: ≤ 160 characters (1 Semaphore credit).
  *
  * === .env Requirements ===
- * SEMAPHORE_API_KEY=your_api_key_here
- * SEMAPHORE_SENDER_NAME=FINGERLINGS  ← Registered sender name with Semaphore
+ *   SEMAPHORE_API_KEY=your_api_key_here
+ *   SEMAPHORE_SENDER_NAME=FINGERLINGS    ← Registered sender name with Semaphore
+ *   SCHOOL_SHORT_NAME=Ozamiz School      ← Max 30 chars
  */
 class SendSmsNotification implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * @param  Student     $student         The scanned student.
+     * @param  string      $time            Scan time in "hh:mm AM/PM" format.
+     * @param  string      $session         Session label (e.g. "Morning", "Afternoon").
+     * @param  string|null $formattedNumber Pre-formatted PH number (63XXXXXXXXXX).
+     * @param  int         $preference      Notification preference: 1=Regular, 2=VIP.
+     */
     public function __construct(
         public readonly Student $student,
         public readonly string $time,
-        public readonly string $session = 'Morning',
-        public readonly ?string $formattedNumber = null
+        public readonly string $session         = 'Morning',
+        public readonly ?string $formattedNumber = null,
+        public readonly int $preference          = 1,
     ) {}
 
     /**
      * Execute the SMS notification job.
      *
-     * This method is called automatically by the queue worker.
-     * It performs three validations before sending:
-     *   1. Contact number exists.
-     *   2. Rapid-fire cooldown (1 minute) — prevents accidental double-send.
-     *   3. Session lock (12 hours) — one SMS per morning, one per afternoon.
+     * Validation layers (must all pass before sending):
+     *  1. Contact number exists.
+     *  2. Rapid-fire cooldown (1 minute) — prevents double-send on rapid re-scans.
+     *     Note: the per-day lock for preference=1 is handled BEFORE dispatch in the controller.
      */
     public function handle(): void
     {
-        // Testing mode: allow repeated sends in local env (bypass duplicate/cooldowns).
-        $bypassDuplicateChecks = app()->environment('local');
-
         // ── 1. Resolve the contact number ────────────────────────────────────
         $contact = $this->formattedNumber ?: ($this->student->contact_number ?: $this->student->emergency_contact);
 
@@ -63,38 +67,25 @@ class SendSmsNotification implements ShouldQueue
             return;
         }
 
-        // ── 2. Rapid-fire cooldown (1 minute) ────────────────────────────────
-        // Prevents duplicate SMS when a student passes the scanner twice quickly
-        // or when a teacher accidentally re-scans. Cache key is per student ID.
-        $cooldownKey = "sms_cooldown_{$this->student->id}";
-        if (!$bypassDuplicateChecks && Cache::has($cooldownKey)) {
-            Log::info("SMS Skipped: Rapid-fire cooldown active for student {$this->student->id}");
-            return;
-        }
-
-        // ── 3. Per-session lock (once per morning / once per afternoon) ───────
-        // Saves Semaphore tokens: even if a student is scanned 10 times in one
-        // session, only the very first scan dispatches an SMS to the guardian.
-        $sessionKey = "sms_sent_{$this->student->id}_{$this->session}_" . date('Y-m-d');
-        if (!$bypassDuplicateChecks && Cache::has($sessionKey)) {
-            Log::info("SMS Skipped: Already sent for student {$this->student->id} in {$this->session} session today.");
-            return;
-        }
-
-        // ── 4. Normalise phone number to Semaphore format (639XXXXXXXXX) ─────
-        // Semaphore requires 12-digit numbers starting with 63 (country code PH).
-        // Input formats handled:
-        //   - 09XXXXXXXXX (11-digit local format) → 639XXXXXXXXX
-        //   - 9XXXXXXXXX  (10-digit without zero)  → 639XXXXXXXXX
-        //   - 639XXXXXXXXX (already correct)        → unchanged
-        $contact = preg_replace('/\D/', '', $contact); // strip everything non-numeric
-        // Accept local "09..." format and convert to "63..." (Semaphore-compatible).
+        // ── 2. Normalise phone number to Semaphore format (639XXXXXXXXX) ─────
+        $contact = preg_replace('/\D/', '', $contact);
         $contact = preg_replace('/^0/', '63', $contact);
         if (str_starts_with($contact, '9') && strlen($contact) === 10) {
-            $contact = '63' . $contact; // 9XXXXXXXXX → 639XXXXXXXXX
+            $contact = '63' . $contact;
         }
 
-        // ── 5. Load Semaphore credentials from config ─────────────────────────
+        // ── 3. Rapid-fire cooldown (1 minute) ────────────────────────────────
+        // Prevents double-firing when a student accidentally scans twice in a row.
+        // For VIP SMS (pref=2) this is the only gate. For Regular SMS (pref=1) the
+        // per-day gate was already applied in AttendanceController before dispatch.
+        $bypassDuplicateChecks = app()->environment('local');
+        $cooldownKey = "sms_cooldown_{$this->student->id}_{$this->preference}";
+        if (!$bypassDuplicateChecks && Cache::has($cooldownKey)) {
+            Log::info("SMS Skipped: Rapid-fire cooldown active for student {$this->student->id} (pref={$this->preference})");
+            return;
+        }
+
+        // ── 4. Load Semaphore credentials ─────────────────────────────────────
         $apiKey = config('services.semaphore.key');
         $sender = config('services.semaphore.sender', 'SEMAPHORE');
 
@@ -103,17 +94,34 @@ class SendSmsNotification implements ShouldQueue
             return;
         }
 
-        // ── 6. Build message (max 160 characters for a single SMS credit) ─────
-        $message = "ScanUp: {$this->student->first_name} {$this->student->last_name} "
-                 . "has successfully entered the campus at {$this->time} ({$this->session}).";
+        // ── 5. Build compact message (≤ 160 chars for 1 Semaphore credit) ─────
+        // Format: "[FirstName] [LastName] has [checked IN/checked OUT] at [SchoolShortName] - [HH:MM AM/PM]."
+        $firstName = $this->student->first_name;
+        $lastName  = $this->student->last_name;
 
+        // Determine IN/OUT direction from session name
+        $sessionLower = strtolower($this->session);
+        $direction = str_contains($sessionLower, 'out') ? 'checked OUT' : 'checked IN';
+
+        // School short name — max 30 chars enforced
+        $schoolShort = substr(
+            config('services.school.short_name', 'School'),
+            0, 30
+        );
+
+        // Compose message
+        $message = "{$firstName} {$lastName} has {$direction} at {$schoolShort} - {$this->time}.";
+
+        // Server-side length guard (spec: hard limit 160 chars, 1 credit)
         if (strlen($message) > 160) {
-            $message = substr($message, 0, 157) . '...';
+            Log::error("SMS Aborted: Message exceeds 160 chars for student {$this->student->id}. Length=" . strlen($message));
+            return;
         }
 
-        // ── 7. Send via Semaphore API ─────────────────────────────────────────
+        // ── 6. Send via Semaphore API ─────────────────────────────────────────
         try {
-            Log::info("SMS Triggered: Sending to {$contact} via Semaphore.");
+            Log::info("SMS Triggered: Sending to {$contact} for student {$this->student->id} (pref={$this->preference}). Msg: \"{$message}\"");
+
             $response = Http::timeout(5)->post('https://semaphore.co/api/v4/messages', [
                 'apikey'     => $apiKey,
                 'number'     => $contact,
@@ -121,22 +129,17 @@ class SendSmsNotification implements ShouldQueue
                 'sendername' => $sender,
             ]);
 
-            Log::info('Semaphore Response: ' . $response->body());
-
             if ($response->successful()) {
-                // Semaphore returns an array of message objects
                 $msgData = is_array($response->json()) ? ($response->json()[0] ?? $response->json()) : $response->json();
                 $msgId   = $msgData['message_id'] ?? 'N/A';
-                $status  = $msgData['status'] ?? 'Sent';
+                $status  = $msgData['status']     ?? 'Sent';
 
                 Log::info("SMS Success: ID={$msgId} | Status={$status} | To={$contact} | Student={$this->student->id}");
 
-                // Set locks AFTER successful send — if send fails, we can retry
-                Cache::put($cooldownKey, true, 60);                   // 1-minute rapid-fire cooldown
-                Cache::put($sessionKey, true, now()->addHours(12));   // 12-hour session lock
+                // Set rapid-fire cooldown AFTER successful send
+                Cache::put($cooldownKey, true, 60); // 1 minute
             } else {
                 Log::error("SMS Failed for student {$this->student->id}. HTTP {$response->status()}: {$response->body()}");
-                Log::error('Semaphore Error: ' . $response->body());
             }
         } catch (\Exception $e) {
             Log::error("SMS Exception for student {$this->student->id}: {$e->getMessage()}");

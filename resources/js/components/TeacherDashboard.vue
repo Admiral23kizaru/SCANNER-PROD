@@ -403,14 +403,16 @@
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">Notification Method</label>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Notification Preference</label>
               <select
-                v-model="form.notification_preference"
+                v-model.number="form.notification_preference"
                 class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700 bg-white"
               >
-                <option value="email">Email (Free)</option>
-                <option value="sms">SMS (Paid)</option>
+                <option :value="0">No SMS — Email only (free)</option>
+                <option :value="1">Regular SMS — 1 SMS per day + Email</option>
+                <option :value="2">VIP SMS — Every scan SMS + Email</option>
               </select>
+              <p class="mt-1 text-xs text-stone-400">Email is always sent on every scan.</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">LRN <span class="text-xs text-stone-500 font-normal">(exactly 12 digits)</span></label>
@@ -619,7 +621,7 @@ const form = ref({
   guardian_email: '',
   contact_number: '',
   student_number: '',
-  notification_preference: 'email',
+  notification_preference: 0,
 });
 const formError = ref('');
 const qrModalStudent = ref(null);
@@ -728,7 +730,7 @@ function openAddModal() {
   editingId.value = null;
   form.value = {
     first_name: '', last_name: '', middle_name: '', grade: '', section: '',
-    grade_section: '', guardian: '', guardian_email: '', contact_number: '', student_number: '', notification_preference: 'email',
+    grade_section: '', guardian: '', guardian_email: '', contact_number: '', student_number: '', notification_preference: 0,
   };
   formError.value = '';
   photoFile.value = null;
@@ -757,7 +759,7 @@ function openEditModal(row) {
     guardian_email: row.guardian_email ?? '',
     contact_number: row.contact_number ?? '',
     student_number: row.student_number ?? '',
-    notification_preference: row.notification_preference ?? 'email',
+    notification_preference: row.notification_preference ?? 0,
   };
   formError.value = '';
   photoFile.value = null;
@@ -777,7 +779,7 @@ function buildFormData() {
   fd.append('guardian', form.value.guardian || '');
   fd.append('guardian_email', form.value.guardian_email || '');
   fd.append('contact_number', form.value.contact_number || '');
-  fd.append('notification_preference', form.value.notification_preference || 'email');
+  fd.append('notification_preference', form.value.notification_preference ?? 0);
   if (photoFile.value) fd.append('photo', photoFile.value);
   return fd;
 }
@@ -800,7 +802,7 @@ async function submitForm() {
           guardian: form.value.guardian || '',
           guardian_email: form.value.guardian_email || '',
           contact_number: form.value.contact_number || '',
-          notification_preference: form.value.notification_preference || 'email',
+          notification_preference: form.value.notification_preference ?? 0,
         };
         res = await updateStudent(editingId.value, payload);
       }
@@ -827,7 +829,7 @@ async function submitForm() {
           guardian: form.value.guardian || '',
           guardian_email: form.value.guardian_email || '',
           contact_number: form.value.contact_number || '',
-          notification_preference: form.value.notification_preference || 'email',
+          notification_preference: form.value.notification_preference ?? 0,
         });
         students.value = [res.student, ...students.value];
         total.value = (total.value || 0) + 1;

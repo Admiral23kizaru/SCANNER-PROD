@@ -84,7 +84,7 @@ class StudentController extends Controller
             'contact_number' => ['nullable', 'string', 'max:64'],
             'photo'          => ['nullable', 'file', 'mimes:png', 'max:5120'],
             'school_id'      => ['nullable', 'exists:schools,id'],
-            'notification_preference' => ['nullable', 'in:email,sms'],
+            'notification_preference' => ['nullable', 'integer', 'in:0,1,2'],
         ], [
             'student_number.unique' => 'LRN already exists.',
         ]);
@@ -111,7 +111,7 @@ class StudentController extends Controller
             'teacher_id'        => $user->role?->name === 'Teacher' ? $user->id : null,
             'created_by'        => $user->id,
             'school_id'         => $user->school_id,
-            'notification_preference' => $request->notification_preference ?: 'email',
+            'notification_preference' => (int) ($request->notification_preference ?? 0),
         ]);
 
         if ($request->hasFile('photo')) {
@@ -148,7 +148,7 @@ class StudentController extends Controller
             'guardian_email' => ['nullable', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
             'photo'          => ['nullable', 'file', 'mimes:png', 'max:5120'],
-            'notification_preference' => ['nullable', 'in:email,sms'],
+            'notification_preference' => ['nullable', 'integer', 'in:0,1,2'],
         ], [
             'student_number.unique' => 'LRN already exists.',
             'student_number.size'   => 'LRN must be exactly 12 digits.',
@@ -354,7 +354,7 @@ class StudentController extends Controller
             'guardian'       => $student->guardian,
             'guardian_email' => $student->guardian_email,
             'contact_number' => $student->contact_number,
-            'notification_preference' => $student->notification_preference ?? 'email',
+            'notification_preference' => (int) ($student->notification_preference ?? 0),
             'photo_path'     => $student->photo_path,
             'created_at'     => $student->created_at?->toIso8601String(),
         ];

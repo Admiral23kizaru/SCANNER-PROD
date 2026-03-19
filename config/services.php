@@ -36,8 +36,13 @@ return [
     ],
 
     'semaphore' => [
-        'key' => env('SEMAPHORE_API_KEY'),
+        'key'    => env('SEMAPHORE_API_KEY'),
         'sender' => env('SEMAPHORE_SENDER_NAME', 'SEMAPHORE'),
     ],
 
+    'school' => [
+        'short_name' => env('SCHOOL_SHORT_NAME', 'School'),
+    ],
+
 ];
+

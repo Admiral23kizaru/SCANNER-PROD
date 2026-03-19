@@ -37,6 +37,12 @@ class Student extends Model
         'photo_path',
         'school_id',
         'notification_preference',
+        'last_sms_sent_date',
+    ];
+
+    protected $casts = [
+        'notification_preference' => 'integer',
+        'last_sms_sent_date'      => 'date:Y-m-d',
     ];
 
     /* ------------------------------------------------------------------ */

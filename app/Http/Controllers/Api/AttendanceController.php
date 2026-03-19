@@ -130,9 +130,11 @@ class AttendanceController extends Controller
 
             // Record attendance only for students
             $notificationMethodUsed = 'None';
-            $notificationPreference = null;
-            $notificationPayload = null;
-            $formattedNumber = null;
+            $notificationPref       = 0; // default: No SMS
+            $formattedNumber        = null;
+            $scanTime               = null;
+            $scanSession            = null;
+
             if ($personType === 'student') {
                 $attendance = Attendance::create([
                     'student_id'     => $person->id,
@@ -144,27 +146,51 @@ class AttendanceController extends Controller
                     'school_year_id' => $schoolYear?->id,
                 ]);
 
-                // Prepare notification data, but do NOT block the scanner response.
-                $notificationPreference = $person->notification_preference ?? 'email';
-                $notificationPayload = [
-                    'time'    => $scannedAt->format('h:i A'),
-                    'session' => ucfirst((string) $session),
-                ];
-                if ($notificationPreference === 'sms') {
-                    /**
-                     * Source: Student DB; Destination: Semaphore API; Action: Converting local 09 format to international 63 format for carrier compatibility.
-                     */
-                    $guardianContact = $person->contact_number ?: $person->emergency_contact;
-                    if (!empty($guardianContact)) {
-                        $digits = preg_replace('/\D/', '', (string) $guardianContact);
-                        // If it starts with "0", replace leading "0" with "63" (e.g., 0946... -> 63946...).
-                        $formattedNumber = preg_replace('/^0/', '63', $digits);
-                        // If it already starts with "63", keep as-is (preg_replace won't change it).
+                $notificationPref = (int) ($person->notification_preference ?? 0);
+                $scanTime    = $scannedAt->format('h:i A');
+                $scanSession = ucfirst((string) $session);
+
+                // Resolve and normalise the guardian's phone number for SMS
+                $guardianContact = $person->contact_number ?: $person->emergency_contact;
+                if (!empty($guardianContact)) {
+                    $digits = preg_replace('/\D/', '', (string) $guardianContact);
+                    $formattedNumber = preg_replace('/^0/', '63', $digits);
+                    if (str_starts_with($formattedNumber, '9') && strlen($formattedNumber) === 10) {
+                        $formattedNumber = '63' . $formattedNumber;
                     }
-                    $notificationMethodUsed = !empty($formattedNumber) ? 'SMS_QUEUED' : 'None';
-                } else {
-                    $notificationMethodUsed = ($person->guardian_email) ? 'EMAIL_QUEUED' : 'None';
                 }
+
+                // Determine what notifications will be dispatched
+                $willSendEmail = !empty($person->guardian_email);
+                $willSendSms   = false;
+
+                if ($notificationPref === 2) {
+                    // VIP: SMS on every scan
+                    $willSendSms = !empty($formattedNumber);
+                } elseif ($notificationPref === 1) {
+                    // Regular: SMS once per day (tracked via last_sms_sent_date in DB)
+                    $todayStr = $scannedAt->toDateString();
+                    $lastSent = $person->last_sms_sent_date
+                        ? (is_string($person->last_sms_sent_date) ? $person->last_sms_sent_date : $person->last_sms_sent_date->format('Y-m-d'))
+                        : null;
+                    $willSendSms = !empty($formattedNumber) && ($lastSent !== $todayStr);
+
+                    // Mark the date now so concurrent scans don't double-send
+                    if ($willSendSms) {
+                        $person->last_sms_sent_date = $todayStr;
+                        $person->save();
+                        Log::info("Regular SMS: marked last_sms_sent_date={$todayStr} for student {$person->id}");
+                    } else {
+                        Log::info("Regular SMS: already sent today for student {$person->id}");
+                    }
+                }
+
+                // Build notification method label for the scan response
+                $methods = [];
+                if ($willSendEmail) $methods[] = 'Email';
+                if ($willSendSms)   $methods[] = 'SMS';
+                $notificationMethodUsed = empty($methods) ? 'None' : implode('+', $methods);
+
             } else {
                 // Teachers are verified — mock attendance object for frontend compatibility
                 $attendance = (object) [
@@ -180,43 +206,54 @@ class AttendanceController extends Controller
             $response = response()->json([
                 'status'     => 'success',
                 'message'    => $personType === 'teacher' ? 'Teacher verified.' : 'Attendance recorded.',
-                'notification_method' => $notificationMethodUsed ?? 'None',
+                'notification_method' => $notificationMethodUsed,
                 'attendance' => [
                     'id'         => $attendance->id,
                     'status'     => $attendance->status ?? 'on_time',
                     'scanned_at' => $scannedAt->toIso8601String(),
                 ],
                 'student' => [
-                    'id'            => $person->id,
+                    'id'             => $person->id,
                     'student_number' => $personType === 'student' ? $person->student_number : $person->employee_id,
-                    'full_name'     => $personType === 'student' ? ($person->first_name . ' ' . $person->last_name) : $person->name,
-                    'first_name'    => $personType === 'student' ? $person->first_name : $person->name,
-                    'last_name'     => $personType === 'student' ? $person->last_name : '',
-                    'grade_section' => $personType === 'student' ? ($person->grade_section ?? '—') : ($person->job_title ?? 'Faculty'),
-                    'photo_path'    => $photoPath,
-                    'type'          => $personType,
+                    'full_name'      => $personType === 'student' ? ($person->first_name . ' ' . $person->last_name) : $person->name,
+                    'first_name'     => $personType === 'student' ? $person->first_name : $person->name,
+                    'last_name'      => $personType === 'student' ? $person->last_name : '',
+                    'grade_section'  => $personType === 'student' ? ($person->grade_section ?? '—') : ($person->job_title ?? 'Faculty'),
+                    'photo_path'     => $photoPath,
+                    'type'           => $personType,
                 ],
                 'stats' => $this->calculateStats($schoolId),
             ], 201);
 
-            // Dispatch notifications after the response is sent (scanner speed first).
-            if ($personType === 'student' && $notificationPreference && is_array($notificationPayload)) {
-                $student = $person; // clarity: $person is Student in this branch
-                app()->terminating(function () use ($student, $notificationPreference, $notificationPayload, $formattedNumber) {
+            // Dispatch notifications AFTER response is sent (scanner speed first).
+            // Email: ALWAYS on every scan for all preferences, if guardian_email is set.
+            // SMS:   Depends on notification_preference (0=none, 1=once/day, 2=every scan).
+            if ($personType === 'student' && $scanTime !== null) {
+                $studentSnap    = $person;
+                $timeSnap       = $scanTime;
+                $sessionSnap    = $scanSession;
+                $numberSnap     = $formattedNumber;
+                $prefSnap       = $notificationPref;
+                $willSendSmsSnap   = $willSendSms  ?? false;
+                $willSendEmailSnap = $willSendEmail ?? false;
+
+                app()->terminating(function () use (
+                    $studentSnap, $timeSnap, $sessionSnap, $numberSnap,
+                    $prefSnap, $willSendSmsSnap, $willSendEmailSnap
+                ) {
                     try {
-                        if ($notificationPreference === 'sms') {
-                            // Validation: do not attempt SMS when no number is available.
-                            if (!empty($formattedNumber)) {
-                                SendSmsNotification::dispatch($student, $notificationPayload['time'], $notificationPayload['session'], $formattedNumber)
-                                    ->afterResponse();
-                            }
-                            return;
+                        // Email: unlimited, all preferences
+                        if ($willSendEmailSnap) {
+                            SendEmailNotification::dispatch($studentSnap, $timeSnap, $sessionSnap)->afterResponse();
                         }
-                        if ($student->guardian_email) {
-                            SendEmailNotification::dispatch($student, $notificationPayload['time'], $notificationPayload['session'])->afterResponse();
+
+                        // SMS: only when preference allows and gate conditions pass
+                        if ($willSendSmsSnap) {
+                            SendSmsNotification::dispatch($studentSnap, $timeSnap, $sessionSnap, $numberSnap, $prefSnap)
+                                ->afterResponse();
                         }
                     } catch (\Throwable $e) {
-                        Log::warning('Attendance notification dispatchAfterResponse failed: ' . $e->getMessage());
+                        Log::warning('Attendance notification dispatch failed: ' . $e->getMessage());
                     }
                 });
             }
@@ -343,33 +380,49 @@ class AttendanceController extends Controller
         ]);
 
         // Queue notifications after response (teacher scan should remain fast).
-        $pref = $student->notification_preference ?? 'email';
-        $timeStr = $scannedAt->format('h:i A');
-        $sessionLabel = ucfirst($session);
-        $formattedNumber = null;
-        if ($pref === 'sms') {
-            /**
-             * Source: Student DB; Destination: Semaphore API; Action: Converting local 09 format to international 63 format for carrier compatibility.
-             */
-            $guardianContact = $student->contact_number ?: $student->emergency_contact;
-            if (!empty($guardianContact)) {
-                $digits = preg_replace('/\D/', '', (string) $guardianContact);
-                $formattedNumber = preg_replace('/^0/', '63', $digits);
+        $notificationPref = (int) ($student->notification_preference ?? 0);
+        $timeStr          = $scannedAt->format('h:i A');
+        $sessionLabel     = ucfirst((string) $session);
+        $formattedNumber  = null;
+
+        // Resolve and normalise the guardian's phone number
+        $guardianContact = $student->contact_number ?: $student->emergency_contact;
+        if (!empty($guardianContact)) {
+            $digits = preg_replace('/\D/', '', (string) $guardianContact);
+            $formattedNumber = preg_replace('/^0/', '63', $digits);
+            if (str_starts_with($formattedNumber, '9') && strlen($formattedNumber) === 10) {
+                $formattedNumber = '63' . $formattedNumber;
             }
         }
-        app()->terminating(function () use ($student, $pref, $timeStr, $sessionLabel, $formattedNumber) {
+
+        // Determine dispatch conditions
+        $willSendEmail = !empty($student->guardian_email);
+        $willSendSms   = false;
+
+        if ($notificationPref === 2) {
+            $willSendSms = !empty($formattedNumber);
+        } elseif ($notificationPref === 1) {
+            $todayStr = $scannedAt->toDateString();
+            $lastSent = $student->last_sms_sent_date
+                ? (is_string($student->last_sms_sent_date) ? $student->last_sms_sent_date : $student->last_sms_sent_date->format('Y-m-d'))
+                : null;
+            $willSendSms = !empty($formattedNumber) && ($lastSent !== $todayStr);
+
+            if ($willSendSms) {
+                $student->update(['last_sms_sent_date' => $todayStr]);
+            }
+        }
+
+        app()->terminating(function () use ($student, $timeStr, $sessionLabel, $formattedNumber, $notificationPref, $willSendEmail, $willSendSms) {
             try {
-                if ($pref === 'sms') {
-                    if (!empty($formattedNumber)) {
-                        SendSmsNotification::dispatch($student, $timeStr, $sessionLabel, $formattedNumber)->afterResponse();
-                    }
-                    return;
-                }
-                if ($student->guardian_email) {
+                if ($willSendEmail) {
                     SendEmailNotification::dispatch($student, $timeStr, $sessionLabel)->afterResponse();
                 }
+                if ($willSendSms) {
+                    SendSmsNotification::dispatch($student, $timeStr, $sessionLabel, $formattedNumber, $notificationPref)->afterResponse();
+                }
             } catch (\Throwable $e) {
-                Log::warning('Teacher scan notification dispatchAfterResponse failed: ' . $e->getMessage());
+                Log::warning('Teacher scan notification dispatch failed: ' . $e->getMessage());
             }
         });
 
