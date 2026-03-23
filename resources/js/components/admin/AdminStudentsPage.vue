@@ -156,11 +156,13 @@
       </div>
     </div>
 
-    <!-- Create / Edit Modal -->
+    <!-- 
+      Create / Edit Modal
+      Header Comment: Action: Implementing static backdrop to prevent accidental data loss during student editing.
+    -->
     <div
       v-if="showFormModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      @click.self="closeForm"
     >
       <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col border border-stone-200" @click.stop>
         <h2 class="text-lg font-semibold p-6 pb-0">{{ editingId ? 'Edit Student' : 'Create Student' }}</h2>

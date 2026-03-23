@@ -320,10 +320,12 @@
       </div>
       </main>
     </div>
+    <!-- 
+      Header Comment: Action: Implementing static backdrop to prevent accidental data loss during student editing.
+    -->
     <div
       v-if="showFormModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      @click.self="showFormModal = false"
     >
       <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col border border-stone-200" @click.stop>
         <h2 class="text-lg font-semibold text-stone-800 p-6 pb-0">{{ editingId ? 'Edit Student' : 'Add Learner' }}</h2>
