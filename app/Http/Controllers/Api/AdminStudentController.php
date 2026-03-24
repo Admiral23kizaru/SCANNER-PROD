@@ -62,6 +62,7 @@ class AdminStudentController extends Controller
         $validator = Validator::make($request->all(), [
             'first_name'     => ['required', 'string', 'max:255'],
             'last_name'      => ['required', 'string', 'max:255'],
+            'gender'         => ['nullable', 'string', 'in:Male,Female'],
             'middle_name'    => ['nullable', 'string', 'max:255'],
             'student_number' => ['required', 'string', 'max:64', 'unique:students,student_number'],
             'grade_section'  => ['nullable', 'string', 'max:64'],
@@ -85,6 +86,7 @@ class AdminStudentController extends Controller
         $student = Student::create([
             'first_name'     => $request->first_name,
             'last_name'      => $request->last_name,
+            'gender'         => $request->gender ?: null,
             'middle_name'    => $request->middle_name ?: null,
             'student_number' => $request->student_number,
             'grade_section'  => $gradeSection,
@@ -112,6 +114,7 @@ class AdminStudentController extends Controller
         $validator = Validator::make($request->all(), [
             'first_name'     => ['sometimes', 'required', 'string', 'max:255'],
             'last_name'      => ['sometimes', 'required', 'string', 'max:255'],
+            'gender'         => ['nullable', 'string', 'in:Male,Female'],
             'middle_name'    => ['nullable', 'string', 'max:255'],
             'student_number' => ['sometimes', 'required', 'string', 'max:64', 'unique:students,student_number,' . $id],
             'grade_section'  => ['nullable', 'string', 'max:64'],
@@ -132,7 +135,7 @@ class AdminStudentController extends Controller
         $data = $request->only([
             'first_name', 'last_name', 'middle_name', 'student_number',
             'grade_section', 'grade', 'section',
-            'guardian', 'guardian_email', 'contact_number', 'notification_preference',
+            'guardian', 'guardian_email', 'contact_number', 'notification_preference', 'gender',
         ]);
 
         if ($request->hasAny(['grade', 'section', 'grade_section'])) {
@@ -190,7 +193,7 @@ class AdminStudentController extends Controller
             $handle = fopen('php://output', 'w');
             fputs($handle, chr(0xEF) . chr(0xBB) . chr(0xBF)); // UTF-8 BOM for Excel
 
-            fputcsv($handle, ['ID', 'LRN', 'First Name', 'Last Name', 'Middle Name', 'Grade & Section', 'Grade', 'Section', 'Guardian', 'Guardian Email', 'Contact Number']);
+            fputcsv($handle, ['ID', 'LRN', 'First Name', 'Last Name', 'Gender', 'Middle Name', 'Grade & Section', 'Grade', 'Section', 'Guardian', 'Guardian Email', 'Contact Number']);
 
             $query->chunk(100, function ($students) use ($handle) {
                 foreach ($students as $student) {
@@ -199,6 +202,7 @@ class AdminStudentController extends Controller
                         $student->student_number,
                         $student->first_name,
                         $student->last_name,
+                        $student->gender,
                         $student->middle_name,
                         $student->grade_section,
                         $student->grade,
@@ -245,6 +249,7 @@ class AdminStudentController extends Controller
             'student_number' => $student->student_number,
             'first_name'     => $student->first_name,
             'last_name'      => $student->last_name,
+            'gender'         => $student->gender,
             'middle_name'    => $student->middle_name,
             'full_name'      => trim($student->first_name . ' ' . $student->last_name),
             'grade_section'  => $student->grade_section ?? '—',

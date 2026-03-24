@@ -232,6 +232,7 @@
               <tr>
                 <th class="py-3 px-4 border-b border-stone-200">Last Name</th>
                 <th class="py-3 px-4 border-b border-stone-200">First Name</th>
+                <th class="py-3 px-4 border-b border-stone-200">Gender</th>
                 <th class="py-3 px-4 border-b border-stone-200">Middle Name</th>
                 <th class="py-3 px-4 border-b border-stone-200">Grade</th>
                 <th class="py-3 px-4 border-b border-stone-200">Section</th>
@@ -247,6 +248,7 @@
               >
                 <td class="py-4 px-4 font-medium text-stone-800 capitalize">{{ titleCase(row.last_name) }}</td>
                 <td class="py-4 px-4 text-stone-700 capitalize">{{ titleCase(row.first_name) }}</td>
+                <td class="py-4 px-4 text-stone-600 capitalize text-sm">{{ row.gender || '—' }}</td>
                 <td class="py-4 px-4 text-stone-600 capitalize">{{ row.middle_name ? titleCase(row.middle_name) : '—' }}</td>
                 <td class="py-4 px-4 text-stone-700">{{ row.grade || row.grade_section || '—' }}</td>
                 <td class="py-4 px-4 text-stone-700">{{ row.section || '—' }}</td>
@@ -376,6 +378,14 @@
                   class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
                 />
               </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Gender</label>
+              <select v-model="form.gender" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700 bg-white">
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
             </div>
             <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">Guardian</label>
@@ -615,6 +625,7 @@ const editingId = ref(null);
 const form = ref({
   first_name: '',
   last_name: '',
+  gender: '',
   middle_name: '',
   grade: '',
   section: '',
@@ -731,7 +742,7 @@ function onPhotoChange(e) {
 function openAddModal() {
   editingId.value = null;
   form.value = {
-    first_name: '', last_name: '', middle_name: '', grade: '', section: '',
+    first_name: '', last_name: '', middle_name: '', grade: '', section: '', gender: '',
     grade_section: '', guardian: '', guardian_email: '', contact_number: '', student_number: '', notification_preference: 0,
   };
   formError.value = '';
@@ -753,6 +764,7 @@ function openEditModal(row) {
   form.value = {
     first_name: row.first_name ?? '',
     last_name: row.last_name ?? '',
+    gender: row.gender ?? '',
     middle_name: row.middle_name ?? '',
     grade: row.grade ?? '',
     section: row.section ?? '',
@@ -774,6 +786,7 @@ function buildFormData() {
   const fd = new FormData();
   fd.append('first_name', form.value.first_name);
   fd.append('last_name', form.value.last_name);
+  fd.append('gender', form.value.gender || '');
   fd.append('middle_name', form.value.middle_name || '');
   fd.append('student_number', form.value.student_number);
   fd.append('grade', form.value.grade || '');
@@ -797,6 +810,7 @@ async function submitForm() {
         const payload = {
           first_name: form.value.first_name,
           last_name: form.value.last_name,
+          gender: form.value.gender || '',
           middle_name: form.value.middle_name || '',
           student_number: form.value.student_number,
           grade: form.value.grade || '',
@@ -824,6 +838,7 @@ async function submitForm() {
         const res = await createStudent({
           first_name: form.value.first_name,
           last_name: form.value.last_name,
+          gender: form.value.gender || '',
           middle_name: form.value.middle_name || '',
           student_number: form.value.student_number,
           grade: form.value.grade || '',

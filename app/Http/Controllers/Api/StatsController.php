@@ -106,6 +106,26 @@ class StatsController extends Controller
             $totalTeachers    = Teacher::count();
             $todaysAttendance = Attendance::whereDate('scanned_at', now()->toDateString())->count();
 
+            // Male/Female counts for today
+            $maleToday = Attendance::query()
+                ->join('students', 'attendance.student_id', '=', 'students.id')
+                ->whereDate('attendance.scanned_at', now()->toDateString())
+                ->where('students.gender', 'Male')
+                ->count();
+
+            $femaleToday = Attendance::query()
+                ->join('students', 'attendance.student_id', '=', 'students.id')
+                ->whereDate('attendance.scanned_at', now()->toDateString())
+                ->where('students.gender', 'Female')
+                ->count();
+
+            // Absent today = Total students - Total unique students present today
+            // Note: Use DISTINCT student_id in case students check in/out multiple times.
+            $presentCount = Attendance::whereDate('scanned_at', now()->toDateString())
+                ->distinct('student_id')
+                ->count('student_id');
+            $absentToday = max(0, $totalStudents - $presentCount);
+
             $attendancePerGrade = DB::table('attendance')
                 ->join('students', 'attendance.student_id', '=', 'students.id')
                 ->whereDate('attendance.scanned_at', now()->toDateString())
@@ -125,6 +145,9 @@ class StatsController extends Controller
                     'students'         => $totalStudents,
                     'teachers'         => $totalTeachers,
                     'attendance_today' => $todaysAttendance,
+                    'male_today'       => $maleToday,
+                    'female_today'     => $femaleToday,
+                    'absent_today'     => $absentToday,
                     'is_above_average' => $todaysAttendance > $historicalAverage,
                 ],
                 'attendance_by_grade' => $attendancePerGrade,

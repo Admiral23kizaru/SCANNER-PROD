@@ -26,6 +26,7 @@ class Student extends Model
         'student_number',
         'first_name',
         'last_name',
+        'gender',
         'middle_name',
         'grade_section',
         'grade',

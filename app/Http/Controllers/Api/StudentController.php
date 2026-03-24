@@ -74,6 +74,7 @@ class StudentController extends Controller
         $validator = Validator::make($request->all(), [
             'first_name'     => ['required', 'string', 'max:255'],
             'last_name'      => ['required', 'string', 'max:255'],
+            'gender'         => ['nullable', 'string', 'in:Male,Female'],
             'middle_name'    => ['nullable', 'string', 'max:255'],
             'student_number' => ['required', 'string', 'size:12', 'regex:/^\d{12}$/', 'unique:students,student_number'],
             'grade_section'  => ['nullable', 'string', 'max:64'],
@@ -99,6 +100,7 @@ class StudentController extends Controller
         $student = Student::create([
             'first_name'        => $request->first_name,
             'last_name'         => $request->last_name,
+            'gender'            => $request->gender ?: null,
             'middle_name'       => $request->middle_name ?: null,
             'student_number'    => $request->student_number,
             'grade_section'     => $gradeSection,
@@ -139,6 +141,7 @@ class StudentController extends Controller
         $validator = Validator::make($request->all(), [
             'first_name'     => ['sometimes', 'required', 'string', 'max:255'],
             'last_name'      => ['sometimes', 'required', 'string', 'max:255'],
+            'gender'         => ['nullable', 'string', 'in:Male,Female'],
             'middle_name'    => ['nullable', 'string', 'max:255'],
             'student_number' => ['sometimes', 'required', 'string', 'size:12', 'regex:/^\d{12}$/', 'unique:students,student_number,' . $id],
             'grade_section'  => ['nullable', 'string', 'max:64'],
@@ -161,7 +164,7 @@ class StudentController extends Controller
 
         $data = $request->only([
             'first_name', 'last_name', 'middle_name', 'student_number',
-            'grade_section', 'grade', 'section', 'guardian', 'guardian_email', 'contact_number', 'notification_preference'
+            'grade_section', 'grade', 'section', 'guardian', 'guardian_email', 'contact_number', 'notification_preference', 'gender'
         ]);
 
         if ($request->has('contact_number')) {
@@ -346,6 +349,7 @@ class StudentController extends Controller
             'student_number' => $student->student_number,
             'first_name'     => $student->first_name,
             'last_name'      => $student->last_name,
+            'gender'         => $student->gender,
             'middle_name'    => $student->middle_name,
             'full_name'      => $fullName ?: ($student->first_name . ' ' . $student->last_name),
             'grade_section'  => $student->grade_section ?? '—',

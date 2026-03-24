@@ -50,6 +50,7 @@
             <tr>
               <th class="py-3 px-4 border-b border-slate-200">Photo</th>
               <th class="py-3 px-4 border-b border-slate-200">Full Name</th>
+              <th class="py-3 px-4 border-b border-slate-200">Gender</th>
               <th class="py-3 px-4 border-b border-slate-200">LRN</th>
               <th class="py-3 px-4 border-b border-slate-200">Grade / Section</th>
               <th class="py-3 px-4 border-b border-slate-200">Guardian</th>
@@ -85,6 +86,7 @@
                   <div class="font-medium text-slate-900 truncate">{{ row.full_name }}</div>
                 </div>
               </td>
+              <td class="py-3 px-4 text-slate-600">{{ row.gender || '—' }}</td>
               <td class="py-3 px-4 font-mono text-slate-700 whitespace-nowrap">{{ row.student_number }}</td>
               <td class="py-3 px-4 text-slate-700">{{ row.grade_section || '—' }}</td>
               <td class="py-3 px-4 text-slate-600">{{ row.guardian || '—' }}</td>
@@ -185,6 +187,14 @@
             <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">LRN <span class="text-xs text-stone-400 font-normal">(12 digits)</span></label>
               <input v-model="form.student_number" type="text" required :readonly="!!editingId" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm font-mono" maxlength="12" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-stone-700 mb-1">Gender</label>
+              <select v-model="form.gender" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white">
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
@@ -291,6 +301,7 @@ const editingId = ref(null);
 const form = ref({
   first_name: '',
   last_name: '',
+  gender: '',
   middle_name: '',
   student_number: '',
   grade: '',
@@ -367,7 +378,7 @@ function openCreateModal() {
   editingId.value = null;
   form.value = {
     first_name: '', last_name: '', middle_name: '',
-    student_number: '', grade: '', section: '',
+    student_number: '', grade: '', section: '', gender: '',
     guardian: '', guardian_email: '', contact_number: '',
     notification_preference: 0,
   };
@@ -380,6 +391,7 @@ function openEditModal(row) {
   form.value = {
     first_name: row.first_name ?? '',
     last_name: row.last_name ?? '',
+    gender: row.gender ?? '',
     middle_name: row.middle_name ?? '',
     student_number: row.student_number ?? '',
     grade: row.grade ?? '',
@@ -403,6 +415,7 @@ async function submitForm() {
   const payload = {
     first_name: form.value.first_name,
     last_name: form.value.last_name,
+    gender: form.value.gender || '',
     middle_name: form.value.middle_name || '',
     student_number: form.value.student_number,
     grade: form.value.grade || '',

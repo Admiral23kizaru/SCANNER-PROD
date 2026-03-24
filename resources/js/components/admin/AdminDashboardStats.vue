@@ -17,8 +17,9 @@
       </div>
     </div>
 
-    <!-- Stat cards -->
+    <!-- Statistics Grid: 3 top cards, 1 bottom card (wraps under Students) -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Total Students -->
       <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm transition-all hover:shadow-md">
         <div class="flex items-start justify-between gap-4">
           <div>
@@ -32,6 +33,7 @@
         </div>
       </div>
 
+      <!-- Total Teachers -->
       <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm transition-all hover:shadow-md">
         <div class="flex items-start justify-between gap-4">
           <div>
@@ -45,6 +47,50 @@
         </div>
       </div>
 
+      <!-- Animated Status Card (Now 3rd) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm transition-all hover:shadow-md overflow-hidden relative group">
+        <div class="flex justify-between items-start mb-2">
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Student Status Today</p>
+            <transition name="slide-fade" mode="out-in">
+              <p :key="activeStatusKey" class="text-lg font-bold text-slate-900">
+                {{ activeStatusLabel || 'Attendance' }}: {{ activeStatusCount || 0 }}
+              </p>
+            </transition>
+        </div>
+
+        <!-- Sliding Selector UI -->
+        <div class="relative h-[56px] w-full flex items-center bg-slate-50 rounded-xl p-1 mt-4 border border-slate-100">
+          <!-- The Sliding Highlight -->
+          <div 
+            class="absolute h-10 bg-white rounded-lg shadow-sm border border-slate-200/50 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+            :style="sliderStyle"
+          ></div>
+
+          <button 
+            @click="toggleStatus('Male')"
+            class="relative z-10 flex-1 flex items-center justify-center text-[10px] font-bold tracking-widest transition-colors duration-300"
+            :class="activeStatusKey === 'Male' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-500'"
+          >
+            MALE
+          </button>
+          <button 
+            @click="toggleStatus('Female')"
+            class="relative z-10 flex-1 flex items-center justify-center text-[10px] font-bold tracking-widest transition-colors duration-300"
+            :class="activeStatusKey === 'Female' ? 'text-pink-600' : 'text-slate-400 hover:text-slate-500'"
+          >
+            FEMALE
+          </button>
+          <button 
+            @click="toggleStatus('Absent')"
+            class="relative z-10 flex-1 flex items-center justify-center text-[10px] font-bold tracking-widest transition-colors duration-300"
+            :class="activeStatusKey === 'Absent' ? 'text-orange-600' : 'text-slate-400 hover:text-slate-500'"
+          >
+            ABSENT
+          </button>
+        </div>
+      </div>
+
+      <!-- Today's Attendance (Relocated to 4th slot - wraps under Students) -->
       <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm transition-all hover:shadow-md">
         <div class="flex items-start justify-between gap-4">
           <div>
@@ -67,7 +113,6 @@
 
     <!-- Charts Section -->
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-      <!-- Attendance Trends -->
       <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h2 class="text-lg font-semibold text-slate-900">Attendance Trends</h2>
@@ -85,7 +130,6 @@
             />
           </div>
         </div>
-        
         <div class="h-[300px] relative">
           <Line v-if="trendData.labels.length" :data="trendData" :options="lineOptions" />
           <div v-else-if="!loading" class="absolute inset-0 flex items-center justify-center text-slate-400 text-sm italic">
@@ -94,7 +138,6 @@
         </div>
       </div>
 
-      <!-- Attendance per Grade -->
       <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <h2 class="text-lg font-semibold text-slate-900 mb-6">Attendance by Grade (Today)</h2>
         <div class="h-[300px] relative">
@@ -115,7 +158,6 @@
             <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
           </button>
         </div>
-
         <div class="mt-6 space-y-4">
           <div
             v-for="(a, i) in recentActivity"
@@ -127,16 +169,13 @@
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-semibold text-slate-900">{{ a.title }}</p>
-              <p class="text-xs text-slate-500 truncate mt-0.5">
-                {{ a.subtitle }}
-              </p>
+              <p class="text-xs text-slate-500 truncate mt-0.5">{{ a.subtitle }}</p>
             </div>
             <div class="text-right shrink-0">
                <p class="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{{ formatTime(a.time) }}</p>
                <p class="text-[10px] text-slate-300">{{ formatDate(a.time) }}</p>
             </div>
           </div>
-
           <div v-if="!loading && recentActivity.length === 0" class="py-12 text-center">
             <p class="text-sm text-slate-400 italic">No recent activity detected.</p>
           </div>
@@ -145,11 +184,10 @@
 
       <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <h2 class="text-lg font-semibold text-slate-900">Quick Actions</h2>
-
         <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
           <button
             type="button"
-            class="group text-left rounded-2xl border border-slate-100 bg-slate-50/50 p-5 hover:bg-white hover:border-slate-200 hover:shadow-lg transition-all duration-300 border border-transparent cursor-pointer"
+            class="group text-left rounded-2xl border border-slate-100 bg-slate-50/50 p-5 hover:bg-white hover:shadow-lg transition-all duration-300 cursor-pointer"
             @click="quickAddTeacher"
           >
             <div class="flex items-start gap-4">
@@ -158,14 +196,14 @@
               </div>
               <div>
                 <p class="text-sm font-semibold text-slate-900">Add Teacher</p>
-                <p class="text-xs text-slate-500 mt-1">Register a new educator account</p>
+                <p class="text-xs text-slate-500 mt-1">Register educator account</p>
               </div>
             </div>
           </button>
 
           <button
             type="button"
-            class="group text-left rounded-2xl border border-slate-100 bg-slate-50/50 p-5 hover:bg-white hover:border-slate-200 hover:shadow-lg transition-all duration-300 border border-transparent cursor-pointer"
+            class="group text-left rounded-2xl border border-slate-100 bg-slate-50/50 p-5 hover:bg-white hover:shadow-lg transition-all duration-300 cursor-pointer"
             @click="quickAddStudent"
           >
             <div class="flex items-start gap-4">
@@ -174,14 +212,14 @@
               </div>
               <div>
                 <p class="text-sm font-semibold text-slate-900">Add Student</p>
-                <p class="text-xs text-slate-500 mt-1">Enroll a new learner in waitlist</p>
+                <p class="text-xs text-slate-500 mt-1">Enroll a new learner</p>
               </div>
             </div>
           </button>
 
           <button
             type="button"
-            class="group text-left rounded-2xl border border-slate-100 bg-slate-50/50 p-5 hover:bg-white hover:border-slate-200 hover:shadow-lg transition-all duration-300 border border-transparent cursor-pointer"
+            class="group text-left rounded-2xl border border-slate-100 bg-slate-50/50 p-5 hover:bg-white hover:shadow-lg transition-all duration-300 cursor-pointer"
             @click="quickPrintReports"
           >
             <div class="flex items-start gap-4">
@@ -190,14 +228,14 @@
               </div>
               <div>
                 <p class="text-sm font-semibold text-slate-900">Print Reports</p>
-                <p class="text-xs text-slate-500 mt-1">Export PDF summary report</p>
+                <p class="text-xs text-slate-500 mt-1">Export PDF summary</p>
               </div>
             </div>
           </button>
 
           <button
             type="button"
-            class="group text-left rounded-2xl border border-slate-100 bg-slate-50/50 p-5 hover:bg-white hover:border-slate-200 hover:shadow-lg transition-all duration-300 border border-transparent cursor-pointer"
+            class="group text-left rounded-2xl border border-slate-100 bg-slate-50/50 p-5 hover:bg-white hover:shadow-lg transition-all duration-300 cursor-pointer"
             @click="quickGoStudents"
           >
             <div class="flex items-start gap-4">
@@ -206,7 +244,7 @@
               </div>
               <div>
                 <p class="text-sm font-semibold text-slate-900">Master List</p>
-                <p class="text-xs text-slate-500 mt-1">Manage all system students</p>
+                <p class="text-xs text-slate-500 mt-1">Manage all students</p>
               </div>
             </div>
           </button>
@@ -261,12 +299,51 @@ ChartJS.register(
   LineElement,
   Filler
 );
-
+ 
 const emit = defineEmits(['navigate']);
-
+ 
 const dashboardStats = ref({});
 const recentActivity = ref([]);
 const loading = ref(false);
+
+const activeStatusKey = ref(null);
+
+const activeStatusLabel = computed(() => {
+  if (!activeStatusKey.value) return '';
+  return activeStatusKey.value;
+});
+
+const activeStatusCount = computed(() => {
+  if (!activeStatusKey.value) return null;
+  const totals = dashboardStats.value.totals;
+  if (activeStatusKey.value === 'Male') return totals?.male_today ?? 0;
+  if (activeStatusKey.value === 'Female') return totals?.female_today ?? 0;
+  if (activeStatusKey.value === 'Absent') return totals?.absent_today ?? 0;
+  return null;
+});
+
+function toggleStatus(key) {
+  if (activeStatusKey.value === key) {
+    activeStatusKey.value = null;
+  } else {
+    activeStatusKey.value = key;
+  }
+}
+
+const sliderStyle = computed(() => {
+  const width = 33.33;
+  let left = 0;
+  if (activeStatusKey.value === 'Male') left = 0;
+  else if (activeStatusKey.value === 'Female') left = 33.33;
+  else if (activeStatusKey.value === 'Absent') left = 66.66;
+  else return { opacity: 0, transform: 'scale(0.8)' };
+
+  return {
+    width: `${width}%`,
+    left: `${left}%`,
+    opacity: 1
+  };
+});
 
 const trendFilter = reactive({
   group_by: 'day',
@@ -450,7 +527,34 @@ async function loadTrends() {
   }
 }
 
-onMounted(() => {
-  loadData();
+onMounted(async () => {
+  await loadData();
 });
 </script>
+
+<style scoped>
+/* Sliding Transition for the Title/Count */
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+.slide-fade-leave-active {
+  transition: all 0.2s cubic-bezier(1, 0.5, 0.8, 1);
+}
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateY(-10px);
+  opacity: 0;
+}
+
+/* Base Card Hover effects */
+.group:hover .bg-slate-50 {
+  background-color: #f1f5f9;
+}
+
+/* Responsive adjustments for the grid if needed */
+@media (max-width: 768px) {
+  .grid-cols-3 {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
