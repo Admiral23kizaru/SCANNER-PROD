@@ -19,21 +19,7 @@
 
     <!-- Statistics Grid: 3 top cards, 1 bottom card (wraps under Students) -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <!-- Total Students -->
-      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm transition-all hover:shadow-md">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <p class="text-sm font-medium text-slate-500 uppercase tracking-wider">Total Students</p>
-            <p class="mt-2 text-3xl font-bold text-slate-900">{{ dashboardStats.totals?.students ?? '—' }}</p>
-            <p class="mt-2 text-xs text-slate-400">Enrolled learners in system</p>
-          </div>
-          <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-inner">
-            <GraduationCap class="h-6 w-6" />
-          </div>
-        </div>
-      </div>
-
-      <!-- Total Teachers -->
+      <!-- Total Teachers (Now 1st) -->
       <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm transition-all hover:shadow-md">
         <div class="flex items-start justify-between gap-4">
           <div>
@@ -47,7 +33,21 @@
         </div>
       </div>
 
-      <!-- Animated Status Card (Now 3rd) -->
+      <!-- Total Students (Now 2nd) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm transition-all hover:shadow-md">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm font-medium text-slate-500 uppercase tracking-wider">Total Students</p>
+            <p class="mt-2 text-3xl font-bold text-slate-900">{{ dashboardStats.totals?.students ?? '—' }}</p>
+            <p class="mt-2 text-xs text-slate-400">Enrolled learners in system</p>
+          </div>
+          <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-inner">
+            <GraduationCap class="h-6 w-6" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Animated Status Card (3rd) -->
       <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm transition-all hover:shadow-md overflow-hidden relative group">
         <div class="flex justify-between items-start mb-2">
             <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Student Status Today</p>
@@ -72,21 +72,21 @@
 
           <button 
             @click="toggleStatus('Male')"
-            class="relative z-10 flex-1 flex items-center justify-center text-[10px] font-bold tracking-widest transition-colors duration-300"
+            class="relative z-10 flex-1 flex items-center justify-center text-[10px] font-bold tracking-widest transition-colors duration-300 cursor-pointer"
             :class="activeStatusKey === 'Male' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-500'"
           >
             MALE
           </button>
           <button 
             @click="toggleStatus('Female')"
-            class="relative z-10 flex-1 flex items-center justify-center text-[10px] font-bold tracking-widest transition-colors duration-300"
+            class="relative z-10 flex-1 flex items-center justify-center text-[10px] font-bold tracking-widest transition-colors duration-300 cursor-pointer"
             :class="activeStatusKey === 'Female' ? 'text-pink-600' : 'text-slate-400 hover:text-slate-500'"
           >
             FEMALE
           </button>
           <button 
             @click="toggleStatus('Absent')"
-            class="relative z-10 flex-1 flex items-center justify-center text-[10px] font-bold tracking-widest transition-colors duration-300"
+            class="relative z-10 flex-1 flex items-center justify-center text-[10px] font-bold tracking-widest transition-colors duration-300 cursor-pointer"
             :class="activeStatusKey === 'Absent' ? 'text-orange-600' : 'text-slate-400 hover:text-slate-500'"
           >
             ABSENT
@@ -94,7 +94,7 @@
         </div>
       </div>
 
-      <!-- Today's Attendance (Relocated to 4th slot - wraps under Students) -->
+      <!-- Today's Attendance (Row 2, Column 1 - directly under Teachers) -->
       <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm transition-all hover:shadow-md">
         <div class="flex items-start justify-between gap-4">
           <div>
