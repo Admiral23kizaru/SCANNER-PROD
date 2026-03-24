@@ -52,7 +52,11 @@
         <div class="flex justify-between items-start mb-2">
             <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Student Status Today</p>
             <transition name="slide-fade" mode="out-in">
-              <p :key="activeStatusKey" class="text-lg font-bold text-slate-900">
+              <p :key="activeStatusKey" 
+                 class="text-lg font-bold text-slate-900 cursor-pointer hover:text-indigo-600 hover:underline transition-color"
+                 @click="openPopulationModal(activeStatusKey)"
+                 title="Click to view detailed list"
+              >
                 {{ activeStatusLabel || 'Attendance' }}: {{ activeStatusCount || 0 }}
               </p>
             </transition>
@@ -251,11 +255,47 @@
         </div>
       </section>
     </div>
+
+    <!-- Population Analytics Modal -->
+    <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="closeModal"></div>
+      <div class="relative bg-white rounded-2xl w-full max-w-2xl shadow-xl flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between p-5 border-b border-slate-100">
+          <h2 class="text-lg font-semibold text-slate-900">{{ modalTitle }}</h2>
+          <button @click="closeModal" class="p-2 -mr-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50 transition">
+            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        
+        <div class="flex-1 overflow-auto p-5">
+          <div v-if="modalLoading" class="flex flex-col items-center justify-center py-12">
+            <div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+            <p class="mt-4 text-sm font-medium text-slate-500">Loading students...</p>
+          </div>
+          <div v-else-if="modalStudents.length === 0" class="text-center py-12 text-slate-500">
+            No students found for this category.
+          </div>
+          <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div v-for="student in modalStudents" :key="student.id" class="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50">
+              <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 text-indigo-700 font-bold border border-indigo-200">
+                 {{ student.last_name?.charAt(0) }}{{ student.first_name?.charAt(0) }}
+              </div>
+              <div class="min-w-0">
+                <p class="text-sm font-bold text-slate-900 truncate">{{ student.last_name }}, {{ student.first_name }}</p>
+                <p class="text-xs text-slate-500 truncate">{{ student.grade || 'No Grade' }} - {{ student.section || 'No Section' }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, reactive, computed } from 'vue';
+import axios from 'axios';
 import { fetchDashboardOverview, fetchSummaryReportPdfBlob, fetchDashboardStats, fetchAttendanceTrends } from '../../services/adminService';
 import {
   GraduationCap,
@@ -306,7 +346,57 @@ const dashboardStats = ref({});
 const recentActivity = ref([]);
 const loading = ref(false);
 
-const activeStatusKey = ref(null);
+// ─── Population Modal State ─────────────────────────────────────────────
+// Why: Clicking "Male", "Female", or "Absent" on the status card should
+//      open a detailed modal listing those specific students.
+// How: openPopulationModal() sends a GET to /api/admin/dashboard/analytics
+//      with ?type=male|female|absent and renders the result in a modal.
+
+const isModalOpen = ref(false);
+const modalTitle = ref('');
+const modalStudents = ref([]);
+const modalLoading = ref(false);
+
+/**
+ * // Description: openPopulationModal - Fetches and displays a filtered student
+ * //   list in a modal based on the clicked category (Male, Female, Absent).
+ * // Author: Antigravity System Agent
+ *
+ * @param {string} category - One of: 'Male', 'Female', 'Absent'
+ */
+async function openPopulationModal(category) {
+  if (!category) return;
+  
+  isModalOpen.value = true;
+  modalTitle.value = `${category} Students List`;
+  modalLoading.value = true;
+  modalStudents.value = [];
+  
+  try {
+    const type = category.toLowerCase();
+    const response = await axios.get(`/api/admin/dashboard/analytics?type=${type}`);
+    modalStudents.value = response.data.data;
+  } catch (error) {
+    console.error('Failed to load students', error);
+  } finally {
+    modalLoading.value = false;
+  }
+}
+
+/**
+ * // Description: closeModal - Resets modal state so it can be cleanly reopened.
+ */
+function closeModal() {
+  isModalOpen.value = false;
+  modalStudents.value = [];
+}
+
+// ─── Status Slider Logic ───────────────────────────────────────────────
+// Why: The animated "Student Status Today" card cycles through Male/Female/Absent
+//      with a sliding highlight. Each category is also clickable to open its modal.
+// How: activeStatusKey drives the label, count, and slider position via computed props.
+
+const activeStatusKey = ref('Male');
 
 const activeStatusLabel = computed(() => {
   if (!activeStatusKey.value) return '';
@@ -322,6 +412,10 @@ const activeStatusCount = computed(() => {
   return null;
 });
 
+/**
+ * // Description: toggleStatus - Toggles which demographic (Male/Female/Absent) is
+ * //   currently highlighted on the slider. Clicking the active key deselects it.
+ */
 function toggleStatus(key) {
   if (activeStatusKey.value === key) {
     activeStatusKey.value = null;
@@ -329,6 +423,11 @@ function toggleStatus(key) {
     activeStatusKey.value = key;
   }
 }
+
+/**
+ * // Description: sliderStyle - Computes the CSS position for the animated sliding
+ * //   highlight bar based on which status key is active.
+ */
 
 const sliderStyle = computed(() => {
   const width = 33.33;

@@ -52,6 +52,8 @@ class TeacherManagementController extends Controller
             'password'    => ['required', 'string', 'min:8', 'confirmed'],
             'school_name' => ['nullable', 'string', 'max:255'],
             'job_title'   => ['nullable', 'string', 'max:50'],
+            'grade_level' => ['nullable', 'string', 'max:20'],
+            'section'     => ['nullable', 'string', 'max:50'],
         ], [
             'employee_id.unique' => 'A teacher with this employee number already exists.',
             'password.min'       => 'Password must be at least 8 characters.',
@@ -66,6 +68,9 @@ class TeacherManagementController extends Controller
 
         // Generate internal placeholder email
         $email = strtolower(str_replace(' ', '', $request->employee_id)) . '@deped.local';
+        
+        // Auto-detect school name fallback from the authenticated admin user
+        $schoolName = $request->input('school_name') ?: $request->user()->school_name;
 
         $teacher = Teacher::create([
             'first_name'  => $firstName,
@@ -73,7 +78,7 @@ class TeacherManagementController extends Controller
             'email'       => $email,
             'password'    => $request->password,
             'employee_id' => $request->employee_id,
-            'school_name' => $request->input('school_name'),
+            'school_name' => $schoolName,
             'job_title'   => $request->input('job_title'),
         ]);
 
@@ -85,8 +90,10 @@ class TeacherManagementController extends Controller
                 'name'        => $request->name,
                 'password'    => $request->password,
                 'employee_id' => $request->employee_id,
-                'school_name' => $request->input('school_name'),
+                'school_name' => $schoolName,
                 'job_title'   => $request->input('job_title'),
+                'grade_level' => $request->input('grade_level'),
+                'section'     => $request->input('section'),
             ]);
         }
 
@@ -109,6 +116,8 @@ class TeacherManagementController extends Controller
             'password'    => ['nullable', 'string', 'min:8', 'confirmed'],
             'school_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'job_title'   => ['sometimes', 'nullable', 'string', 'max:50'],
+            'grade_level' => ['sometimes', 'nullable', 'string', 'max:20'],
+            'section'     => ['sometimes', 'nullable', 'string', 'max:50'],
         ], [
             'employee_id.unique' => 'A teacher with this employee number already exists.',
             'password.min'       => 'Password must be at least 8 characters.',
@@ -134,6 +143,8 @@ class TeacherManagementController extends Controller
             if ($request->has('employee_id')) $user->employee_id = $request->employee_id;
             if ($request->has('school_name')) $user->school_name = $request->input('school_name');
             if ($request->has('job_title'))   $user->job_title = $request->input('job_title');
+            if ($request->has('grade_level')) $user->grade_level = $request->input('grade_level');
+            if ($request->has('section'))     $user->section = $request->input('section');
             if ($request->filled('password')) $user->password = $request->password;
             $user->save();
         }
@@ -248,14 +259,23 @@ class TeacherManagementController extends Controller
     /* ====================================================================== */
 
     /** Serialize a Teacher model into the standard API response shape. */
+    /**
+     * Action: Implementing Section-based Teacher Assignment and Gender-specific Dashboard Analytics.
+     * Serialize a Teacher model into the standard API response shape.
+     */
     private function teacherToArray(Teacher $teacher): array
     {
+        // Also fetch grade_level/section from the linked users record
+        $user = User::where('email', $teacher->email)->first();
+
         return [
             'id'            => $teacher->id,
             'name'          => trim(($teacher->first_name ?? '') . ' ' . ($teacher->last_name ?? '')),
             'employee_id'   => $teacher->employee_id,
             'school_name'   => $teacher->school_name,
             'job_title'     => $teacher->job_title,
+            'grade_level'   => $user?->grade_level,
+            'section'       => $user?->section,
             'profile_photo' => $teacher->profile_photo
                 ? ltrim(str_replace('storage/', '', $teacher->profile_photo), '/')
                 : null,

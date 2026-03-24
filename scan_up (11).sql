@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 19, 2026 at 01:59 AM
+-- Generation Time: Mar 24, 2026 at 04:50 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -45,14 +45,9 @@ CREATE TABLE `attendance` (
 --
 
 INSERT INTO `attendance` (`id`, `student_id`, `scanned_by`, `scanned_at`, `session`, `status`, `school_year_id`, `created_at`, `updated_at`, `school_id`) VALUES
-(3, 7, 3, '2026-03-01 01:30:43', 'morning', 'on_time', 2, '2026-03-01 01:30:43', '2026-03-01 01:30:43', 3),
-(12, 7, 3, '2026-03-04 17:07:50', 'morning', 'on_time', 2, '2026-03-04 17:07:50', '2026-03-04 17:07:50', 3),
 (20, 9, 3, '2026-03-11 23:39:02', 'morning', 'on_time', 2, '2026-03-11 23:39:02', '2026-03-11 23:39:02', 3),
-(21, 7, 3, '2026-03-11 23:39:23', 'morning', 'on_time', 2, '2026-03-11 23:39:23', '2026-03-11 23:39:23', 3),
-(22, 7, 3, '2026-03-13 02:54:23', 'morning', 'on_time', 2, '2026-03-13 02:54:23', '2026-03-13 02:54:23', 3),
-(44, 7, 7, '2026-03-16 03:36:03', 'morning', 'late', 2, '2026-03-16 03:36:03', '2026-03-16 03:36:03', 3),
-(45, 9, 7, '2026-03-16 03:37:02', 'morning', 'late', 2, '2026-03-16 03:37:02', '2026-03-16 03:37:02', 3),
-(46, 7, 7, '2026-03-16 16:58:58', 'morning', 'on_time', 2, '2026-03-16 16:58:58', '2026-03-16 16:58:58', 3);
+(63, 11, 14, '2026-03-18 23:16:45', 'dismissal', 'on_time', 2, '2026-03-18 23:16:45', '2026-03-18 23:16:45', 3),
+(66, 10, 14, '2026-03-22 22:41:09', 'dismissal', 'on_time', 2, '2026-03-22 22:41:09', '2026-03-22 22:41:09', 3);
 
 -- --------------------------------------------------------
 
@@ -114,7 +109,11 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 (8, '2026_03_09_052641_create_locator_slips_table', 8),
 (9, '2026_03_11_000001_drop_locator_slips_table', 9),
 (10, '2026_03_11_000002_add_job_title_to_users_and_teachers_tables', 9),
-(11, '2026_03_16_010432_add_school_name_to_users_and_teachers_tables', 10);
+(11, '2026_03_16_010432_add_school_name_to_users_and_teachers_tables', 10),
+(12, '2026_03_17_000000_add_profile_fields_to_admins_table', 11),
+(13, '2026_03_17_010000_add_profile_photo_to_admins_table', 12),
+(14, '2026_03_19_005723_add_notification_preference_to_students_table', 12),
+(15, '2026_03_24_100000_add_grade_level_and_section_to_users_table', 99);
 
 -- --------------------------------------------------------
 
@@ -152,8 +151,7 @@ CREATE TABLE `personal_access_tokens` (
 --
 
 INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `name`, `token`, `abilities`, `last_used_at`, `expires_at`, `created_at`, `updated_at`) VALUES
-(167, 'App\\Models\\User', 1, 'api-token', '5bb40622df6588e0834875f3f795492e44f41525484a6e18e4d6412a053d7113', '[\"*\"]', '2026-03-17 22:12:10', NULL, '2026-03-17 19:48:57', '2026-03-17 22:12:10'),
-(168, 'App\\Models\\User', 7, 'api-token', 'bc8a7449b8bf87582f95393275cf77fb9a464bf6eda4ff0f11e015d7c2338b9c', '[\"*\"]', '2026-03-18 16:40:16', NULL, '2026-03-17 21:18:37', '2026-03-18 16:40:16');
+(188, 'App\\Models\\User', 1, 'api-token', '96af962211dc9b8d549322fe3bc28c087cde4831fbe397a74a8367a050683574', '[\"*\"]', '2026-03-23 19:49:44', NULL, '2026-03-23 19:48:45', '2026-03-23 19:49:44');
 
 -- --------------------------------------------------------
 
@@ -301,6 +299,9 @@ CREATE TABLE `students` (
   `guardian_email` varchar(255) DEFAULT NULL,
   `contact_number` varchar(64) DEFAULT NULL,
   `emergency_contact` varchar(64) DEFAULT NULL,
+  `notification_preference` tinyint(3) UNSIGNED NOT NULL DEFAULT 0,
+  `notification_pref_int` tinyint(3) UNSIGNED NOT NULL DEFAULT 0,
+  `last_sms_sent_date` date DEFAULT NULL,
   `guardian_contact` varchar(64) DEFAULT NULL,
   `photo_path` varchar(255) DEFAULT NULL,
   `qr_version` tinyint(3) UNSIGNED NOT NULL DEFAULT 1,
@@ -314,11 +315,11 @@ CREATE TABLE `students` (
 -- Dumping data for table `students`
 --
 
-INSERT INTO `students` (`id`, `teacher_id`, `created_by`, `student_number`, `grade_section`, `first_name`, `last_name`, `middle_name`, `grade`, `section`, `guardian`, `guardian_email`, `contact_number`, `emergency_contact`, `guardian_contact`, `photo_path`, `qr_version`, `created_at`, `updated_at`, `deleted_at`, `school_id`) VALUES
-(6, 8, 8, '9371618383', NULL, 'aaron', 'gemang', 'L', 'Grade 8', 'molave', 'joera', NULL, NULL, NULL, '999383833', NULL, 1, '2026-02-22 16:50:07', '2026-03-11 23:43:13', NULL, 2),
-(7, 7, 7, '128164200066', 'Grade 2-molave', 'xyion', 'catedral', 'p', 'Grade 2', 'molave', 'Regie Akiatan Catedral', 'zzephyr934@gmail.com', '09461075459', '09461075459', '999383833', 'students/128164200066.png', 1, '2026-02-22 21:57:01', '2026-03-15 19:33:15', NULL, 3),
-(9, 7, 7, '334343434234', 'Grade 2-molave', 'ZEPHYR', 'Z', 'E', 'Grade 2', 'molave', 'aaron', NULL, NULL, NULL, '09461075459', 'students/334343434234.png', 1, '2026-03-08 21:08:26', '2026-03-15 18:21:19', NULL, 3),
-(10, 7, 7, '124523212131', 'grade 7-rose', 'jasfer', 'maghanoy', 't', 'grade 7', 'rose', 'pandero jylie', 'zzephyr934@gmail.com', '09461075459', '09461075459', NULL, 'students/124523212131.png', 1, '2026-03-15 19:21:05', '2026-03-15 19:21:05', NULL, 3);
+INSERT INTO `students` (`id`, `teacher_id`, `created_by`, `student_number`, `grade_section`, `first_name`, `last_name`, `middle_name`, `grade`, `section`, `guardian`, `guardian_email`, `contact_number`, `emergency_contact`, `notification_preference`, `notification_pref_int`, `last_sms_sent_date`, `guardian_contact`, `photo_path`, `qr_version`, `created_at`, `updated_at`, `deleted_at`, `school_id`) VALUES
+(6, 8, 8, '9371618383', NULL, 'aaron', 'gemang', 'L', 'Grade 8', 'molave', 'joera', NULL, NULL, NULL, 0, 0, NULL, '999383833', NULL, 1, '2026-02-22 16:50:07', '2026-03-11 23:43:13', NULL, 2),
+(9, 7, 7, '334343434234', 'Grade 2-molave', 'ZEPHYR', 'Z', 'E', 'Grade 2', 'molave', 'aaron', 'majoeramaevicente@gmail.com', '09709574124', '09709574124', 1, 0, NULL, '09461075459', 'students/334343434234.png', 1, '2026-03-08 21:08:26', '2026-03-22 22:30:44', NULL, 3),
+(10, 7, 7, '124523212131', 'grade 7-rose', 'jasfer', 'maghanoy', 't', 'grade 7', 'rose', 'pandero jylie', 'zzephyr934@gmail.com', '09461075459', '09461075459', 2, 0, NULL, NULL, 'students/124523212131.png', 1, '2026-03-15 19:21:05', '2026-03-18 23:06:51', NULL, 3),
+(11, 7, 7, '134323131131', 'grade-7', 'xyion', 'catedral', 'p', 'grade', '7', 'jasfer', 'takamurashin3@gmail.com', '09461075459', '09461075459', 1, 0, '2026-03-19', NULL, 'students/134323131131.png', 1, '2026-03-18 23:15:20', '2026-03-18 23:16:45', NULL, 3);
 
 -- --------------------------------------------------------
 
@@ -525,7 +526,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `attendance`
 --
 ALTER TABLE `attendance`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=67;
 
 --
 -- AUTO_INCREMENT for table `audit_logs`
@@ -543,13 +544,13 @@ ALTER TABLE `failed_jobs`
 -- AUTO_INCREMENT for table `migrations`
 --
 ALTER TABLE `migrations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `personal_access_tokens`
 --
 ALTER TABLE `personal_access_tokens`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=169;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=189;
 
 --
 -- AUTO_INCREMENT for table `roles`
@@ -585,7 +586,7 @@ ALTER TABLE `school_years`
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `teachers`

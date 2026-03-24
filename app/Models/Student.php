@@ -31,6 +31,7 @@ class Student extends Model
         'grade_section',
         'grade',
         'section',
+        'section_id',
         'guardian',
         'guardian_email',
         'contact_number',

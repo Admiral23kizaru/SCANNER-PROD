@@ -537,6 +537,111 @@ class AttendanceController extends Controller
             : null;
     }
 
+    /* ====================================================================== */
+    /*  Teacher Attendance Monitor                                             */
+    /* ====================================================================== */
+
+    /**
+     * Action: Implementing Teacher-specific Attendance Monitoring with Split-View UI.
+     *
+     * Target Role: Teacher
+     * Source: Authenticated Teacher session.
+     * Destination: AttendanceMonitor.vue (frontend split-view).
+     * Function: Fetches all students belonging to the teacher, checks today's
+     *           attendance records, and sorts them into presentStudents and
+     *           absentStudents arrays.
+     *
+     * Note: UI should prioritize high-contrast badges for quick scanning
+     *       of classroom attendance.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getTeacherStudentStatus(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+
+            if (!$user) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Unauthenticated.',
+                ], 401);
+            }
+
+            // Fetch all students belonging to this teacher
+            $query = Student::query();
+            if ($user->grade_level && $user->section) {
+                $query->where('grade', $user->grade_level)
+                      ->where('section', $user->section);
+            } else {
+                $query->where(function ($q) use ($user) {
+                    $q->where('teacher_id', $user->id)->orWhere('created_by', $user->id);
+                });
+            }
+            
+            $students = $query->orderBy('last_name')
+                ->orderBy('first_name')
+                ->get();
+
+            $today = now()->toDateString();
+
+            // Get all of today's morning attendance records for these student IDs
+            $studentIds = $students->pluck('id')->toArray();
+
+            $todayAttendance = Attendance::whereIn('student_id', $studentIds)
+                ->whereDate('scanned_at', $today)
+                ->where('session', 'morning')
+                ->get()
+                ->keyBy('student_id');
+
+            $presentStudents = [];
+            $absentStudents  = [];
+
+            foreach ($students as $student) {
+                $row = [
+                    'id'             => $student->id,
+                    'student_number' => $student->student_number,
+                    'first_name'     => $student->first_name,
+                    'last_name'      => $student->last_name,
+                    'full_name'      => $student->first_name . ' ' . $student->last_name,
+                    'grade'          => $student->grade,
+                    'section'        => $student->section,
+                    'grade_section'  => trim(($student->grade ?? '') . ' - ' . ($student->section ?? ''), ' -'),
+                    'photo_path'     => $student->photo_path
+                        ? url('storage/' . ltrim(str_replace(['public/', 'storage/'], '', $student->photo_path), '/'))
+                        : null,
+                ];
+
+                if ($todayAttendance->has($student->id)) {
+                    $att = $todayAttendance->get($student->id);
+                    $row['time_in'] = $att->scanned_at->format('h:i A');
+                    $row['status']  = $att->status ?? 'on_time';
+                    $presentStudents[] = $row;
+                } else {
+                    $absentStudents[] = $row;
+                }
+            }
+
+            return response()->json([
+                'status'          => 'success',
+                'presentStudents' => $presentStudents,
+                'absentStudents'  => $absentStudents,
+                'presentCount'    => count($presentStudents),
+                'absentCount'     => count($absentStudents),
+                'totalStudents'   => count($students),
+                'date'            => $today,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('getTeacherStudentStatus failed: ' . $e->getMessage());
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to load attendance status.',
+            ], 500);
+        }
+    }
+
     /** Compute today's present / late / absent counts for a given school. */
     private function calculateStats(?int $schoolId): array
     {

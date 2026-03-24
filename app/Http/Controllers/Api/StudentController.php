@@ -34,7 +34,14 @@ class StudentController extends Controller
         $query = Student::query();
 
         if ($user->role?->name === 'Teacher') {
-            $query->where(fn ($q) => $q->where('teacher_id', $user->id)->orWhere('created_by', $user->id));
+            if ($user->grade_level && $user->section) {
+                $query->where('grade', $user->grade_level)
+                      ->where('section', $user->section);
+            } else {
+                $query->where(function ($q) use ($user) {
+                    $q->where('teacher_id', $user->id)->orWhere('created_by', $user->id);
+                });
+            }
         }
 
         $search = $request->input('search');

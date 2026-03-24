@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\IdCardController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\StudentController;
+use App\Http\Controllers\Api\SectionController;
 use App\Http\Controllers\Api\TeacherManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -77,6 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/stats', 'index');
             Route::get('/dashboard/stats', 'dashboardStats');
             Route::get('/dashboard/overview', 'overview');
+            Route::get('/dashboard/analytics', 'getPopulationDetails');
             Route::get('/attendance/trends', 'attendanceTrends');
             Route::get('/reports/summary-pdf', 'summaryReportPdf');
         });
@@ -103,6 +105,17 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/update-profile', 'update');
             Route::post('/update-profile/photo', 'uploadPhoto');
             Route::put('/update-profile/password', 'changePassword');
+        });
+
+        // Section management routes
+        Route::controller(SectionController::class)->prefix('sections')->group(function () {
+            Route::get('/', 'index');
+            Route::post('/', 'store');
+            Route::put('/{id}', 'update');
+            Route::delete('/{id}', 'destroy');
+            Route::post('/{id}/assign-students', 'assignStudents');
+            Route::get('/unassigned-students', 'unassignedStudents');
+            Route::get('/teachers-list', 'teachers');
         });
     });
 
@@ -132,6 +145,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::controller(AttendanceController::class)->group(function () {
             Route::post('/attendance/scan', 'teacherScan');    // teacher-side QR scan
             Route::get('/attendance/recent', 'recent'); // teacher's own scan history
+            Route::get('/attendance/monitor', 'getTeacherStudentStatus'); // split-view monitor
         });
 
         Route::controller(\App\Http\Controllers\Api\TeacherProfileController::class)->group(function () {

@@ -7,11 +7,14 @@
     leave-from-class="opacity-100 scale-100"
     leave-to-class="opacity-0 scale-95"
   >
+    <!-- 
+      Header Comment: Action: Implementing static backdrop to prevent accidental data loss during admin profile editing.
+    -->
     <div
       v-if="modelValue"
       class="fixed inset-0 z-50 flex items-center justify-center p-4"
     >
-      <div class="absolute inset-0 bg-black/50" @click="onBackdropClick" />
+      <div class="absolute inset-0 bg-black/50" />
 
       <div class="relative w-full max-w-lg rounded-xl overflow-hidden bg-white shadow-2xl">
         <!-- Header -->
@@ -94,6 +97,15 @@
                       type="email"
                       class="w-full rounded-md border border-[#d1d5db] px-3 py-2 text-sm focus:outline-none focus:ring-0 focus:border-[#0f1f3d]"
                       required
+                    />
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label class="block text-xs font-medium text-slate-700 mb-1">Default School Name</label>
+                    <input
+                      v-model="form.school_name"
+                      type="text"
+                      placeholder="e.g. Ozamiz City Central School"
+                      class="w-full rounded-md border border-[#d1d5db] px-3 py-2 text-sm focus:outline-none focus:ring-0 focus:border-[#0f1f3d]"
                     />
                   </div>
                 </div>
@@ -196,7 +208,7 @@ const photoPreview = ref(null); // Data Flow: local DataURL preview only (never 
 const uploading = ref(false);
 const errorText = ref('');
 
-const form = ref({ name: '', email: '' });
+const form = ref({ name: '', email: '', school_name: '' });
 const pwd = ref({ current_password: '', password: '', password_confirmation: '' });
 
 const toast = ref({ visible: false, message: '' });
@@ -348,6 +360,7 @@ async function hydrateFromProfile() {
   form.value = {
     name: profile.value?.name || '',
     email: profile.value?.email || '',
+    school_name: profile.value?.school_name || '',
   };
   // Data Flow: `photoPreview` is for local DataURL only; server path is resolved via `displayPhotoUrl`.
   photoPreview.value = null;
@@ -360,6 +373,7 @@ async function saveProfile() {
     const updated = await updateProfile({
       name: form.value.name,
       email: form.value.email,
+      school_name: form.value.school_name || null,
     });
     profile.value = updated;
 

@@ -67,6 +67,21 @@
           <GraduationCap class="h-4 w-4" />
           <span>Students</span>
         </button>
+
+        <!-- Manage Sections sidebar item -->
+        <button
+          type="button"
+          class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent cursor-pointer"
+          :class="
+            currentPage === 'sections'
+              ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm border-l-blue-600'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          "
+          @click="currentPage = 'sections'; isSidebarOpen = false"
+        >
+          <FolderPlus class="h-4 w-4" />
+          <span>Manage Sections</span>
+        </button>
       </nav>
 
       <!-- Sidebar Footer: Logout -->
@@ -193,6 +208,7 @@
           <AdminDashboardStats v-if="currentPage === 'dashboard'" @navigate="(page) => { currentPage = page; }" />
           <AdminTeachersPage v-else-if="currentPage === 'teachers'" />
           <AdminStudentsPage v-else-if="currentPage === 'students'" />
+          <ManageSections v-else-if="currentPage === 'sections'" />
         </div>
       </main>
     </div>
@@ -204,12 +220,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { LayoutDashboard, Users, GraduationCap, LogOut, Menu, ChevronDown, UserCircle, Settings } from 'lucide-vue-next';
+import { LayoutDashboard, Users, GraduationCap, FolderPlus, LogOut, Menu, ChevronDown, UserCircle, Settings } from 'lucide-vue-next';
 import { fetchUser } from '../../services/authService';
 import { useLogout } from '../../composables/useLogout';
 import AdminDashboardStats from './AdminDashboardStats.vue';
 import AdminTeachersPage from './AdminTeachersPage.vue';
 import AdminStudentsPage from './AdminStudentsPage.vue';
+import ManageSections from './ManageSections.vue';
 import AdminProfileModal from '../AdminProfileModal.vue';
 
 const router = useRouter();
@@ -244,12 +261,14 @@ function getPhotoUrl(path) {
 const pageTitle = computed(() => {
   if (currentPage.value === 'teachers') return 'TEACHERS';
   if (currentPage.value === 'students') return 'STUDENTS';
+  if (currentPage.value === 'sections') return 'SECTIONS';
   return 'DASHBOARD';
 });
 
 const pageSubtitle = computed(() => {
   if (currentPage.value === 'teachers') return 'Manage teacher accounts and profiles';
   if (currentPage.value === 'students') return 'Master list and records for students';
+  if (currentPage.value === 'sections') return 'Create and manage class sections';
   return 'Overview of Ozamiz Schools QR-ID System activity';
 });
 

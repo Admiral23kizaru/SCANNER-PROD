@@ -121,3 +121,30 @@ export async function fetchRecentAttendance() {
     });
     return data;
 }
+
+// ─── Teacher Attendance Monitor (split-view) ─────────────────────────────────
+
+/**
+ * Fetch the teacher's student attendance status for today.
+ *
+ * Action: Implementing Teacher-specific Attendance Monitoring with Split-View UI.
+ * Source: AttendanceMonitor.vue polling / manual refresh.
+ * Destination: GET /api/teacher/attendance/monitor (authenticated).
+ * Function: Returns presentStudents and absentStudents arrays with counts.
+ *
+ * @returns {Promise<{
+ *   status: string,
+ *   presentStudents: Array<{ id: number, full_name: string, time_in: string, status: string }>,
+ *   absentStudents: Array<{ id: number, full_name: string }>,
+ *   presentCount: number,
+ *   absentCount: number,
+ *   totalStudents: number,
+ *   date: string
+ * }>}
+ */
+export async function fetchTeacherMonitor() {
+    const { data } = await axios.get('/api/teacher/attendance/monitor', {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data;
+}

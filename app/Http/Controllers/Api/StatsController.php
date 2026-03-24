@@ -275,4 +275,43 @@ class StatsController extends Controller
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'inline; filename="summary_report.pdf"');
     }
+
+    /**
+     * // Description: getPopulationDetails - Handles fetching of students classified by specific population analytics arrays. (Male, Female, Absent, Teacher Specific).
+     * // Author: Antigravity System Agent
+     */
+    public function getPopulationDetails(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $type = $request->query('type');
+        $query = \App\Models\Student::query()->orderBy('last_name')->orderBy('first_name');
+
+        switch ($type) {
+            case 'male':
+                $query->where('gender', 'Male');
+                break;
+            case 'female':
+                $query->where('gender', 'Female');
+                break;
+            case 'absent':
+                $today = now()->toDateString();
+                $query->whereDoesntHave('attendance', function ($q) use ($today) {
+                    $q->whereDate('scanned_at', $today);
+                });
+                break;
+            case 'teacher_students':
+                $teacherId = $request->query('teacher_id');
+                $teacher = \App\Models\User::find($teacherId);
+                if ($teacher && $teacher->grade_level && $teacher->section) {
+                    $query->where('grade', $teacher->grade_level)
+                          ->where('section', $teacher->section);
+                } else {
+                    $query->where('id', 0); // Empty result fallback if missing assignments
+                }
+                break;
+            default:
+                return response()->json(['error' => 'Invalid report type'], 400);
+        }
+
+        return response()->json(['data' => $query->get()]);
+    }
 }

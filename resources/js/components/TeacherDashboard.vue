@@ -33,6 +33,15 @@
           <Users class="h-4 w-4" />
           <span>Learners List</span>
         </button>
+        <button
+          type="button"
+          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition"
+          :class="currentTab === 'monitor' ? 'bg-stone-800 text-white shadow-sm' : 'text-stone-400 hover:bg-stone-800/50 hover:text-white'"
+          @click="currentTab = 'monitor'; isSidebarOpen = false"
+        >
+          <ClipboardList class="h-4 w-4" />
+          <span>Attendance Monitor</span>
+        </button>
       </nav>
     </aside>
 
@@ -149,6 +158,11 @@
       </header>
     
       <main class="flex-1 overflow-auto">
+        <!-- ═══ Attendance Monitor Tab ═══ -->
+        <div v-show="currentTab === 'monitor'" class="w-full">
+          <AttendanceMonitor ref="attendanceMonitorRef" />
+        </div>
+
         <div v-show="currentTab === 'learners'" class="w-full">
            <!-- Page Content Wrapper -->
            <div class="w-full mx-auto p-4 sm:p-6 lg:max-w-6xl">
@@ -554,10 +568,13 @@
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { fetchUser, logoutUser } from '../services/authService';
 import QRCode from 'qrcode';
-import { LogOut, Search, Upload, Plus, User, Pencil, Users, Menu, Filter, ChevronLeft, ChevronRight, ChevronDown, UserCircle, Settings } from 'lucide-vue-next';
+import { LogOut, Search, Upload, Plus, User, Pencil, Users, Menu, Filter, ChevronLeft, ChevronRight, ChevronDown, UserCircle, Settings, ClipboardList } from 'lucide-vue-next';
 import { setStoredToken } from '../router';
 import { fetchStudents, createStudent, createStudentWithFormData, updateStudent, updateStudentWithFormData, uploadStudentPhoto, bulkImportStudents } from '../services/studentService';
 import TeacherProfileModal from './TeacherProfileModal.vue';
+import AttendanceMonitor from './AttendanceMonitor.vue';
+
+const attendanceMonitorRef = ref(null);
 
 function titleCase(str) {
   if (!str || typeof str !== 'string') return '';
@@ -610,10 +627,12 @@ function getPhotoUrl(path) {
 }
 
 const pageTitle = computed(() => {
+  if (currentTab.value === 'monitor') return 'ATTENDANCE MONITOR';
   return 'LEARNERS';
 });
 
 const pageSubtitle = computed(() => {
+  if (currentTab.value === 'monitor') return 'Real-time attendance tracking';
   return 'Manage student records';
 });
 

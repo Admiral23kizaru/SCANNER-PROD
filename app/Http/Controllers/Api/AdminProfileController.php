@@ -23,6 +23,7 @@ class AdminProfileController extends Controller
             'email'         => $admin->email,
             'phone'         => $admin->phone,
             'position'      => $admin->position,
+            'school_name'   => $admin->school_name,
             'profile_photo' => $admin->profile_photo
                 ? $this->fullPhotoUrl($admin->profile_photo)
                 : null,
@@ -41,8 +42,9 @@ class AdminProfileController extends Controller
                 'max:255',
                 Rule::unique((new User())->getTable(), 'email')->ignore($admin->id),
             ],
-            'phone'    => ['nullable', 'string', 'max:50'],
-            'position' => ['nullable', 'string', 'max:255'],
+            'phone'       => ['nullable', 'string', 'max:50'],
+            'position'    => ['nullable', 'string', 'max:255'],
+            'school_name' => ['nullable', 'string', 'max:255'],
         ]);
 
         $admin->fill($validated)->save();
@@ -53,6 +55,7 @@ class AdminProfileController extends Controller
             'email'         => $admin->email,
             'phone'         => $admin->phone,
             'position'      => $admin->position,
+            'school_name'   => $admin->school_name,
             'profile_photo' => $admin->profile_photo
                 ? $this->fullPhotoUrl($admin->profile_photo)
                 : null,

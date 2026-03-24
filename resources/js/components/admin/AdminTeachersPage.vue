@@ -62,9 +62,13 @@
               class="border-b border-slate-100 hover:bg-slate-50 transition"
             >
               <td class="py-3 px-4">
-                <div class="flex items-center gap-3">
+                <div 
+                  class="flex items-center gap-3 cursor-pointer group" 
+                  @click="viewTeacherStudents(t)" 
+                  title="Click to view enrolled students"
+                >
                   <div
-                    class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-200 shrink-0 shadow-sm"
+                    class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-200 shrink-0 shadow-sm transition group-hover:ring-2 group-hover:ring-indigo-100 group-hover:scale-105"
                   >
                     <img
                       v-if="t.profile_photo && !photoLoadError[t.id]"
@@ -82,7 +86,7 @@
                     </div>
                   </div>
                   <div class="min-w-0">
-                    <div class="font-semibold text-slate-900 truncate">{{ t.name }}</div>
+                    <div class="font-semibold text-indigo-600 group-hover:text-indigo-800 group-hover:underline truncate transition-colors">{{ t.name }}</div>
                     <div class="text-xs text-slate-500 truncate">{{ t.job_title || 'Teacher' }}</div>
                   </div>
                 </div>
@@ -90,7 +94,7 @@
               <td class="py-3 px-4 text-slate-700 whitespace-nowrap">
                 {{ t.employee_id || '—' }}
               </td>
-              <td class="py-3 px-4 text-slate-600 truncate max-w-[150px]">{{ t.school_name || '—' }}</td>
+              <td class="py-3 px-4 text-slate-600 truncate max-w-[150px]">{{ t.school_name || 'No School' }}</td>
               <td class="py-3 px-4 text-slate-600">{{ formatDate(t.created_at) }}</td>
               <td class="py-3 px-4 text-right">
                 <span class="inline-flex items-center justify-end gap-3">
@@ -131,10 +135,12 @@
       </div>
     </div>
 
+    <!-- 
+      Header Comment: Action: Implementing static backdrop to prevent accidental data loss during teacher creation.
+    -->
     <div
       v-if="showCreateModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      @click.self="showCreateModal = false"
     >
       <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col border border-stone-200" @click.stop>
         <h2 class="text-lg font-semibold p-6 pb-0">Create Teacher Account</h2>
@@ -164,8 +170,8 @@
               <input
                 v-model="form.school_name"
                 type="text"
-                placeholder="e.g. Ozamiz City Central"
-                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
+                readonly
+                class="w-full rounded-md border border-stone-300 bg-stone-50 px-3 py-2 text-sm text-stone-500 cursor-not-allowed"
               />
             </div>
 
@@ -178,6 +184,28 @@
                 <option value="" disabled>Select position</option>
                 <option v-for="opt in jobTitleOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-stone-700 mb-1">Grade Level</label>
+                <select
+                  v-model="form.grade_level"
+                  class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
+                >
+                  <option value="">Select grade</option>
+                  <option v-for="g in gradeLevelOptions" :key="g" :value="g">{{ g }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-stone-700 mb-1">Section</label>
+                <select
+                  v-model="form.section"
+                  class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
+                >
+                  <option value="">Select section</option>
+                  <option v-for="s in sectionOptions" :key="s" :value="s">{{ s }}</option>
+                </select>
+              </div>
             </div>
             <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">Password</label>
@@ -241,10 +269,12 @@
       </div>
     </div>
 
+    <!-- 
+      Header Comment: Action: Implementing static backdrop to prevent accidental data loss during teacher editing.
+    -->
     <div
       v-if="showEditModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      @click.self="showEditModal = false"
     >
       <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col border border-stone-200" @click.stop>
         <h2 class="text-lg font-semibold p-6 pb-0">Edit Teacher</h2>
@@ -264,8 +294,8 @@
               <input
                 v-model="editForm.school_name"
                 type="text"
-                placeholder="e.g. Ozamiz City Central"
-                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
+                readonly
+                class="w-full rounded-md border border-stone-300 bg-stone-50 px-3 py-2 text-sm text-stone-500 cursor-not-allowed"
               />
             </div>
 
@@ -278,6 +308,28 @@
                 <option value="" disabled>Select position</option>
                 <option v-for="opt in jobTitleOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-stone-700 mb-1">Grade Level</label>
+                <select
+                  v-model="editForm.grade_level"
+                  class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
+                >
+                  <option value="">Select grade</option>
+                  <option v-for="g in gradeLevelOptions" :key="g" :value="g">{{ g }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-stone-700 mb-1">Section</label>
+                <select
+                  v-model="editForm.section"
+                  class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
+                >
+                  <option value="">Select section</option>
+                  <option v-for="s in sectionOptions" :key="s" :value="s">{{ s }}</option>
+                </select>
+              </div>
             </div>
             <div class="rounded-lg border border-stone-200 bg-stone-50 p-3">
               <p class="text-xs text-stone-500 mb-2">Optional: set a new password for this teacher.</p>
@@ -349,17 +401,54 @@
         </div>
       </div>
     </div>
+    <!-- Population Analytics Modal (Teacher Students) -->
+    <div v-if="isStudentModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="closeStudentModal"></div>
+      <div class="relative bg-white rounded-2xl w-full max-w-2xl shadow-xl flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between p-5 border-b border-slate-100">
+          <h2 class="text-lg font-semibold text-slate-900">{{ studentModalTitle }}</h2>
+          <button @click="closeStudentModal" class="p-2 -mr-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50 transition">
+            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        
+        <div class="flex-1 overflow-auto p-5">
+          <div v-if="studentModalLoading" class="flex flex-col items-center justify-center py-12">
+            <div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+            <p class="mt-4 text-sm font-medium text-slate-500">Loading students...</p>
+          </div>
+          <div v-else-if="studentModalList.length === 0" class="text-center py-12 text-slate-500">
+            No students found for this teacher's assignment.
+          </div>
+          <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div v-for="student in studentModalList" :key="student.id" class="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50">
+              <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 text-indigo-700 font-bold border border-indigo-200">
+                 {{ student.last_name?.charAt(0) }}{{ student.first_name?.charAt(0) }}
+              </div>
+              <div class="min-w-0">
+                <p class="text-sm font-bold text-slate-900 truncate">{{ student.last_name }}, {{ student.first_name }}</p>
+                <p class="text-xs text-slate-500 truncate">{{ student.grade || 'No Grade' }} - {{ student.section || 'No Section' }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import axios from 'axios';
 import { PencilLine, Trash2, IdCard, Plus, Download, Search, Filter } from 'lucide-vue-next';
 import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, getAdminTeacherIdUrl, exportAdminTeachers } from '../../services/adminService';
+import { fetchAdminProfile } from '../../services/adminProfileService';
 
 const teachers = ref([]);
 const searchQuery = ref('');
 const loading = ref(false);
+const adminSchoolName = ref('');
 
 const filteredTeachers = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
@@ -379,18 +468,33 @@ const deleteTarget = ref(null);
 const deleting = ref(false);
 const deleteError = ref('');
 
+/**
+ * Action: Implementing Section-based Teacher Assignment and Gender-specific Dashboard Analytics.
+ * Grade level options matching the Philippine K-12 curriculum.
+ */
+const gradeLevelOptions = [
+  'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6',
+  'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12',
+];
+
+const sectionOptions = [
+  'Section A', 'Section B', 'Section C', 'Section D', 'Section E'
+];
+
 const form = ref({
   name: '',
   employee_id: '',
   school_name: '',
   job_title: '',
+  grade_level: '',
+  section: '',
   password: '',
   password_confirmation: '',
 });
 const formError = ref('');
 
 const editTargetId = ref(null);
-const editForm = ref({ name: '', employee_id: '', school_name: '', job_title: '', password: '', password_confirmation: '' });
+const editForm = ref({ name: '', employee_id: '', school_name: '', job_title: '', grade_level: '', section: '', password: '', password_confirmation: '' });
 const editError = ref('');
 
 const createPhotoFile = ref(null);
@@ -456,8 +560,68 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString();
 }
 
+// ─── Modular Teacher-Student Modal ──────────────────────────────────────────
+// Why: Allows the admin to click on a teacher in the list and see which
+//      students are assigned to them based on their grade_level & section.
+// How: Sends an axios GET to /api/admin/dashboard/analytics?type=teacher_students
+//      and displays the result in a dedicated drill-down modal.
+
+const isStudentModalOpen = ref(false);
+const studentModalTitle = ref('');
+const studentModalList = ref([]);
+const studentModalLoading = ref(false);
+
+/**
+ * // Description: viewTeacherStudents - Opens a drill-down modal showing students
+ * //   assigned to a specific teacher's grade_level and section.
+ * // Author: Antigravity System Agent
+ *
+ * @param {Object} teacher - The teacher object from the list (must have .id and .name)
+ */
+async function viewTeacherStudents(teacher) {
+  // 1. Show the modal immediately with a loading spinner
+  isStudentModalOpen.value = true;
+  studentModalTitle.value = `Students for ${teacher.name}`;
+  studentModalLoading.value = true;
+  studentModalList.value = [];
+
+  try {
+    // 2. Ask the backend for students matching this teacher's grade & section
+    const response = await axios.get(`/api/admin/dashboard/analytics?type=teacher_students&teacher_id=${teacher.id}`);
+    studentModalList.value = response.data.data;
+  } catch (err) {
+    console.error('Failed to load students for teacher', err);
+  } finally {
+    studentModalLoading.value = false;
+  }
+}
+
+/**
+ * // Description: closeStudentModal - Resets modal state so it can be cleanly reopened.
+ */
+function closeStudentModal() {
+  isStudentModalOpen.value = false;
+  studentModalList.value = [];
+}
+
+/**
+ * // Description: openCreateModal - Resets the create-teacher form and auto-fills
+ * //   the school_name from the admin's profile. If the admin hasn't configured
+ * //   a school_name yet, it falls back to 'Pending School Setup'.
+ * // Author: Antigravity System Agent
+ */
 function openCreateModal() {
-  form.value = { name: '', employee_id: '', school_name: '', job_title: '', password: '', password_confirmation: '' };
+  // Debug: verify the admin school_name is being read correctly from the API
+  console.log('Admin Data Proxy (Vue Fetch):', { adminSchoolName: adminSchoolName.value });
+
+  // Auto-fill school_name with fallback
+  const resolvedSchool = adminSchoolName.value || 'Pending School Setup';
+
+  form.value = {
+    name: '', employee_id: '', school_name: resolvedSchool,
+    job_title: '', grade_level: '', section: '',
+    password: '', password_confirmation: ''
+  };
   formError.value = '';
   createPhotoFile.value = null;
   createPhotoFileName.value = '';
@@ -468,13 +632,23 @@ function openCreateModal() {
   showCreateModal.value = true;
 }
 
+/**
+ * // Description: openEditModal - Pre-fills the edit form with the selected teacher's
+ * //   current data. Uses the admin's school_name as fallback if the teacher's own
+ * //   school_name is empty (e.g. legacy records).
+ * // Author: Antigravity System Agent
+ *
+ * @param {Object} t - The teacher record from the list
+ */
 function openEditModal(t) {
   editTargetId.value = t.id;
   editForm.value = {
     name: t.name || '',
     employee_id: t.employee_id || '',
-    school_name: t.school_name || '',
+    school_name: t.school_name || adminSchoolName.value || 'Pending School Setup',
     job_title: t.job_title || '',
+    grade_level: t.grade_level || '',
+    section: t.section || '',
     profile_photo: t.profile_photo || null,
     password: '',
     password_confirmation: '',
@@ -495,11 +669,23 @@ function confirmDelete(t) {
   showDeleteModal.value = true;
 }
 
+/**
+ * // Description: load - Fetches the full teacher list AND the admin's profile in parallel.
+ * //   The admin's school_name is stored so it can be auto-filled and used as
+ * //   fallback when creating/editing teachers.
+ * // Author: Antigravity System Agent
+ */
 async function load() {
   loading.value = true;
   try {
-    const res = await fetchTeachers();
+    // Fetch teachers and admin profile simultaneously for performance
+    const [res, adminRes] = await Promise.all([
+      fetchTeachers(),
+      fetchAdminProfile()
+    ]);
     teachers.value = res.data || [];
+    // Store admin's school_name for auto-defaulting in create/edit modals
+    adminSchoolName.value = adminRes?.school_name || '';
     photoLoadError.value = {};
   } catch {
     teachers.value = [];
@@ -540,6 +726,8 @@ async function submitCreate() {
       employee_id: form.value.employee_id,
       school_name: form.value.school_name || null,
       job_title: form.value.job_title || null,
+      grade_level: form.value.grade_level || null,
+      section: form.value.section || null,
       password: form.value.password,
       password_confirmation: form.value.password_confirmation,
     };
@@ -578,6 +766,8 @@ async function submitEdit() {
     employee_id: editForm.value.employee_id,
     school_name: editForm.value.school_name || null,
     job_title: editForm.value.job_title || null,
+    grade_level: editForm.value.grade_level || null,
+    section: editForm.value.section || null,
   };
   if (editForm.value.password) {
     payload.password = editForm.value.password;
