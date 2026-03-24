@@ -16,6 +16,68 @@ use Illuminate\Support\Facades\URL;
 
 class IdCardController extends Controller
 {
+    private function formatNameWithMiddleInitial(?string $name): string
+    {
+        $name = trim((string) $name);
+        if ($name === '') {
+            return '';
+        }
+
+        $parts = preg_split('/\s+/', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if (count($parts) < 3) {
+            return $name;
+        }
+
+        $first = array_shift($parts);
+        $last = array_pop($parts);
+        $middle = array_shift($parts);
+        $middleInitial = $middle !== null && $middle !== ''
+            ? strtoupper(function_exists('mb_substr') ? mb_substr($middle, 0, 1) : substr($middle, 0, 1)).'.'
+            : '';
+
+        return trim(implode(' ', array_filter([$first, $middleInitial, $last])));
+    }
+
+    private function formatEmergencyContactNumber(?string $number): string
+    {
+        $number = trim((string) $number);
+        if ($number === '') {
+            return '';
+        }
+
+        $digits = preg_replace('/\D+/', '', $number) ?? '';
+        if (strlen($digits) === 11) {
+            return substr($digits, 0, 4).'-'.substr($digits, 4, 3).'-'.substr($digits, 7, 4);
+        }
+
+        return $number;
+    }
+
+    private function getTemplatePageSize(string $templatePath, float $fallbackW, float $fallbackH): array
+    {
+        $imageSize = @getimagesize($templatePath);
+        if (!is_array($imageSize) || empty($imageSize[0]) || empty($imageSize[1])) {
+            return [$fallbackW, $fallbackH];
+        }
+
+        $imageW = (float) $imageSize[0];
+        $imageH = (float) $imageSize[1];
+        $dpiX = !empty($imageSize['resolution_x']) ? (float) $imageSize['resolution_x'] : 96.0;
+        $dpiY = !empty($imageSize['resolution_y']) ? (float) $imageSize['resolution_y'] : 96.0;
+
+        if ($dpiX <= 0) {
+            $dpiX = 96.0;
+        }
+        if ($dpiY <= 0) {
+            $dpiY = 96.0;
+        }
+
+        $pageW = $imageW * 25.4 / $dpiX;
+        $pageH = $imageH * 25.4 / $dpiY;
+
+        return [$pageW, $pageH];
+    }
+
     private function renderEodbIdBbHtml(array $data): string
     {
         // Prefer the existing non-standard location used by this project, but allow fallbacks.
@@ -128,7 +190,19 @@ class IdCardController extends Controller
             return response()->json(['message' => 'Back ID template missing in ID/2.png.'], 500);
         }
 
-        $pdf = new \TCPDF('L', 'mm', [54.0, 85.6], true, 'UTF-8', false);
+        $baseCardW = 85.6;
+        $baseCardH = 54.0;
+        [$templateW, $templateH] = $this->getTemplatePageSize($frontTemplate, $baseCardW, $baseCardH);
+        $pageW = 148.0;
+        $pageH = 105.0;
+        $pageInsetScale = 0.97;
+        $fitScale = min($pageW / $templateW, $pageH / $templateH) * $pageInsetScale;
+        $cardW = $templateW * $fitScale;
+        $cardH = $templateH * $fitScale;
+        $templateX = ($pageW - $cardW) / 2.0;
+        $templateY = ($pageH - $cardH) / 2.0;
+
+        $pdf = new \TCPDF('L', 'mm', [$pageH, $pageW], true, 'UTF-8', false);
         $pdf->SetCreator('Ozamiz Schools QR-ID System');
         $pdf->SetAuthor('Ozamiz Schools QR-ID System');
         $pdf->SetTitle('Student ID');
@@ -136,9 +210,8 @@ class IdCardController extends Controller
         $pdf->setPrintFooter(false);
         $pdf->SetMargins(0, 0, 0);
         $pdf->SetAutoPageBreak(false, 0);
-
-        $cardW = 85.6;
-        $cardH = 54.0;
+        $scaleX = $cardW / $baseCardW;
+        $scaleY = $cardH / $baseCardH;
 
         // Prepare Data
         $fullName = trim(implode(' ', array_filter([
@@ -148,8 +221,8 @@ class IdCardController extends Controller
         ])));
         $fullName = $fullName !== '' ? $fullName : '—';
         $lrn = (string) ($student->student_number ?? '');
-        $guardian = (string) ($student->guardian ?? '');
-        $contact = (string) ($student->contact_number ?? '');
+        $guardian = $this->formatNameWithMiddleInitial($student->guardian);
+        $contact = $this->formatEmergencyContactNumber($student->contact_number);
 
         $qrPayload = $lrn; // Minimal payload: numeric ID only
         
@@ -166,18 +239,9 @@ class IdCardController extends Controller
         $barcodeStyle = [
             'position' => '',
             'align' => 'C',
-            'stretch' => false,
-            'fitwidth' => true,
-            'cellfitalign' => '',
-            'border' => false,
-            'hpadding' => 'auto',
-            'vpadding' => 'auto',
+            'stretchtext' => 4,
             'fgcolor' => [0, 0, 0],
             'bgcolor' => false,
-            'text' => false,
-            'font' => 'helvetica',
-            'fontsize' => 8,
-            'stretchtext' => 4,
         ];
 
         // ── Locate student photo ──────────────────────────────────────────────
@@ -211,30 +275,38 @@ class IdCardController extends Controller
         // Right section (40–84mm): photo, name, barcode, LRN
         // ================================================================
         $pdf->AddPage();
-        $pdf->Image($frontTemplate, 0, 0, $cardW, $cardH, 'PNG', '', '', false, 300);
+        $pdf->Image($frontTemplate, $templateX, $templateY, $cardW, $cardH, 'PNG', '', '', false, 300);
+        $separatorX = $templateX + ($cardW / 2.0);
+        $leftBlockX = $templateX + (2.0 * $scaleX);
+        $leftBlockW = ($separatorX - $leftBlockX) - (2.0 * $scaleX);
+        $rightBlockX = $separatorX + (2.0 * $scaleX);
+        $rightBlockW = (($templateX + $cardW) - $rightBlockX) - (2.0 * $scaleX);
 
         // ── QR Code ──────────────────────────────────────────────────────
-        $pdf->write2DBarcode($qrPayload, 'QRCODE,M', 11, 12, 16, 16, $qrStyle, 'N');
+        $qrW = 20 * $scaleX;
+        $qrH = 20 * $scaleY;
+        $qrX = $leftBlockX + (($leftBlockW - $qrW) / 2.0);
+        $pdf->write2DBarcode($qrPayload, 'QRCODE,M', $qrX, $templateY + (9.5 * $scaleY), $qrW, $qrH, $qrStyle, 'N');
 
         // ── Emergency Contact (left column) ──────────────────────────────
         $pdf->SetTextColor(0, 0, 0);
 
-        $pdf->SetFont('helvetica', 'B', 6);
-        $pdf->SetXY(4, 32);
-        $pdf->Cell(34, 3, 'In case of emergency, contact:', 0, 0, 'C');
+        $pdf->SetFont('helvetica', '', 11);
+        $pdf->SetXY($leftBlockX, $templateY + (33 * $scaleY));
+        $pdf->Cell($leftBlockW, 4.2 * $scaleY, 'Incase of emergency, contact:', 0, 0, 'C');
 
-        $pdf->SetFont('helvetica', 'B', 7);
-        $pdf->SetXY(4, 36);
-        $pdf->Cell(34, 3, $guardian !== '' ? mb_strtoupper($guardian) : 'N/A', 0, 0, 'C');
+        $pdf->SetFont('helvetica', '', 10);
+        $pdf->SetXY($leftBlockX, $templateY + (36 * $scaleY));
+        $pdf->Cell($leftBlockW, 4.2 * $scaleY, $guardian !== '' ? $guardian : 'N/A', 0, 0, 'C');
 
-        $pdf->SetFont('helvetica', '', 7);
-        $pdf->SetXY(4, 40);
-        $pdf->Cell(34, 3, $contact !== '' ? $contact : 'N/A', 0, 0, 'C');
+        $pdf->SetFont('helvetica', '', 10);
+        $pdf->SetXY($leftBlockX, $templateY + (39 * $scaleY));
+        $pdf->Cell($leftBlockW, 4.2 * $scaleY, $contact !== '' ? $contact : 'N/A', 0, 0, 'C');
 
        
         if ($photoPath) {
             $imgType = (strtolower(pathinfo($photoPath, PATHINFO_EXTENSION)) === 'png') ? 'PNG' : 'JPEG';
-            $pdf->Image($photoPath, 49.0, 15.0, 15.0, 17.0, $imgType,
+            $pdf->Image($photoPath, $templateX + (47.5 * $scaleX), $templateY + (15.5 * $scaleY), 16 * $scaleX, 17.5 * $scaleY, $imgType,
                         '', '', false, 300, '', false, false, 0, 'CT');
         }
 
@@ -246,30 +318,30 @@ class IdCardController extends Controller
         ]))));
 
         $pdf->SetTextColor(0, 0, 0);
-        $pdf->SetFont('helvetica', 'B', 8);
-        $pdf->SetXY(40, 35);
-        $pdf->Cell(44, 4, $lastNamePart, 0, 0, 'C');
+        $pdf->SetFont('helvetica', 'B', 18);
+        $pdf->SetXY($rightBlockX, $templateY + (32.5 * $scaleY));
+        $pdf->Cell($rightBlockW, 6.2 * $scaleY, $lastNamePart, 0, 0, 'C');
 
-        $pdf->SetFont('helvetica', 'B', 7);
-        $pdf->SetXY(40, 39);
-        $pdf->Cell(43, 4, $firstMiddlePart, 0, 0, 'C');
+        $pdf->SetFont('helvetica', 'B', 12);
+        $pdf->SetXY($rightBlockX, $templateY + (37.3 * $scaleY));
+        $pdf->Cell($rightBlockW, 5.0 * $scaleY, $firstMiddlePart, 0, 0, 'C');
 
         // ── Barcode (right column, below name) ───────────────────────────
-        $barcodeW = 34.0;
-        $barcodeX = 40.0 + ((44.0 - $barcodeW) / 2.0);
-        $pdf->write1DBarcode($lrn, 'C128', $barcodeX, 44.5, $barcodeW, 5.0, 0.4, $barcodeStyle, 'N');
+        $barcodeW = $rightBlockW * 0.75;
+        $barcodeX = $rightBlockX + (($rightBlockW - $barcodeW) / 2.0);
+        $pdf->write1DBarcode($lrn, 'C39', $barcodeX, $templateY + (42.5 * $scaleY), $barcodeW, 5.5 * $scaleY, '', $barcodeStyle, 'N');
 
         // ── LRN text on bottom strip ─────────────────────────────────────
         $pdf->SetTextColor(255, 255, 255);
-        $pdf->SetFont('helvetica', 'B', 8);
-        $pdf->SetXY(0, 50.5);
-        $pdf->Cell($cardW - 4, 3, 'LRN: ' . $lrn, 0, 0, 'R');
+        $pdf->SetFont('helvetica', 'B', 11);
+        $pdf->SetXY($rightBlockX, $templateY + (50.1 * $scaleY));
+        $pdf->Cell($rightBlockW, 3.5 * $scaleY, 'LRN:' . $lrn, 0, 0, 'C');
 
 
         // ---------------- PAGE 2 (BACK) ----------------
         // Completely clean block: just the blank template with no text, QR, or values.
         $pdf->AddPage();
-        $pdf->Image($backTemplate, 0, 0, $cardW, $cardH, 'PNG', '', '', false, 300);
+        $pdf->Image($backTemplate, $templateX, $templateY, $cardW, $cardH, 'PNG', '', '', false, 300);
 
         if (ob_get_length()) {
             ob_end_clean();
@@ -391,4 +463,3 @@ class IdCardController extends Controller
             ->header('Content-Disposition', 'inline; filename="teacher_id.pdf"');
     }
 }
-
