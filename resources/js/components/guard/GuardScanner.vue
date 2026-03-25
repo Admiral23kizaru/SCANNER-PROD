@@ -236,7 +236,7 @@
  * See useScanner.js for detailed documentation of each function.
  */
 import { Clock, User, Search } from 'lucide-vue-next';
-import { useScanner } from '../composables/useScanner';
+import { useScanner } from '../../composables/useScanner';
 
 const {
     // Refs — bound to template

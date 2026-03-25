@@ -1,8 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import axios from 'axios';
 import Login from '../views/Login.vue';
-import TeacherDashboard from '../components/TeacherDashboard.vue';
-import AdminLayout from '../components/admin/AdminLayout.vue';
+import TeacherDashboard from '../components/teacher/TeacherDashboard.vue';
+import AdminLayout from '../components/layouts/AdminLayout.vue';
 
 function getStoredToken() {
     return localStorage.getItem('scan_up_token');

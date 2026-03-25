@@ -155,7 +155,7 @@
 
 <script setup>
 import { computed, ref, watch, onMounted } from 'vue';
-import { useTeacherProfile } from '../composables/useTeacherProfile';
+import { useTeacherProfile } from '../../composables/useTeacherProfile';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },

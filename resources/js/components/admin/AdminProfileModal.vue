@@ -192,7 +192,7 @@
 
 <script setup>
 import { computed, ref, watch, onMounted } from 'vue';
-import { useAdminProfile } from '../composables/useAdminProfile';
+import { useAdminProfile } from '../../composables/useAdminProfile';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },

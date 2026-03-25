@@ -1,163 +1,13 @@
 <template>
-  <div class="min-h-screen bg-stone-50 text-stone-900 flex">
-    <!-- Sidebar -->
-    <aside
-      class="w-64 shrink-0 flex flex-col border-r border-stone-200 bg-white fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:static lg:transform-none"
-      :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
-    >
-      <!-- Brand -->
-      <div class="px-6 py-3 border-b border-stone-700" style="background-color: #050517;">
-        <div class="flex items-center gap-3">
-          <img
-            :src="depedLogo"
-            alt="Logo"
-            class="h-10 w-auto rounded-full object-contain bg-white"
-          />
-          <div class="leading-tight">
-            <h1 class="text-sm font-semibold tracking-tight text-white"></h1>
-            <p class="text-[17px] text-white uppercase tracking-[0.18em]">
-              Teacher
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Navigation -->
-      <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
-        <button
-          type="button"
-          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition"
-          :class="currentTab === 'learners' ? 'bg-stone-800 text-white shadow-sm' : 'text-stone-400 hover:bg-stone-800/50 hover:text-white'"
-          @click="currentTab = 'learners'; isSidebarOpen = false"
-        >
-          <Users class="h-4 w-4" />
-          <span>Learners List</span>
-        </button>
-        <button
-          type="button"
-          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition"
-          :class="currentTab === 'monitor' ? 'bg-stone-800 text-white shadow-sm' : 'text-stone-400 hover:bg-stone-800/50 hover:text-white'"
-          @click="currentTab = 'monitor'; isSidebarOpen = false"
-        >
-          <ClipboardList class="h-4 w-4" />
-          <span>Attendance Monitor</span>
-        </button>
-      </nav>
-    </aside>
-
-    <!-- Mobile sidebar overlay -->
-    <div
-      v-if="isSidebarOpen"
-      class="fixed inset-0 z-40 bg-black/50 lg:hidden"
-      @click="isSidebarOpen = false"
-    ></div>
-
-    <!-- Main content -->
-    <div class="flex-1 flex flex-col bg-stone-50">
-      <!-- Top navbar -->
-      <header class="sticky top-0 z-10" style="background-color: #050517;">
-        <div class="h-16 flex flex-wrap lg:h-16 items-center justify-between px-4 lg:px-10 py-2 border-b border-stone-700/80">
-          <div class="flex items-center gap-3">
-            <button
-              type="button"
-              class="lg:hidden p-2 text-white hover:bg-white/10 rounded-lg transition"
-              @click="isSidebarOpen = true"
-            >
-              <Menu class="h-5 w-5" />
-            </button>
-            <div class="hidden sm:block">
-              <p class="text-xs font-medium tracking-[0.25em] text-stone-400 uppercase">
-                {{ pageTitle }}
-              </p>
-              <p class="text-sm font-semibold text-white">
-                {{ pageSubtitle }}
-              </p>
-            </div>
-          </div>
-          <!-- Profile dropdown -->
-            <div v-if="user" class="relative">
-              <!-- Trigger button -->
-              <button
-                type="button"
-                class="hidden sm:flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/10 transition-colors cursor-pointer"
-                @click.stop="isProfileOpen = !isProfileOpen"
-              >
-                <div class="text-right">
-                  <p class="text-[11px] font-medium text-white">{{ user.name }}</p>
-                  <p class="text-[10px] text-stone-400 uppercase tracking-wider">{{ user.job_title || 'Teacher' }}</p>
-                </div>
-                <div class="w-8 h-8 rounded-full overflow-hidden border border-white/20 bg-stone-800 shrink-0">
-                  <img
-                    v-if="user.profile_photo && !userPhotoError"
-                    :src="getPhotoUrl(user.profile_photo)"
-                    class="w-full h-full object-cover"
-                    @error="userPhotoError = true"
-                  />
-                  <div v-else class="w-full h-full flex items-center justify-center bg-stone-700 text-white text-[10px] font-bold">
-                    <img v-if="userPhotoError" :src="'/images/default-avatar.png'" class="w-full h-full object-cover" />
-                    <span v-else>{{ user.name?.charAt(0) }}</span>
-                  </div>
-                </div>
-                <ChevronDown
-                  class="h-3.5 w-3.5 text-stone-400 transition-transform duration-200"
-                  :class="isProfileOpen ? 'rotate-180' : ''"
-                />
-              </button>
-
-              <!-- Dropdown panel -->
-              <transition
-                enter-active-class="transition duration-150 ease-out"
-                enter-from-class="opacity-0 scale-95 -translate-y-1"
-                enter-to-class="opacity-100 scale-100 translate-y-0"
-                leave-active-class="transition duration-100 ease-in"
-                leave-from-class="opacity-100 scale-100 translate-y-0"
-                leave-to-class="opacity-0 scale-95 -translate-y-1"
-              >
-                <div
-                  v-if="isProfileOpen"
-                  class="absolute right-0 mt-2 w-52 rounded-xl bg-white border border-slate-200 shadow-xl z-50 overflow-hidden"
-                >
-                  <!-- User info header -->
-                  <div class="px-4 py-3 bg-slate-50 border-b border-slate-100">
-                    <p class="text-xs font-semibold text-slate-800 truncate">{{ user.name }}</p>
-                    <p class="text-[10px] text-slate-500 truncate">{{ user.email }}</p>
-                  </div>
-
-                  <div class="py-1">
-                    <button
-                      type="button"
-                      class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                      @click="isProfileOpen = false; showProfileModal = true"
-                    >
-                      <UserCircle class="h-4 w-4" />
-                      <span>My Profile</span>
-                    </button>
-                  </div>
-
-                  <div class="border-t border-slate-100 py-1">
-                    <button
-                      type="button"
-                      class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                      @click="isProfileOpen = false; logout()"
-                    >
-                      <LogOut class="h-4 w-4" />
-                      <span>Log out</span>
-                    </button>
-                  </div>
-                </div>
-              </transition>
-
-              <!-- Click-outside overlay -->
-              <div
-                v-if="isProfileOpen"
-                class="fixed inset-0 z-40"
-                @click.stop="isProfileOpen = false"
-              />
-            </div>
-        </div>
-      </header>
-    
-      <main class="flex-1 overflow-auto">
+  <TeacherLayout
+    :user="user"
+    :pageTitle="pageTitle"
+    :pageSubtitle="pageSubtitle"
+    :depedLogo="depedLogo"
+    v-model:currentTab="currentTab"
+    @open-profile-modal="showProfileModal = true"
+    @logout="logout"
+  >
         <!-- ═══ Attendance Monitor Tab ═══ -->
         <div v-show="currentTab === 'monitor'" class="w-full">
           <AttendanceMonitor ref="attendanceMonitorRef" />
@@ -333,8 +183,6 @@
           </div>
         </div>
       </div>
-      </div>
-      </main>
     </div>
     <!-- 
       Header Comment: Action: Implementing static backdrop to prevent accidental data loss during student editing.
@@ -560,19 +408,20 @@
         </div>
       </div>
     </div>
-    <TeacherProfileModal v-model="showProfileModal" :user="user" @profile-updated="onProfileUpdated" />
-  </div>
+  </TeacherLayout>
+  <TeacherProfileModal v-model="showProfileModal" :user="user" @profile-updated="onProfileUpdated" />
 </template>
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
-import { fetchUser, logoutUser } from '../services/authService';
+import { fetchUser, logoutUser } from '../../services/authService';
 import QRCode from 'qrcode';
-import { LogOut, Search, Upload, Plus, User, Pencil, Users, Menu, Filter, ChevronLeft, ChevronRight, ChevronDown, UserCircle, Settings, ClipboardList } from 'lucide-vue-next';
-import { setStoredToken } from '../router';
-import { fetchStudents, createStudent, createStudentWithFormData, updateStudent, updateStudentWithFormData, uploadStudentPhoto, bulkImportStudents } from '../services/studentService';
+import { Search, Upload, Plus, User, Pencil, ChevronLeft, ChevronRight, Filter } from 'lucide-vue-next';
+import { setStoredToken } from '../../router';
+import { fetchStudents, createStudent, createStudentWithFormData, updateStudent, updateStudentWithFormData, uploadStudentPhoto, bulkImportStudents } from '../../services/studentService';
 import TeacherProfileModal from './TeacherProfileModal.vue';
-import AttendanceMonitor from './AttendanceMonitor.vue';
+import AttendanceMonitor from '../AttendanceMonitor.vue';
+import TeacherLayout from '../layouts/TeacherLayout.vue';
 
 const attendanceMonitorRef = ref(null);
 
@@ -616,14 +465,7 @@ function onProfileUpdated(updatedProfile) {
 }
 
 function getPhotoUrl(path) {
-  if (!path) return '/images/default-avatar.png';
-  // Target Role: Teacher
-  // Source: Storage/Database
-  // Destination: Profile Header
-  // Function: Identifies if path is already absolute URL, preventing prepending duplicate storage paths.
-  if (/^https?:\/\//i.test(path)) return path;
-  const cleanPath = path.replace(/^(public\/|storage\/|\/storage\/|\/public\/)/, '').replace(/^\//, '');
-  return '/storage/' + cleanPath;
+  return '';
 }
 
 const pageTitle = computed(() => {
