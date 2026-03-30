@@ -88,7 +88,7 @@
               </td>
               <td class="py-3 px-4 text-slate-600">{{ row.gender || '—' }}</td>
               <td class="py-3 px-4 font-mono text-slate-700 whitespace-nowrap">{{ row.student_number }}</td>
-              <td class="py-3 px-4 text-slate-700">{{ row.grade_section || '—' }}</td>
+              <td class="py-3 px-4 text-slate-700">{{ formatGradeSection(row) }}</td>
               <td class="py-3 px-4 text-slate-600">{{ row.guardian || '—' }}</td>
               <td class="py-3 px-4 text-right">
                 <span class="inline-flex items-center justify-end gap-3">
@@ -394,7 +394,8 @@ function openEditModal(row) {
     gender: row.gender ?? '',
     middle_name: row.middle_name ?? '',
     student_number: row.student_number ?? '',
-    grade: row.grade ?? '',
+    // Support both API shapes: `grade` or `grade_level`.
+    grade: row.grade ?? row.grade_level ?? '',
     section: row.section ?? '',
     guardian: row.guardian ?? '',
     guardian_email: row.guardian_email ?? '',
@@ -403,6 +404,20 @@ function openEditModal(row) {
   };
   formError.value = '';
   showFormModal.value = true;
+}
+
+function formatGradeSection(row) {
+  const grade = row?.grade ?? row?.grade_level;
+  const section = row?.section;
+
+  // Prefer composing from normalized fields if they're present.
+  // This ensures the UI updates even if `grade_section` is stale.
+  if (grade && section) return `${grade} / ${section}`;
+
+  // Fallback to server-computed combined value.
+  if (row?.grade_section) return row.grade_section;
+
+  return '—';
 }
 
 function closeForm() {
@@ -418,8 +433,10 @@ async function submitForm() {
     gender: form.value.gender || '',
     middle_name: form.value.middle_name || '',
     student_number: form.value.student_number,
-    grade: form.value.grade || '',
-    section: form.value.section || '',
+    // Send `null` when cleared so backend can treat the student as unassigned.
+    // (Empty strings can be stored as-is and still be considered "assigned".)
+    grade: form.value.grade?.trim() ? form.value.grade.trim() : null,
+    section: form.value.section?.trim() ? form.value.section.trim() : null,
     guardian: form.value.guardian || '',
     guardian_email: form.value.guardian_email || '',
     contact_number: form.value.contact_number || '',

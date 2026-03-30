@@ -107,17 +107,13 @@ class StatsController extends Controller
             $todaysAttendance = Attendance::whereDate('scanned_at', now()->toDateString())->count();
 
             // Male/Female counts for today
-            $maleToday = Attendance::query()
-                ->join('students', 'attendance.student_id', '=', 'students.id')
-                ->whereDate('attendance.scanned_at', now()->toDateString())
-                ->where('students.gender', 'Male')
-                ->count();
-
-            $femaleToday = Attendance::query()
-                ->join('students', 'attendance.student_id', '=', 'students.id')
-                ->whereDate('attendance.scanned_at', now()->toDateString())
-                ->where('students.gender', 'Female')
-                ->count();
+            // NOTE:
+            // The frontend's population modal uses:
+            //  - `type=male|female` => filters by `students.gender` (not attendance)
+            //  - `type=absent`       => filters by "no attendance today"
+            // So dashboardStats male_today/female_today must match that behavior.
+            $maleToday = Student::where('gender', 'Male')->count();
+            $femaleToday = Student::where('gender', 'Female')->count();
 
             // Absent today = Total students - Total unique students present today
             // Note: Use DISTINCT student_id in case students check in/out multiple times.

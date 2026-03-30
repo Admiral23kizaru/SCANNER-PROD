@@ -113,7 +113,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/', 'store');
             Route::put('/{id}', 'update');
             Route::delete('/{id}', 'destroy');
+            Route::get('/{id}/students', 'students');
             Route::post('/{id}/assign-students', 'assignStudents');
+            Route::post('/{id}/unassign-students', 'unassignStudents');
             Route::get('/unassigned-students', 'unassignedStudents');
             Route::get('/teachers-list', 'teachers');
         });

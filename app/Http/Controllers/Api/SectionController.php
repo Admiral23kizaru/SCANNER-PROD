@@ -172,6 +172,71 @@ class SectionController extends Controller
     }
 
     /**
+     * // Description: students - Returns students currently assigned to a section.
+     */
+    public function students(Request $request, int $id): JsonResponse
+    {
+        $schoolId = $request->user()->school_id;
+
+        $section = Section::where('id', $id)
+            ->where('school_id', $schoolId)
+            ->first();
+
+        if (!$section) {
+            return response()->json(['message' => 'Section not found.'], 404);
+        }
+
+        $students = Student::where('section_id', $section->id)
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->select('id', 'first_name', 'last_name', 'grade', 'section', 'student_number')
+            ->get();
+
+        return response()->json(['data' => $students]);
+    }
+
+    /**
+     * // Description: unassignStudents - Bulk-unassigns selected students from a section.
+     * //   Clears `section_id`, `grade`, and `section` so they become "unassigned".
+     */
+    public function unassignStudents(Request $request, int $id): JsonResponse
+    {
+        $schoolId = $request->user()->school_id;
+
+        $section = Section::where('id', $id)
+            ->where('school_id', $schoolId)
+            ->first();
+
+        if (!$section) {
+            return response()->json(['message' => 'Section not found.'], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'student_ids' => ['required', 'array', 'min:1'],
+            'student_ids.*' => ['integer', 'exists:students,id'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => 'Validation failed.', 'errors' => $validator->errors()], 422);
+        }
+
+        Student::where('section_id', $section->id)
+            ->whereIn('id', $request->student_ids)
+            ->update([
+                'section_id' => null,
+                'grade'      => null,
+                'section'    => null,
+            ]);
+
+        return response()->json([
+            'message' => 'Students unassigned.',
+            'data' => [
+                'section_id' => $section->id,
+            ],
+        ]);
+    }
+
+    /**
      * // Description: teachers - Returns all teacher-role users for the dropdown.
      */
     public function teachers(Request $request): JsonResponse

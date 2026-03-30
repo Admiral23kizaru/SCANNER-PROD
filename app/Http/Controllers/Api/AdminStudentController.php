@@ -142,6 +142,20 @@ class AdminStudentController extends Controller
             $data['grade_section'] = $this->resolveGradeSection($request);
         }
 
+        // If admin clears grade and/or section, unassign from any section.
+        // This makes the student appear in `/api/admin/sections/unassigned-students`.
+        if ($request->hasAny(['grade', 'section'])) {
+            $gradeCleared = $request->input('grade') === null || $request->input('grade') === '';
+            $sectionCleared = $request->input('section') === null || $request->input('section') === '';
+
+            if ($gradeCleared || $sectionCleared) {
+                $data['section_id'] = null;
+                $data['grade'] = null;
+                $data['section'] = null;
+                $data['grade_section'] = null;
+            }
+        }
+
         $student->fill($data)->save();
 
         return response()->json(['message' => 'Student updated.', 'student' => $this->studentToArray($student)]);
