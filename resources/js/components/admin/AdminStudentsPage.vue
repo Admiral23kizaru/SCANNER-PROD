@@ -1,8 +1,8 @@
 <template>
   <div>
-    <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+    <div class="bg-white rounded-xl shadow-md border border-slate-200">
       <!-- Toolbar matching AdminTeachersPage layout -->
-      <div class="p-4 sm:p-5 border-b border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3">
+      <div class="p-4 sm:p-5 border-b border-slate-200 bg-white rounded-t-xl flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2">
           <button
             type="button"
@@ -34,13 +34,68 @@
               @input="debouncedFetch"
             />
           </div>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition"
-            title="Filter"
-          >
-            <Filter class="h-4 w-4" />
-          </button>
+          <div class="relative">
+            <button
+              type="button"
+              class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition relative"
+              :class="{ 'bg-slate-100 ring-2 ring-slate-200': showFilterDropdown || activeFiltersCount > 0 }"
+              title="Filter"
+              @click="showFilterDropdown = !showFilterDropdown"
+            >
+              <Filter class="h-4 w-4" />
+              <div v-if="activeFiltersCount > 0" class="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 bg-blue-600 text-white text-[9px] font-bold rounded-full border-2 border-white shadow-sm">
+                {{ activeFiltersCount }}
+              </div>
+            </button>
+
+            <!-- Invisible backdrop to close dropdown -->
+            <div v-if="showFilterDropdown" class="fixed inset-0 z-40" @click="showFilterDropdown = false"></div>
+
+            <!-- Filter Dropdown -->
+            <div
+              v-if="showFilterDropdown"
+              class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 z-50"
+            >
+              <div class="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0 rounded-t-xl">
+                <span class="text-sm font-semibold text-slate-700">Filters</span>
+                <button @click="clearFilters" class="text-xs text-blue-600 hover:text-blue-800 font-medium cursor-pointer transition">Clear all</button>
+              </div>
+              <div class="p-4 max-h-[350px] overflow-y-auto space-y-6">
+                <!-- Gender Filter -->
+                <div>
+                  <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Gender</h4>
+                  <div class="space-y-2">
+                    <label v-for="g in availableGenders" :key="g" class="flex items-center gap-3 cursor-pointer group">
+                      <input type="checkbox" :value="g" v-model="filterGender" @change="applyFilters" class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300 cursor-pointer" />
+                      <span class="text-sm text-slate-700 group-hover:text-slate-900 transition">{{ g }}</span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Grade Filter -->
+                <div>
+                  <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Grade</h4>
+                  <div class="space-y-2">
+                    <label v-for="grade in availableGrades" :key="grade" class="flex items-center gap-3 cursor-pointer group">
+                      <input type="checkbox" :value="grade" v-model="filterGrade" @change="applyFilters" class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300 cursor-pointer" />
+                      <span class="text-sm text-slate-700 group-hover:text-slate-900 transition">{{ grade }}</span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Section Filter -->
+                <div v-if="availableSections.length > 0">
+                  <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Section</h4>
+                  <div class="space-y-2">
+                    <label v-for="sec in availableSections" :key="sec" class="flex items-center gap-3 cursor-pointer group">
+                      <input type="checkbox" :value="sec" v-model="filterSection" @change="applyFilters" class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300 cursor-pointer" />
+                      <span class="text-sm text-slate-700 group-hover:text-slate-900 transition">{{ sec }}</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -130,7 +185,7 @@
       </div>
 
       <!-- Footer pagination -->
-      <div class="p-4 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3 bg-slate-50/60">
+      <div class="p-4 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3 bg-slate-50/60 rounded-b-xl">
         <span class="text-sm text-slate-600">
           Showing {{ total ? (currentPage - 1) * perPage + 1 : 0 }}–{{ Math.min(currentPage * perPage, total) }} of {{ total }} entries
         </span>
@@ -271,9 +326,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { Search, PencilLine, Trash2, IdCard, Plus, Download, Filter, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { fetchAdminStudents, createAdminStudent, updateAdminStudent, deleteStudent, getAdminStudentIdUrl, exportAdminStudents } from '../../services/adminService';
+import axios from 'axios';
 
 const students = ref([]);
 const loading = ref(false);
@@ -288,6 +344,35 @@ const showDeleteModal = ref(false);
 const deleteTarget = ref(null);
 const deleting = ref(false);
 const photoLoadError = ref({});
+
+// Filters state
+const showFilterDropdown = ref(false);
+const filterGrade = ref([]);
+const filterSection = ref([]);
+const filterGender = ref([]);
+
+const availableGenders = ['Male', 'Female'];
+const availableGrades = ref([]);
+const availableSections = ref([]);
+
+const activeFiltersCount = computed(() => {
+  return filterGrade.value.length + filterSection.value.length + filterGender.value.length;
+});
+
+function applyFilters() {
+  currentPage.value = 1;
+  load();
+}
+
+function clearFilters() {
+  filterGrade.value = [];
+  filterSection.value = [];
+  filterGender.value = [];
+  // load() will be triggered by applyFilters if bound, but let's call it manually
+  applyFilters();
+  showFilterDropdown.value = false;
+}
+
 
 function getPhotoUrl(path) {
   if (!path) return '/images/default-avatar.png';
@@ -331,6 +416,9 @@ async function load() {
       page: currentPage.value,
       per_page: perPage.value,
       search: searchInput.value || undefined,
+      grade: filterGrade.value.length ? filterGrade.value : undefined,
+      section: filterSection.value.length ? filterSection.value : undefined,
+      gender: filterGender.value.length ? filterGender.value : undefined,
     });
     students.value = res.data || [];
     currentPage.value = res.current_page ?? 1;
@@ -343,11 +431,40 @@ async function load() {
   }
 }
 
+async function loadFilterOptions() {
+  try {
+    const res = await axios.get('/api/admin/sections', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('scan_up_token')}` }
+    });
+    if (res.data && res.data.data) {
+      // Extract unique section names
+      const sections = res.data.data.map(s => s.name).filter(Boolean);
+      availableSections.value = [...new Set(sections)].sort();
+      
+      // Extract unique grade levels
+      const grades = res.data.data.map(s => s.grade_level).filter(Boolean);
+      availableGrades.value = [...new Set(grades)].sort((a, b) => {
+        const numA = parseInt(a.replace(/\D/g, '')) || 0;
+        const numB = parseInt(b.replace(/\D/g, '')) || 0;
+        return numA - numB;
+      });
+    }
+  } catch (err) {
+    console.warn('Failed to load filter options', err);
+  }
+}
+
+
 async function handleExport() {
   if (exporting.value) return;
   exporting.value = true;
   try {
-    const blob = await exportAdminStudents({ search: searchInput.value || undefined });
+    const blob = await exportAdminStudents({ 
+      search: searchInput.value || undefined,
+      grade: filterGrade.value.length ? filterGrade.value : undefined,
+      section: filterSection.value.length ? filterSection.value : undefined,
+      gender: filterGender.value.length ? filterGender.value : undefined,
+    });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.style.display = 'none';
@@ -482,7 +599,10 @@ async function downloadId(id) {
 }
 
 onMounted(async () => {
-  await load();
+  await Promise.all([
+    load(),
+    loadFilterOptions()
+  ]);
   const flag = sessionStorage.getItem('admin_open_create_student');
   if (flag) {
     sessionStorage.removeItem('admin_open_create_student');

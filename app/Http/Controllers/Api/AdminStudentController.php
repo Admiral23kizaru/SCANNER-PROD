@@ -39,6 +39,16 @@ class AdminStudentController extends Controller
             });
         }
 
+        if ($request->filled('grade')) {
+            $query->whereIn('grade', (array) $request->input('grade'));
+        }
+        if ($request->filled('section')) {
+            $query->whereIn('section', (array) $request->input('section'));
+        }
+        if ($request->filled('gender')) {
+            $query->whereIn('gender', (array) $request->input('gender'));
+        }
+
         $perPage  = max(5, min(100, (int) $request->input('per_page', 15)));
         $students = $query->paginate($perPage);
         $items    = $students->getCollection()->map(fn (Student $s) => $this->studentToArray($s));
@@ -197,6 +207,16 @@ class AdminStudentController extends Controller
                   ->orWhere('student_number', 'like', $term)
                   ->orWhere('grade_section', 'like', $term);
             });
+        }
+
+        if ($request->filled('grade')) {
+            $query->whereIn('grade', (array) $request->input('grade'));
+        }
+        if ($request->filled('section')) {
+            $query->whereIn('section', (array) $request->input('section'));
+        }
+        if ($request->filled('gender')) {
+            $query->whereIn('gender', (array) $request->input('gender'));
         }
 
         $response = new StreamedResponse(function () use ($query) {

@@ -198,12 +198,21 @@ export async function exportAdminTeachers() {
 /**
  * Fetch a paginated list of all students (admin sees all, no ownership filter).
  *
- * @param {{ page?: number, per_page?: number, search?: string }} [params={}]
+ * @param {{ page?: number, per_page?: number, search?: string, grade?: string[], section?: string[], gender?: string[] }} [params={}]
  * @returns {Promise<{ data: Array<object>, current_page: number, last_page: number, total: number }>}
  */
 export async function fetchAdminStudents(params = {}) {
-    const { data } = await axios.get(base + '/students', {
-        params: { page: params.page, per_page: params.per_page, search: params.search },
+    // Array format with brackets (e.g. grade[]=1&grade[]=2) works best with Laravel
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page);
+    if (params.per_page) queryParams.append('per_page', params.per_page);
+    if (params.search) queryParams.append('search', params.search);
+    
+    if (params.grade?.length) params.grade.forEach(g => queryParams.append('grade[]', g));
+    if (params.section?.length) params.section.forEach(s => queryParams.append('section[]', s));
+    if (params.gender?.length) params.gender.forEach(g => queryParams.append('gender[]', g));
+
+    const { data } = await axios.get(base + '/students?' + queryParams.toString(), {
         headers: { ...getAuthHeaders(), Accept: 'application/json' },
     });
     return data;
@@ -252,12 +261,17 @@ export async function deleteStudent(id) {
 /**
  * Export all students (with optional search filter) as a UTF-8 CSV Blob.
  *
- * @param {{ search?: string }} [params={}]
+ * @param {{ search?: string, grade?: string[], section?: string[], gender?: string[] }} [params={}]
  * @returns {Promise<Blob>} CSV file data.
  */
 export async function exportAdminStudents(params = {}) {
-    const res = await axios.get(base + '/students/export', {
-        params: { search: params.search },
+    const queryParams = new URLSearchParams();
+    if (params.search) queryParams.append('search', params.search);
+    if (params.grade?.length) params.grade.forEach(g => queryParams.append('grade[]', g));
+    if (params.section?.length) params.section.forEach(s => queryParams.append('section[]', s));
+    if (params.gender?.length) params.gender.forEach(g => queryParams.append('gender[]', g));
+
+    const res = await axios.get(base + '/students/export?' + queryParams.toString(), {
         headers: { ...getAuthHeaders(), Accept: 'text/csv' },
         responseType: 'blob',
     });

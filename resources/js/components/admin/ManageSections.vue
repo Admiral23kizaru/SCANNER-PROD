@@ -50,11 +50,11 @@
                 </span>
               </td>
               <td class="py-3 px-5 text-right">
-                <span class="inline-flex items-center gap-2">
-                  <button @click="openAssignModal(sec)" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition" title="Assign Students">+ Assign</button>
-                  <button @click="openSectionStudentsModal(sec)" class="text-xs font-medium text-slate-700 hover:text-slate-900 transition" title="Manage Students">Students</button>
-                  <button @click="openEditModal(sec)" class="text-xs font-medium text-slate-600 hover:text-slate-900 transition" title="Edit">Edit</button>
-                  <button @click="confirmDelete(sec)" class="text-xs font-medium text-red-500 hover:text-red-700 transition" title="Delete">Delete</button>
+                <span class="inline-flex items-center gap-4">
+                  <button @click="openAssignModal(sec)" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition cursor-pointer" title="Assign Students">+ Assign</button>
+                  <button @click="openSectionStudentsModal(sec)" class="text-xs font-medium text-slate-700 hover:text-slate-900 transition cursor-pointer" title="Manage Students">Students</button>
+                  <button @click="openEditModal(sec)" class="text-xs font-medium text-slate-600 hover:text-slate-900 transition cursor-pointer" title="Edit">Edit</button>
+                  <button @click="confirmDelete(sec)" class="text-xs font-medium text-red-500 hover:text-red-700 transition cursor-pointer" title="Delete">Delete</button>
                 </span>
               </td>
             </tr>
