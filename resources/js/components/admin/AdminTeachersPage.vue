@@ -232,7 +232,7 @@
                   class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
                 >
                   <option value="">Select section</option>
-                  <option v-for="s in sectionOptions" :key="s" :value="s">{{ s }}</option>
+                  <option v-for="s in createSectionOptions" :key="s" :value="s">{{ s }}</option>
                 </select>
               </div>
             </div>
@@ -318,16 +318,6 @@
               <input v-model="editForm.employee_id" type="text" required class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">Position</label>
-              <select
-                v-model="editForm.job_title"
-                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
-              >
-                <option value="" disabled>Select position</option>
-                <option v-for="opt in jobTitleOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-              </select>
-            </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-sm font-medium text-stone-700 mb-1">Grade Level</label>
@@ -346,7 +336,7 @@
                   class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
                 >
                   <option value="">Select section</option>
-                  <option v-for="s in sectionOptions" :key="s" :value="s">{{ s }}</option>
+                  <option v-for="s in editSectionOptions" :key="s" :value="s">{{ s }}</option>
                 </select>
               </div>
             </div>
@@ -489,10 +479,6 @@ const gradeLevelOptions = [
   'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12',
 ];
 
-const sectionOptions = [
-  'Section A', 'Section B', 'Section C', 'Section D', 'Section E'
-];
-
 function formatTeacherGradeSection(t) {
   const grade = t?.grade_level;
   const section = t?.section;
@@ -605,7 +591,7 @@ const form = ref({
 const formError = ref('');
 
 const editTargetId = ref(null);
-const editForm = ref({ name: '', employee_id: '', job_title: '', grade_level: '', section: '', password: '', password_confirmation: '' });
+const editForm = ref({ name: '', employee_id: '', grade_level: '', section: '', password: '', password_confirmation: '' });
 const editError = ref('');
 
 const createPhotoFile = ref(null);
@@ -620,6 +606,44 @@ const editPhotoInput = ref(null);
 
 const photoLoadError = ref({});
 
+function getAvailableSections(grade) {
+  const all = schoolSections.value || [];
+  const scoped = grade
+    ? all.filter((s) => (s.grade_level || '') === grade)
+    : all;
+
+  const namesFromApi = scoped.map((s) => s.name).filter(Boolean);
+  const unique = Array.from(new Set(namesFromApi));
+
+  if (unique.length) {
+    return unique.sort((a, b) => String(a).localeCompare(String(b)));
+  }
+
+  // Fallback (only if API returns no sections yet)
+  return sectionOptions.slice();
+}
+
+const createSectionOptions = computed(() => getAvailableSections(form.value.grade_level));
+const editSectionOptions = computed(() => getAvailableSections(editForm.value.grade_level));
+
+watch(
+  () => form.value.grade_level,
+  () => {
+    if (form.value.section && !createSectionOptions.value.includes(form.value.section)) {
+      form.value.section = '';
+    }
+  },
+);
+
+watch(
+  () => editForm.value.grade_level,
+  () => {
+    if (editForm.value.section && !editSectionOptions.value.includes(editForm.value.section)) {
+      editForm.value.section = '';
+    }
+  },
+);
+
 function getPhotoUrl(path) {
   if (!path) return '/images/default-avatar.png';
   // Strip 'public/' or 'storage/' or leading slashes
@@ -630,41 +654,6 @@ function getPhotoUrl(path) {
 function handlePhotoError(id) {
   photoLoadError.value[id] = true;
 }
-
-const jobTitleOptions = [
-  { label: 'Accountant III',                            value: 'ACTIII'  },
-  { label: 'Administrative Aide VI',                    value: 'AIDVI'   },
-  { label: 'Administrative Assistant II',               value: 'ADASII'  },
-  { label: 'Administrative Assistant III',              value: 'ADASIII' },
-  { label: 'Administrative Officer II',                 value: 'AOII'    },
-  { label: 'Administrative Officer IV',                 value: 'AOIV'    },
-  { label: 'Administrative Officer V',                  value: 'AOV'     },
-  { label: 'Administrative Supervisor II',              value: 'ASPII'   },
-  { label: 'Assistant Schools Division Superintendent', value: 'ASDS'    },
-  { label: 'Attorney III',                              value: 'ATTYIII' },
-  { label: 'Chief Education Supervisor',                value: 'CES'     },
-  { label: 'Dentist II',                                value: 'DENTII'  },
-  { label: 'Education Program Supervisor',              value: 'EPS'     },
-  { label: 'Education Program Supervisor II',           value: 'EPSII'   },
-  { label: 'Engineer III',                              value: 'ENGIII'  },
-  { label: 'Guidance Coordinator III',                  value: 'GCOIII'  },
-  { label: 'Guidance Counselor I',                      value: 'GCI'     },
-  { label: 'Guidance Counselor III',                    value: 'GCIII'   },
-  { label: 'Health Teacher I',                          value: 'HTI'     },
-  { label: 'Health Teacher II',                         value: 'HTII'    },
-  { label: 'Health Teacher III',                        value: 'HTIII'   },
-  { label: 'Health Teacher IV',                         value: 'HTIV'    },
-  { label: 'Health Teacher V',                          value: 'HTV'     },
-  { label: 'Information Technology Officer I',          value: 'ITOI'    },
-  { label: 'Librarian I',                               value: 'LIBI'    },
-  { label: 'Librarian II',                              value: 'LIBII'   },
-  { label: 'Librarian III',                             value: 'LIBIII'  },
-  { label: 'Master Teacher I',                          value: 'MTI'     },
-  { label: 'Master Teacher II',                         value: 'MTII'    },
-  { label: 'Medical Officer III',                       value: 'MDOIII'  },
-  { label: 'Nurse II',                                  value: 'NRSII'   },
-  { label: 'Senior Education Program Supervisor',       value: 'SEPS'    },
-];
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -739,7 +728,6 @@ function openEditModal(t) {
   editForm.value = {
     name: t.name || '',
     employee_id: t.employee_id || '',
-    job_title: t.job_title || '',
     grade_level: t.grade_level || '',
     section: t.section || '',
     profile_photo: t.profile_photo || null,
@@ -847,7 +835,6 @@ async function submitEdit() {
   const payload = {
     name: editForm.value.name,
     employee_id: editForm.value.employee_id,
-    job_title: editForm.value.job_title || null,
     grade_level: editForm.value.grade_level || null,
     section: editForm.value.section || null,
   };
