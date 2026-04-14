@@ -34,13 +34,62 @@
               class="w-64 max-w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
             />
           </div>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition"
-            title="Filter"
-          >
-            <Filter class="h-4 w-4" />
-          </button>
+          <div class="relative">
+            <button
+              type="button"
+              class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition"
+              :class="(filterGrade || filterSection) ? 'ring-2 ring-indigo-200 border-indigo-200' : ''"
+              title="Filter by grade / section"
+              @click="showFilterPanel = !showFilterPanel"
+            >
+              <Filter class="h-4 w-4" />
+            </button>
+            <div
+              v-if="showFilterPanel"
+              class="absolute right-0 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-lg z-20 text-left"
+              @click.stop
+            >
+              <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Filters</p>
+              <div class="space-y-2">
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 mb-1">Grade</label>
+                  <select
+                    v-model="filterGrade"
+                    class="w-full rounded-lg border border-slate-200 px-2 py-2 text-sm bg-white"
+                  >
+                    <option value="">All grades</option>
+                    <option v-for="g in gradeFilterOptions" :key="g" :value="g">{{ g }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 mb-1">Section</label>
+                  <select
+                    v-model="filterSection"
+                    class="w-full rounded-lg border border-slate-200 px-2 py-2 text-sm bg-white"
+                  >
+                    <option value="">All sections</option>
+                    <option v-for="s in sectionFilterOptions" :key="s" :value="s">{{ s }}</option>
+                  </select>
+                </div>
+              </div>
+              <div class="mt-3 flex justify-end gap-2">
+                <button
+                  type="button"
+                  class="text-xs font-medium text-slate-600 hover:text-slate-900 px-2 py-1"
+                  @click="clearGradeSectionFilters"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  class="text-xs font-medium text-white bg-slate-900 rounded-lg px-3 py-1.5 hover:bg-slate-800"
+                  @click="showFilterPanel = false"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -50,7 +99,7 @@
             <tr>
               <th class="py-3 px-4 border-b border-slate-200">Name</th>
               <th class="py-3 px-4 border-b border-slate-200">Employee ID</th>
-              <th class="py-3 px-4 border-b border-slate-200">School</th>
+              <th class="py-3 px-4 border-b border-slate-200">Grade / Section</th>
               <th class="py-3 px-4 border-b border-slate-200">Created</th>
               <th class="py-3 px-4 text-right border-b border-slate-200">Actions</th>
             </tr>
@@ -94,7 +143,7 @@
               <td class="py-3 px-4 text-slate-700 whitespace-nowrap">
                 {{ t.employee_id || '—' }}
               </td>
-              <td class="py-3 px-4 text-slate-600 truncate max-w-[150px]">{{ t.school_name || 'No School' }}</td>
+              <td class="py-3 px-4 text-slate-700">{{ formatTeacherGradeSection(t) }}</td>
               <td class="py-3 px-4 text-slate-600">{{ formatDate(t.created_at) }}</td>
               <td class="py-3 px-4 text-right">
                 <span class="inline-flex items-center justify-end gap-3">
@@ -122,7 +171,7 @@
             </tr>
             <tr v-if="!loading && filteredTeachers.length === 0">
               <td colspan="5" class="py-12 text-center text-slate-500">
-                {{ searchQuery ? 'No teachers match your search.' : 'No teachers yet.' }}
+                {{ emptyTeachersMessage }}
               </td>
             </tr>
           </tbody>
@@ -165,26 +214,6 @@
               />
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">School Name</label>
-              <input
-                v-model="form.school_name"
-                type="text"
-                readonly
-                class="w-full rounded-md border border-stone-300 bg-stone-50 px-3 py-2 text-sm text-stone-500 cursor-not-allowed"
-              />
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">Position</label>
-              <select
-                v-model="form.job_title"
-                class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
-              >
-                <option value="" disabled>Select position</option>
-                <option v-for="opt in jobTitleOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-              </select>
-            </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-sm font-medium text-stone-700 mb-1">Grade Level</label>
@@ -287,16 +316,6 @@
             <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">Employee ID</label>
               <input v-model="editForm.employee_id" type="text" required class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-stone-700 mb-1">School Name</label>
-              <input
-                v-model="editForm.school_name"
-                type="text"
-                readonly
-                class="w-full rounded-md border border-stone-300 bg-stone-50 px-3 py-2 text-sm text-stone-500 cursor-not-allowed"
-              />
             </div>
 
             <div>
@@ -439,27 +458,20 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import axios from 'axios';
-import { PencilLine, Trash2, IdCard, Plus, Download, Search, Filter } from 'lucide-vue-next';
-import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, getAdminTeacherIdUrl, exportAdminTeachers } from '../../services/adminService';
-import { fetchAdminProfile } from '../../services/adminProfileService';
+import { PencilLine, Trash2, Plus, Download, Search, Filter } from 'lucide-vue-next';
+import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, exportAdminTeachers } from '../../services/adminService';
 
 const teachers = ref([]);
 const searchQuery = ref('');
 const loading = ref(false);
-const adminSchoolName = ref('');
 
-const filteredTeachers = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase();
-  if (!q) return teachers.value;
-  return teachers.value.filter(t =>
-    (t.name        || '').toLowerCase().includes(q) ||
-    (t.employee_id || '').toLowerCase().includes(q) ||
-    (t.school_name || '').toLowerCase().includes(q) ||
-    (t.job_title   || '').toLowerCase().includes(q)
-  );
-});
+const showFilterPanel = ref(false);
+const filterGrade = ref('');
+const filterSection = ref('');
+/** Sections from `/api/admin/sections` (authoritative names + grade levels for this school). */
+const schoolSections = ref([]);
 const exporting = ref(false);
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
@@ -481,11 +493,110 @@ const sectionOptions = [
   'Section A', 'Section B', 'Section C', 'Section D', 'Section E'
 ];
 
+function formatTeacherGradeSection(t) {
+  const grade = t?.grade_level;
+  const section = t?.section;
+  if (grade && section) return `${grade} / ${section}`;
+  if (grade) return grade;
+  if (section) return section;
+  return '—';
+}
+
+const gradeFilterOptions = computed(() => {
+  const set = new Set(gradeLevelOptions);
+  schoolSections.value.forEach((sec) => {
+    if (sec.grade_level) set.add(sec.grade_level);
+  });
+  teachers.value.forEach((teacher) => {
+    if (teacher.grade_level) set.add(teacher.grade_level);
+  });
+  return Array.from(set).sort((a, b) => String(a).localeCompare(String(b)));
+});
+
+/**
+ * Section names from Manage Sections API. When a grade is selected, only sections
+ * for that grade are listed so the filter matches what exists in the system.
+ */
+const sectionFilterOptions = computed(() => {
+  const sections = schoolSections.value;
+  const grade = filterGrade.value;
+
+  if (sections.length) {
+    const names = sections
+      .filter((s) => !grade || (s.grade_level || '') === grade)
+      .map((s) => s.name)
+      .filter(Boolean);
+    return [...new Set(names)].sort((a, b) => String(a).localeCompare(String(b)));
+  }
+
+  // Fallback if sections API failed or returned nothing: derive from teachers only.
+  const fromTeachers = teachers.value
+    .filter((t) => !grade || (t.grade_level || '') === grade)
+    .map((t) => t.section)
+    .filter(Boolean);
+  const set = new Set([...sectionOptions, ...fromTeachers]);
+  return Array.from(set).sort((a, b) => String(a).localeCompare(String(b)));
+});
+
+watch(filterGrade, () => {
+  const allowed = new Set(sectionFilterOptions.value);
+  if (filterSection.value && !allowed.has(filterSection.value)) {
+    filterSection.value = '';
+  }
+});
+
+watch(showFilterPanel, (open) => {
+  if (open) loadSchoolSections();
+});
+
+const filteredTeachers = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase();
+  const fg = filterGrade.value;
+  const fs = filterSection.value;
+
+  return teachers.value.filter((t) => {
+    if (fg && (t.grade_level || '') !== fg) return false;
+    if (fs && (t.section || '') !== fs) return false;
+
+    if (!q) return true;
+
+    const gradeSection = formatTeacherGradeSection(t).toLowerCase();
+    return (
+      (t.name || '').toLowerCase().includes(q) ||
+      (t.employee_id || '').toLowerCase().includes(q) ||
+      (t.job_title || '').toLowerCase().includes(q) ||
+      (t.grade_level || '').toLowerCase().includes(q) ||
+      (t.section || '').toLowerCase().includes(q) ||
+      gradeSection.includes(q)
+    );
+  });
+});
+
+const emptyTeachersMessage = computed(() => {
+  if (!teachers.value.length) return 'No teachers yet.';
+  if (filteredTeachers.value.length) return '';
+  if (searchQuery.value.trim()) return 'No teachers match your search.';
+  if (filterGrade.value || filterSection.value) return 'No teachers match the selected filters.';
+  return 'No teachers match your search or filters.';
+});
+
+function clearGradeSectionFilters() {
+  filterGrade.value = '';
+  filterSection.value = '';
+}
+
+async function loadSchoolSections() {
+  try {
+    const res = await axios.get('/api/admin/sections');
+    schoolSections.value = res.data?.data || [];
+  } catch {
+    schoolSections.value = [];
+  }
+}
+
 const form = ref({
   name: '',
   employee_id: '',
-  school_name: '',
-  job_title: '',
   grade_level: '',
   section: '',
   password: '',
@@ -494,7 +605,7 @@ const form = ref({
 const formError = ref('');
 
 const editTargetId = ref(null);
-const editForm = ref({ name: '', employee_id: '', school_name: '', job_title: '', grade_level: '', section: '', password: '', password_confirmation: '' });
+const editForm = ref({ name: '', employee_id: '', job_title: '', grade_level: '', section: '', password: '', password_confirmation: '' });
 const editError = ref('');
 
 const createPhotoFile = ref(null);
@@ -604,22 +715,10 @@ function closeStudentModal() {
   studentModalList.value = [];
 }
 
-/**
- * // Description: openCreateModal - Resets the create-teacher form and auto-fills
- * //   the school_name from the admin's profile. If the admin hasn't configured
- * //   a school_name yet, it falls back to 'Pending School Setup'.
- * // Author: Antigravity System Agent
- */
 function openCreateModal() {
-  // Debug: verify the admin school_name is being read correctly from the API
-  console.log('Admin Data Proxy (Vue Fetch):', { adminSchoolName: adminSchoolName.value });
-
-  // Auto-fill school_name with fallback
-  const resolvedSchool = adminSchoolName.value || 'Pending School Setup';
-
   form.value = {
-    name: '', employee_id: '', school_name: resolvedSchool,
-    job_title: '', grade_level: '', section: '',
+    name: '', employee_id: '',
+    grade_level: '', section: '',
     password: '', password_confirmation: ''
   };
   formError.value = '';
@@ -633,11 +732,6 @@ function openCreateModal() {
 }
 
 /**
- * // Description: openEditModal - Pre-fills the edit form with the selected teacher's
- * //   current data. Uses the admin's school_name as fallback if the teacher's own
- * //   school_name is empty (e.g. legacy records).
- * // Author: Antigravity System Agent
- *
  * @param {Object} t - The teacher record from the list
  */
 function openEditModal(t) {
@@ -645,7 +739,6 @@ function openEditModal(t) {
   editForm.value = {
     name: t.name || '',
     employee_id: t.employee_id || '',
-    school_name: t.school_name || adminSchoolName.value || 'Pending School Setup',
     job_title: t.job_title || '',
     grade_level: t.grade_level || '',
     section: t.section || '',
@@ -669,23 +762,14 @@ function confirmDelete(t) {
   showDeleteModal.value = true;
 }
 
-/**
- * // Description: load - Fetches the full teacher list AND the admin's profile in parallel.
- * //   The admin's school_name is stored so it can be auto-filled and used as
- * //   fallback when creating/editing teachers.
- * // Author: Antigravity System Agent
- */
 async function load() {
   loading.value = true;
   try {
-    // Fetch teachers and admin profile simultaneously for performance
-    const [res, adminRes] = await Promise.all([
+    const [res] = await Promise.all([
       fetchTeachers(),
-      fetchAdminProfile()
+      loadSchoolSections(),
     ]);
     teachers.value = res.data || [];
-    // Store admin's school_name for auto-defaulting in create/edit modals
-    adminSchoolName.value = adminRes?.school_name || '';
     photoLoadError.value = {};
   } catch {
     teachers.value = [];
@@ -724,8 +808,7 @@ async function submitCreate() {
     const payload = {
       name: form.value.name,
       employee_id: form.value.employee_id,
-      school_name: form.value.school_name || null,
-      job_title: form.value.job_title || null,
+      job_title: null,
       grade_level: form.value.grade_level || null,
       section: form.value.section || null,
       password: form.value.password,
@@ -764,7 +847,6 @@ async function submitEdit() {
   const payload = {
     name: editForm.value.name,
     employee_id: editForm.value.employee_id,
-    school_name: editForm.value.school_name || null,
     job_title: editForm.value.job_title || null,
     grade_level: editForm.value.grade_level || null,
     section: editForm.value.section || null,
