@@ -154,6 +154,7 @@
 </template>
 
 <script setup>
+import { assetPath } from '../../composables/useAsset';
 import { computed, ref, watch, onMounted } from 'vue';
 import { useTeacherProfile } from '../../composables/useTeacherProfile';
 
@@ -212,7 +213,7 @@ function resolveProfilePhotoUrl(rawPath) {
     .replace(/^\/storage\//, '')
     .replace(/^\//, '');
 
-  return '/storage/' + clean;
+  return assetPath('/storage/' + clean);
 }
 
 const displayPhotoUrl = computed(() => {

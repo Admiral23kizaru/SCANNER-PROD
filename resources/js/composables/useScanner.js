@@ -13,6 +13,7 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { Html5Qrcode } from 'html5-qrcode';
 import { scanAttendancePublic, fetchRecentAttendancePublic, fetchGuardStatsPublic } from '../services/attendanceService';
+import { assetPath } from './useAsset';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -180,10 +181,10 @@ export function useScanner() {
      * @returns {string} An absolute URL or the default avatar fallback.
      */
     function getPhotoUrl(path) {
-        if (!path) return '/images/default-avatar.png';
+        if (!path) return assetPath('/images/default-avatar.png');
         if (typeof path === 'string' && path.startsWith('http')) return path;
         const cleanPath = String(path).replace(/^\/?storage\//, '').replace(/^\//, '');
-        return '/storage/' + cleanPath;
+        return assetPath('/storage/' + cleanPath);
     }
 
     /** Show the "last scan" card in the result panel and auto-clear after 3.5 s. */

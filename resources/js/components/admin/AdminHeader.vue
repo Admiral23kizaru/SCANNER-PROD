@@ -39,7 +39,7 @@
                 @error="userPhotoError = true"
               />
               <div v-else class="w-full h-full flex items-center justify-center bg-blue-600 text-white text-xs font-bold">
-                <img v-if="userPhotoError" :src="'/images/default-avatar.png'" class="w-full h-full object-cover" />
+                <img v-if="userPhotoError" :src="assetPath('/images/default-avatar.png')" class="w-full h-full object-cover" />
                 <span v-else>{{ user.name?.charAt(0) }}</span>
               </div>
             </div>
@@ -106,6 +106,7 @@
 </template>
 
 <script setup>
+import { assetPath } from '../../composables/useAsset';
 import { ref } from 'vue';
 import { Menu, ChevronDown, UserCircle, LogOut } from 'lucide-vue-next';
 
@@ -130,9 +131,9 @@ const isProfileOpen = ref(false);
 const userPhotoError = ref(false);
 
 function getPhotoUrl(path) {
-  if (!path) return '/images/default-avatar.png';
+  if (!path) return assetPath('/images/default-avatar.png');
   if (/^https?:\/\//i.test(path)) return path;
   const cleanPath = path.replace(/^(public\/|storage\/|\/storage\/|\/public\/)/, '').replace(/^\//, '');
-  return '/storage/' + cleanPath;
+  return assetPath('/storage/' + cleanPath);
 }
 </script>

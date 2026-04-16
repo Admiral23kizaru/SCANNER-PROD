@@ -147,7 +147,7 @@
                     <div class="relative mb-6">
                       <img :src="getPhotoUrl(lastScanDetails.photo_path)"
                            class="w-40 h-40 rounded-3xl object-cover border-4 border-emerald-500 shadow-2xl rotate-3 group-hover:rotate-0 transition-transform duration-500"
-                           @error="(e) => e.target.src = '/images/default-avatar.png'" />
+                           @error="(e) => e.target.src = assetPath('/images/default-avatar.png')" />
                       <!-- Late / On-Time badge -->
                       <div class="absolute -bottom-2 -right-2 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase shadow-xl"
                            :class="lastScanDetails.status === 'late' ? 'bg-amber-500 text-amber-950' : 'bg-emerald-500 text-emerald-950'">
@@ -191,7 +191,7 @@
                 <div class="relative shrink-0">
                   <img :src="getPhotoUrl(row.photo_path)"
                        class="w-12 h-12 rounded-xl object-cover border-2 border-slate-700 group-hover:border-emerald-500/50 transition-all"
-                       @error="(e) => e.target.src = '/images/default-avatar.png'" />
+                       @error="(e) => e.target.src = assetPath('/images/default-avatar.png')" />
                   <!-- Status dot: green = on_time, amber = late -->
                   <div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-800"
                        :class="row.status === 'late' ? 'bg-amber-500' : 'bg-emerald-500'" />
@@ -222,6 +222,7 @@
 </template>
 
 <script setup>
+import { assetPath } from '../../composables/useAsset';
 /**
  * GuardScanner.vue — Guard Terminal UI
  *

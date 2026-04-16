@@ -286,8 +286,9 @@ import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { setStoredToken } from '../router';
+import { assetPath } from '../composables/useAsset';
 
-const depedLogo = '/logo/depedozamiz.png';
+const depedLogo = assetPath('/logo/depedozamiz.png');
 
 const router = useRouter();
 const form = reactive({ email: '', password: '' });

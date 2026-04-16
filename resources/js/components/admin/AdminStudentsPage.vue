@@ -131,7 +131,7 @@
                     v-else
                     class="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-400 to-blue-500 text-white font-semibold text-xs"
                   >
-                    <img v-if="photoLoadError[row.id]" :src="'/images/default-avatar.png'" class="w-full h-full object-cover" />
+                    <img v-if="photoLoadError[row.id]" :src="assetPath('/images/default-avatar.png')" class="w-full h-full object-cover" />
                     <span v-else>{{ row.first_name?.charAt(0) || '?' }}</span>
                   </div>
                 </div>
@@ -326,6 +326,7 @@
 </template>
 
 <script setup>
+import { assetPath } from '../../composables/useAsset';
 import { ref, onMounted, computed } from 'vue';
 import { Search, PencilLine, Trash2, IdCard, Plus, Download, Filter, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { fetchAdminStudents, createAdminStudent, updateAdminStudent, deleteStudent, getAdminStudentIdUrl, exportAdminStudents } from '../../services/adminService';
@@ -375,10 +376,10 @@ function clearFilters() {
 
 
 function getPhotoUrl(path) {
-  if (!path) return '/images/default-avatar.png';
+  if (!path) return assetPath('/images/default-avatar.png');
   // Strip 'public/' or 'storage/' or leading slashes
   const cleanPath = path.replace(/^(public\/|storage\/|\/storage\/|\/public\/)/, '').replace(/^\//, '');
-  return '/storage/' + cleanPath;
+  return assetPath('/storage/' + cleanPath);
 }
 
 const showFormModal = ref(false);

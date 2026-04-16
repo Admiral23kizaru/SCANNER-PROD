@@ -413,6 +413,7 @@
 </template>
 
 <script setup>
+import { assetPath } from '../../composables/useAsset';
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { fetchUser, logoutUser } from '../../services/authService';
 import QRCode from 'qrcode';
@@ -440,7 +441,7 @@ async function logout() {
 }
 
 // Logo served from Laravel public/logo
-const depedLogo = '/logo/depedozamiz.png';
+const depedLogo = assetPath('/logo/depedozamiz.png');
 
 const students = ref([]);
 const loading = ref(false);

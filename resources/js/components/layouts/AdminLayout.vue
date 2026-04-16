@@ -42,6 +42,7 @@
 </template>
 
 <script setup>
+import { assetPath } from '../../composables/useAsset';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { fetchUser } from '../../services/authService';
@@ -57,7 +58,7 @@ import AdminProfileModal from '../admin/AdminProfileModal.vue';
 const router = useRouter();
 const currentPage = ref('dashboard');
 const isSidebarOpen = ref(false);
-const logoSrc = '/logo/depedozamiz.png';
+const logoSrc = assetPath('/logo/depedozamiz.png');
 const user = ref(null);
 const userPhotoError = ref(false);
 const isProfileOpen = ref(false);
