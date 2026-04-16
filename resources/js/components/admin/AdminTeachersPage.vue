@@ -521,7 +521,7 @@ const sectionFilterOptions = computed(() => {
     .filter((t) => !grade || (t.grade_level || '') === grade)
     .map((t) => t.section)
     .filter(Boolean);
-  const set = new Set([...sectionOptions, ...fromTeachers]);
+  const set = new Set([...fromTeachers]);
   return Array.from(set).sort((a, b) => String(a).localeCompare(String(b)));
 });
 
@@ -621,7 +621,7 @@ function getAvailableSections(grade) {
   }
 
   // Fallback (only if API returns no sections yet)
-  return sectionOptions.slice();
+  return [];
 }
 
 const createSectionOptions = computed(() => getAvailableSections(form.value.grade_level));
