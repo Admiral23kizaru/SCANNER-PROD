@@ -19,6 +19,7 @@
   <div class="flex flex-col h-screen w-full bg-slate-900 text-slate-100 overflow-hidden">
     <!-- ── Header ───────────────────────────────────────────────────────── -->
     <header class="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-700 bg-slate-800/80 backdrop-blur-md">
+      <!-- Left: branding -->
       <div class="flex items-center gap-4">
         <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-black text-xl shadow-lg ring-2 ring-emerald-500/20">G</div>
         <div>
@@ -26,11 +27,19 @@
           <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Live Attendance System</p>
         </div>
       </div>
-      <!-- Live clock — updated every second by useScanner -->
-      <div class="text-right">
+
+      <!-- Centre: Live clock -->
+      <div class="text-center">
         <div class="text-3xl font-black text-white tabular-nums tracking-tighter">{{ currentTime }}</div>
         <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{{ currentDate }}</div>
       </div>
+
+      <!-- Right: login button for Teacher / Admin -->
+      <RouterLink to="/login"
+         class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-700/60 hover:bg-emerald-600 border border-slate-600 hover:border-emerald-500 text-slate-300 hover:text-white font-bold text-xs uppercase tracking-widest transition-all duration-200 shadow-lg group">
+        <LogIn class="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+        Teacher / Admin Login
+      </RouterLink>
     </header>
 
     <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -236,7 +245,9 @@ import { assetPath } from '../../composables/useAsset';
  *
  * See useScanner.js for detailed documentation of each function.
  */
-import { Clock, User, Search } from 'lucide-vue-next';
+import { computed } from 'vue';
+import { Clock, User, Search, LogIn } from 'lucide-vue-next';
+import { RouterLink } from 'vue-router';
 import { useScanner } from '../../composables/useScanner';
 
 const {

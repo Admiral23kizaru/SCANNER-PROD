@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import axios from 'axios';
 import Login from '../views/Login.vue';
+import GuardScanner from '../components/guard/GuardScanner.vue';
 import TeacherDashboard from '../components/teacher/TeacherDashboard.vue';
 import AdminLayout from '../components/layouts/AdminLayout.vue';
 
@@ -61,12 +62,7 @@ async function loginRedirectGuard(to, from, next) {
         const roleName = user.role?.name || user.role_name;
         if (roleName === 'Admin') next({ path: '/admin' });
         else if (roleName === 'Teacher') next({ path: '/teacher' });
-        else if (roleName === 'Guard') {
-            window.location.href = '/guard';
-            next(false);
-            return;
-        }
-        else next();
+        else next({ path: '/' }); // Guard → scanner home
     } catch {
         next();
     }
@@ -74,8 +70,10 @@ async function loginRedirectGuard(to, from, next) {
 
 const routes = [
     {
+        // Home page = Guard Scanner (public, no auth required)
         path: '/',
-        redirect: '/login',
+        name: 'Scanner',
+        component: GuardScanner,
     },
     {
         path: '/login',
@@ -94,6 +92,16 @@ const routes = [
         name: 'Admin',
         component: AdminLayout,
         beforeEnter: roleGuard('Admin'),
+    },
+    {
+        // Keep old /guard URL working — redirect to scanner home
+        path: '/guard',
+        redirect: '/',
+    },
+    {
+        // Catch-all: any unknown route → scanner home
+        path: '/:pathMatch(.*)*',
+        redirect: '/',
     },
 ];
 
