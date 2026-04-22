@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use function now;
 use function response;
 use function view;
@@ -42,9 +43,19 @@ class PasswordResetController extends Controller
         ]);
 
         $email          = $validated['email'];
-        $user           = User::where('email', $email)->first();
         $genericMessage = 'If that email is registered, a verification code has been sent.';
 
+        // Rate limit: 1 OTP request per email per 60 seconds
+        $rateLimitKey = 'otp:' . $email;
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 1)) {
+            $seconds = RateLimiter::availableIn($rateLimitKey);
+            return response()->json([
+                'message' => "Please wait {$seconds} seconds before requesting another code."
+            ], 429);
+        }
+        RateLimiter::hit($rateLimitKey, 60);
+
+        $user = User::where('email', $email)->first();
         if (!$user) {
             return response()->json(['message' => $genericMessage]);
         }

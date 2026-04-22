@@ -42,9 +42,16 @@ class AuthController extends Controller
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
-            'user'       => $user->load('role'),
             'token'      => $token,
             'token_type' => 'Bearer',
+            'user'       => [
+                'id'        => $user->id,
+                'name'      => $user->name,
+                'email'     => $user->email,
+                'role_id'   => $user->role_id,
+                'school_id' => $user->school_id, // CRITICAL — launcher reads this
+                'role'      => $user->load('role')->role,
+            ]
         ]);
     }
 

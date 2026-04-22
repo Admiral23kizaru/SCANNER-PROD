@@ -25,6 +25,9 @@ function getAuthHeaders() {
 /** JSON content-type header, shared by all POST/PUT requests. */
 const jsonHeaders = { 'Content-Type': 'application/json', Accept: 'application/json' };
 
+// Direct API target for the scanner, allows local scanner to hit remote DB
+const API_BASE = import.meta.env.VITE_API_SERVER || '';
+
 // ─── Public scanner (Guard Terminal) ─────────────────────────────────────────
 
 /**
@@ -45,14 +48,21 @@ const jsonHeaders = { 'Content-Type': 'application/json', Accept: 'application/j
  *   stats: { total_today: number, present_count: number, late_count: number, absent_count: number }
  * }>} Full scan response from the backend.
  */
-export async function scanAttendancePublic(studentId) {
+export async function scanAttendancePublic(data, token) {
     const sessionName = new Date().getHours() < 12 ? 'morning' : 'dismissal';
-    const { data } = await axios.post(
-        '/api/attendance/scan',
-        { student_number: studentId, session: sessionName },
-        { headers: jsonHeaders }
+    const res = await axios.post(
+        `${API_BASE}/api/attendance/scan`,
+        { 
+            student_id: data.student_id,
+            school_id: data.school_id,
+            session: sessionName
+        },
+        { 
+            headers: { ...jsonHeaders, Authorization: `Bearer ${token}` },
+            withCredentials: false 
+        }
     );
-    return data;
+    return res.data;
 }
 
 /**
@@ -67,8 +77,9 @@ export async function scanAttendancePublic(studentId) {
  * }> }>}
  */
 export async function fetchRecentAttendancePublic() {
-    const { data } = await axios.get('/api/attendance/public/recent', {
+    const { data } = await axios.get(`${API_BASE}/api/attendance/public/recent`, {
         headers: { Accept: 'application/json' },
+        withCredentials: false
     });
     return data;
 }
@@ -84,8 +95,9 @@ export async function fetchRecentAttendancePublic() {
  * }>}
  */
 export async function fetchGuardStatsPublic() {
-    const { data } = await axios.get('/api/attendance/public/stats', {
+    const { data } = await axios.get(`${API_BASE}/api/attendance/public/stats`, {
         headers: { Accept: 'application/json' },
+        withCredentials: false
     });
     return data;
 }

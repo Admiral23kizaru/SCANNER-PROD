@@ -30,7 +30,7 @@
           </div>
         </div>
         <!-- Toolbar (match screenshot layout) -->
-        <div class="p-4 border-b border-stone-200 flex flex-wrap items-center justify-between gap-3 bg-white">
+        <div class="p-4 border-b border-stone-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white">
           <div class="flex items-center gap-2 w-full md:w-auto">
             <label class="relative flex-1 md:flex-none md:w-[420px] max-w-full">
               <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400 pointer-events-none" />
@@ -52,7 +52,7 @@
             </button>
           </div>
 
-          <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+          <div class="flex flex-wrap items-center gap-2 w-full md:w-auto md:justify-end">
             <input
               ref="bulkImportInput"
               type="file"

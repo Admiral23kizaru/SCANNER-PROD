@@ -31,7 +31,7 @@ const AUTO_RETRY_DELAY_S = 8;
 
 // ─── Composable ───────────────────────────────────────────────────────────────
 
-export function useScanner() {
+export function useScanner(schoolId, authToken) {
     // ── Reactive state ──────────────────────────────────────────────────────
 
     /** Camera element reference (bound to the #qr-reader div). */
@@ -299,7 +299,10 @@ export function useScanner() {
         try {
             scanProcessing.value = true;
             showMessage('Processing...', 'warning', 0);
-            const res = await scanAttendancePublic(raw);
+            
+            // Inject school_id from URL params
+            const payload = { student_id: raw, school_id: schoolId.value };
+            const res = await scanAttendancePublic(payload, authToken.value);
 
             if (res?.status !== 'success') {
                 if (res.status === 'already_scanned') {
@@ -474,9 +477,12 @@ export function useScanner() {
     // ── Lifecycle ────────────────────────────────────────────────────────────
 
     onMounted(() => {
-        destroyed = false;
+        // Halt camera boot if missing credentials
+        if (!schoolId?.value || !authToken?.value) return;
+
         updateClock();
         clockInterval = setInterval(updateClock, 1000);
+        loadRecent();
         startCamera();
     });
 

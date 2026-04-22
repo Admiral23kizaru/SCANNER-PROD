@@ -19,6 +19,11 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
  */
 class StudentController extends Controller
 {
+    private function schoolScope()
+    {
+        return auth()->user()->school_id;
+    }
+
     /* ====================================================================== */
     /*  Read                                                                   */
     /* ====================================================================== */
@@ -31,7 +36,8 @@ class StudentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user  = $request->user();
-        $query = Student::query();
+        $schoolId = $this->schoolScope();
+        $query = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId));
 
         if ($user->role?->name === 'Teacher') {
             if ($user->grade_level && $user->section) {
@@ -83,7 +89,10 @@ class StudentController extends Controller
             'last_name'      => ['required', 'string', 'max:255'],
             'gender'         => ['nullable', 'string', 'in:Male,Female'],
             'middle_name'    => ['nullable', 'string', 'max:255'],
-            'student_number' => ['required', 'string', 'size:12', 'regex:/^\d{12}$/', 'unique:students,student_number'],
+            'student_number' => [
+                'required', 'string', 'size:12', 'regex:/^\d{12}$/',
+                'unique:students,student_number,NULL,id,school_id,' . $this->schoolScope()
+            ],
             'grade_section'  => ['nullable', 'string', 'max:64'],
             'grade'          => ['nullable', 'string', 'max:32'],
             'section'        => ['nullable', 'string', 'max:32'],
@@ -135,7 +144,8 @@ class StudentController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $user    = $request->user();
-        $student = Student::find($id);
+        $schoolId = $this->schoolScope();
+        $student = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->find($id);
 
         if (!$student) {
             return response()->json(['message' => 'Student not found.'], 404);
@@ -150,7 +160,10 @@ class StudentController extends Controller
             'last_name'      => ['sometimes', 'required', 'string', 'max:255'],
             'gender'         => ['nullable', 'string', 'in:Male,Female'],
             'middle_name'    => ['nullable', 'string', 'max:255'],
-            'student_number' => ['sometimes', 'required', 'string', 'size:12', 'regex:/^\d{12}$/', 'unique:students,student_number,' . $id],
+            'student_number' => [
+                'sometimes', 'required', 'string', 'size:12', 'regex:/^\d{12}$/',
+                'unique:students,student_number,' . $id . ',id,school_id,' . $this->schoolScope()
+            ],
             'grade_section'  => ['nullable', 'string', 'max:64'],
             'grade'          => ['nullable', 'string', 'max:32'],
             'section'        => ['nullable', 'string', 'max:32'],
@@ -231,7 +244,11 @@ class StudentController extends Controller
             $get = fn (array $keys, string $default = '') => trim((string) ($data[$keys[0] ?? ''] ?? $data[$keys[1] ?? ''] ?? $default));
 
             $lrn = preg_replace('/\D/', '', $get(['student_number', 'lrn']));
-            if (strlen($lrn) !== 12 || Student::where('student_number', $lrn)->exists()) {
+            $importSchoolId = $this->schoolScope();
+            $lrnExists = Student::where('student_number', $lrn)
+                ->when($importSchoolId, fn($q) => $q->where('school_id', $importSchoolId))
+                ->exists();
+            if (strlen($lrn) !== 12 || $lrnExists) {
                 $skipped++;
                 continue;
             }

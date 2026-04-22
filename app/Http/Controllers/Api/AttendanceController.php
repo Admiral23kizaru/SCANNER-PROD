@@ -50,15 +50,17 @@ class AttendanceController extends Controller
      *        - session: (morning, lunch_out, etc.). 
      * @return \Illuminate\Http\JsonResponse
      */
-    public function scan(Request $request): JsonResponse
+    public function scanPublic(Request $request): JsonResponse
     {
         try {
             $validator = Validator::make($request->all(), [
-                'student_number' => ['required', 'string'],
-                'session'        => ['required', 'string'],
+                'student_id' => ['required', 'string'],
+                'school_id'  => ['required', 'integer', 'exists:schools,id'],
+                'session'    => ['required', 'string'],
             ], [
-                'student_number.required' => 'Invalid QR code.',
-                'session.required'        => 'Session determines the log period.',
+                'student_id.required' => 'Invalid QR code.',
+                'school_id.required'  => 'School missing from terminal config.',
+                'session.required'    => 'Session determines the log period.',
             ]);
 
             if ($validator->fails()) {
@@ -69,19 +71,25 @@ class AttendanceController extends Controller
                 ], 422);
             }
 
-            $input  = trim((string) $request->student_number);
-            $person = null;
+            $schoolId = $request->input('school_id');
+            $input    = trim((string) $request->student_id);
+            $person   = null;
             $personType = 'student';
 
-            // Resolve person from QR input: always prioritize student_number (LRN).
-            $student = Student::where('student_number', $input)
-                ->orWhere('id', $input)
+            // Resolve person from QR input scoped to the terminal's school
+            $student = Student::where('school_id', $schoolId)
+                ->where(function ($query) use ($input) {
+                    $query->where('student_number', $input)
+                          ->orWhere('id', $input);
+                })
                 ->first();
 
             if ($student) {
                 $person = $student;
             } else {
-                $teacher = User::where('employee_id', $input)->first();
+                $teacher = User::where('school_id', $schoolId)
+                    ->where('employee_id', $input)
+                    ->first();
                 if ($teacher) {
                     $person     = $teacher;
                     $personType = 'teacher';
@@ -122,7 +130,7 @@ class AttendanceController extends Controller
 
             $guardUser  = $request->user('sanctum') ?? $this->getDefaultGuardUser();
             $scannedBy  = $guardUser?->id;
-            $schoolId   = $this->resolveSchoolId($guardUser, $person, $personType);
+            // schoolId is already fetched from request->input('school_id')
             $settings   = SchoolSetting::where('school_id', $schoolId)->first();
             $schoolYear = SchoolYear::where('school_id', $schoolId)->where('is_active', true)->first();
             $scannedAt  = now();

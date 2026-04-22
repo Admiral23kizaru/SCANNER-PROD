@@ -18,6 +18,16 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class AdminStudentController extends Controller
 {
     /* ====================================================================== */
+    /*  Helpers                                                                */
+    /* ====================================================================== */
+
+    /** Returns the school_id of the current admin. NULL = SuperAdmin (sees all). */
+    private function schoolScope()
+    {
+        return auth()->user()->school_id;
+    }
+
+    /* ====================================================================== */
     /*  Read                                                                   */
     /* ====================================================================== */
 
@@ -26,7 +36,9 @@ class AdminStudentController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Student::query()->orderBy('last_name')->orderBy('first_name');
+        $schoolId = $this->schoolScope();
+        $query = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->orderBy('last_name')->orderBy('first_name');
 
         $search = $request->input('search');
         if ($search && is_string($search)) {
@@ -74,7 +86,10 @@ class AdminStudentController extends Controller
             'last_name'      => ['required', 'string', 'max:255'],
             'gender'         => ['nullable', 'string', 'in:Male,Female'],
             'middle_name'    => ['nullable', 'string', 'max:255'],
-            'student_number' => ['required', 'string', 'max:64', 'unique:students,student_number'],
+            'student_number' => [
+                'required', 'string', 'max:64',
+                'unique:students,student_number,NULL,id,school_id,' . $this->schoolScope()
+            ],
             'grade_section'  => ['nullable', 'string', 'max:64'],
             'grade'          => ['nullable', 'string', 'max:32'],
             'section'        => ['nullable', 'string', 'max:32'],
@@ -116,7 +131,8 @@ class AdminStudentController extends Controller
     /** Update an existing student record by ID. */
     public function update(Request $request, int $id): JsonResponse
     {
-        $student = Student::find($id);
+        $schoolId = $this->schoolScope();
+        $student = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->find($id);
         if (!$student) {
             return response()->json(['message' => 'Student not found.'], 404);
         }
@@ -126,7 +142,10 @@ class AdminStudentController extends Controller
             'last_name'      => ['sometimes', 'required', 'string', 'max:255'],
             'gender'         => ['nullable', 'string', 'in:Male,Female'],
             'middle_name'    => ['nullable', 'string', 'max:255'],
-            'student_number' => ['sometimes', 'required', 'string', 'max:64', 'unique:students,student_number,' . $id],
+            'student_number' => [
+                'sometimes', 'required', 'string', 'max:64',
+                'unique:students,student_number,' . $id . ',id,school_id,' . $this->schoolScope()
+            ],
             'grade_section'  => ['nullable', 'string', 'max:64'],
             'grade'          => ['nullable', 'string', 'max:32'],
             'section'        => ['nullable', 'string', 'max:32'],

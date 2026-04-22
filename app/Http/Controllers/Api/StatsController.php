@@ -28,6 +28,7 @@ class StatsController extends Controller
     /** Return high-level counts: total students, teachers, and today's scan count. */
     public function index(): JsonResponse
     {
+        $schoolId = auth()->user()->school_id ?? null;
         $teacherRoleId = Role::where('name', 'Teacher')->value('id');
         if ($teacherRoleId === null) {
             return response()->json([
@@ -38,9 +39,10 @@ class StatsController extends Controller
         }
 
         return response()->json([
-            'total_students'    => Student::count(),
-            'total_teachers'    => Teacher::count(),
-            'todays_attendance' => Attendance::whereDate('scanned_at', now()->toDateString())->count(),
+            'total_students'    => Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->count(),
+            'total_teachers'    => User::where('role_id', 2)->when($schoolId, fn($q) => $q->where('school_id', $schoolId))->count(),
+            'todays_attendance' => Attendance::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+                ->whereDate('scanned_at', now()->toDateString())->count(),
         ]);
     }
 
@@ -52,9 +54,11 @@ class StatsController extends Controller
      */
     public function overview(): JsonResponse
     {
-        $base = $this->index()->getData(true);
+        $base     = $this->index()->getData(true);
+        $schoolId = auth()->user()->school_id ?? null;
 
         $recentAttendance = Attendance::with('student')
+            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
             ->orderByDesc('scanned_at')
             ->limit(6)
             ->get()
@@ -67,7 +71,8 @@ class StatsController extends Controller
                 'time'     => $a->scanned_at?->toIso8601String(),
             ]);
 
-        $recentUsers = User::orderByDesc('created_at')
+        $recentUsers = User::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->orderByDesc('created_at')
             ->limit(6)
             ->get()
             ->map(fn (User $u) => [
@@ -101,36 +106,36 @@ class StatsController extends Controller
      */
     public function dashboardStats(): JsonResponse
     {
-        $data = Cache::remember('admin_dashboard_stats', 180, function () {
-            $totalStudents    = Student::count();
-            $totalTeachers    = Teacher::count();
-            $todaysAttendance = Attendance::whereDate('scanned_at', now()->toDateString())->count();
+        $schoolId = auth()->user()->school_id ?? null;
+        $cacheKey = 'admin_dashboard_stats_' . ($schoolId ?? 'super');
 
-            // Male/Female counts for today
-            // NOTE:
-            // The frontend's population modal uses:
-            //  - `type=male|female` => filters by `students.gender` (not attendance)
-            //  - `type=absent`       => filters by "no attendance today"
-            // So dashboardStats male_today/female_today must match that behavior.
-            $maleToday = Student::where('gender', 'Male')->count();
-            $femaleToday = Student::where('gender', 'Female')->count();
+        $data = Cache::remember($cacheKey, 180, function () use ($schoolId) {
+            $totalStudents    = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->count();
+            $totalTeachers    = User::where('role_id', 2)->when($schoolId, fn($q) => $q->where('school_id', $schoolId))->count();
+            $todaysAttendance = Attendance::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+                ->whereDate('scanned_at', now()->toDateString())->count();
 
-            // Absent today = Total students - Total unique students present today
-            // Note: Use DISTINCT student_id in case students check in/out multiple times.
-            $presentCount = Attendance::whereDate('scanned_at', now()->toDateString())
+            $maleToday   = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->where('gender', 'Male')->count();
+            $femaleToday = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->where('gender', 'Female')->count();
+
+            $presentCount = Attendance::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+                ->whereDate('scanned_at', now()->toDateString())
                 ->distinct('student_id')
                 ->count('student_id');
             $absentToday = max(0, $totalStudents - $presentCount);
 
-            $attendancePerGrade = DB::table('attendance')
+            $attendanceQuery = DB::table('attendance')
                 ->join('students', 'attendance.student_id', '=', 'students.id')
                 ->whereDate('attendance.scanned_at', now()->toDateString())
                 ->select('students.grade', DB::raw('count(*) as count'))
-                ->groupBy('students.grade')
-                ->get()
-                ->toArray();
+                ->groupBy('students.grade');
+            if ($schoolId) {
+                $attendanceQuery->where('attendance.school_id', $schoolId);
+            }
+            $attendancePerGrade = $attendanceQuery->get()->toArray();
 
-            $historicalAverage = Attendance::whereDate('scanned_at', '<', now()->toDateString())
+            $historicalAverage = Attendance::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+                ->whereDate('scanned_at', '<', now()->toDateString())
                 ->select(DB::raw('DATE(scanned_at) as date'), DB::raw('count(*) as count'))
                 ->groupBy('date')
                 ->get()
@@ -162,19 +167,17 @@ class StatsController extends Controller
      */
     public function attendanceTrends(Request $request): JsonResponse
     {
-        $groupBy = $request->input('group_by', 'day');
-        $grade   = $request->input('grade');
-        $section = $request->input('section');
+        $groupBy  = $request->input('group_by', 'day');
+        $grade    = $request->input('grade');
+        $section  = $request->input('section');
+        $schoolId = auth()->user()->school_id ?? null;
 
         $query = Attendance::query()
-            ->join('students', 'attendance.student_id', '=', 'students.id');
+            ->join('students', 'attendance.student_id', '=', 'students.id')
+            ->when($schoolId, fn($q) => $q->where('attendance.school_id', $schoolId));
 
-        if ($grade) {
-            $query->where('students.grade', $grade);
-        }
-        if ($section) {
-            $query->where('students.section', $section);
-        }
+        if ($grade)   { $query->where('students.grade', $grade); }
+        if ($section) { $query->where('students.section', $section); }
 
         match ($groupBy) {
             'month' => $query
@@ -278,8 +281,11 @@ class StatsController extends Controller
      */
     public function getPopulationDetails(Request $request): \Illuminate\Http\JsonResponse
     {
-        $type = $request->query('type');
-        $query = \App\Models\Student::query()->orderBy('last_name')->orderBy('first_name');
+        $type     = $request->query('type');
+        $schoolId = auth()->user()->school_id ?? null;
+        $query    = \App\Models\Student::query()
+            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->orderBy('last_name')->orderBy('first_name');
 
         switch ($type) {
             case 'male':
@@ -296,12 +302,12 @@ class StatsController extends Controller
                 break;
             case 'teacher_students':
                 $teacherId = $request->query('teacher_id');
-                $teacher = \App\Models\User::find($teacherId);
+                $teacher   = \App\Models\User::find($teacherId);
                 if ($teacher && $teacher->grade_level && $teacher->section) {
                     $query->where('grade', $teacher->grade_level)
                           ->where('section', $teacher->section);
                 } else {
-                    $query->where('id', 0); // Empty result fallback if missing assignments
+                    $query->where('id', 0);
                 }
                 break;
             default:

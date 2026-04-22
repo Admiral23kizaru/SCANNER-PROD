@@ -16,20 +16,32 @@
       │ Scan Result Card     │                          │
       └──────────────────────┴──────────────────────────┘
   -->
-  <div class="flex flex-col h-screen w-full bg-slate-900 text-slate-100 overflow-hidden">
+  <!-- Blocking UI for Missing Credentials -->
+  <div v-if="!schoolId || !authToken" class="flex flex-col h-screen w-full bg-slate-900 text-slate-100 items-center justify-center p-6 text-center">
+    <div class="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center mb-6 border border-red-500/50">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+    </div>
+    <h1 class="text-2xl font-black text-white mb-2">Missing School Credentials</h1>
+    <p class="text-slate-400 max-w-md">Please ask your principal to use the launcher to open this terminal.</p>
+  </div>
+
+  <!-- Main Terminal UI -->
+  <div v-else class="flex flex-col h-screen w-full bg-slate-900 text-slate-100 overflow-hidden">
     <!-- ── Header ───────────────────────────────────────────────────────── -->
-    <header class="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-700 bg-slate-800/80 backdrop-blur-md">
+    <header class="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-700 bg-slate-800/80 backdrop-blur-md gap-4 sm:gap-0">
       <!-- Left: branding -->
-      <div class="flex items-center gap-4">
-        <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-black text-xl shadow-lg ring-2 ring-emerald-500/20">G</div>
+      <div class="flex items-center gap-3 sm:gap-4 mb-2 sm:mb-0">
+        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-lg ring-2 ring-emerald-500/20 shrink-0">G</div>
         <div>
-          <h1 class="text-lg font-black text-white leading-none">Guard Terminal</h1>
-          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Live Attendance System</p>
+          <h1 class="text-base sm:text-lg font-black text-white leading-none">Guard Terminal</h1>
+          <p class="text-[8px] sm:text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-1">{{ schoolName }}</p>
         </div>
       </div>
 
-      <!-- Centre: Live clock -->
-      <div class="text-center">
+      <!-- Centre: Live clock (hidden on tiny screens, or shown center) -->
+      <div class="text-center hidden md:block">
         <div class="text-3xl font-black text-white tabular-nums tracking-tighter">{{ currentTime }}</div>
         <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{{ currentDate }}</div>
       </div>
@@ -45,7 +57,7 @@
     <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
       <!-- ── Stats Row ──────────────────────────────────────────────────── -->
       <section class="shrink-0 p-4 border-b border-slate-700 bg-slate-800/20">
-        <div class="grid grid-cols-4 gap-4 max-w-7xl mx-auto">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 max-w-7xl mx-auto">
           <div class="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 flex flex-col items-center justify-center">
             <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Total Today</p>
             <p class="text-3xl font-black text-white leading-none tabular-nums">{{ stats.total_today || 0 }}</p>
@@ -65,10 +77,10 @@
         </div>
       </section>
 
-      <div class="flex flex-1 min-h-0 overflow-hidden">
+      <div class="flex flex-col xl:flex-row flex-1 min-h-0 overflow-y-auto xl:overflow-hidden">
         <!-- ── Main Scanner Area ───────────────────────────────────────── -->
-        <section class="flex-1 flex flex-col p-6 min-w-0 bg-slate-900/50">
-          <div class="flex gap-6 h-full min-h-0">
+        <section class="flex-1 flex flex-col p-4 sm:p-6 min-w-0 bg-slate-900/50 shrink-0">
+          <div class="flex flex-col lg:flex-row gap-6 h-full min-h-0">
 
             <!-- Left: Camera view (html5-qrcode mounts into #qr-reader) -->
             <div class="flex-1 flex flex-col gap-4">
@@ -147,7 +159,7 @@
             </div>
 
             <!-- Right: Last-scanned person result card -->
-            <div class="w-80 flex flex-col gap-4">
+            <div class="w-full lg:w-80 flex flex-col gap-4">
               <h2 class="text-xs font-black text-slate-400 uppercase tracking-wider">Scanning Result</h2>
               <div class="flex-1 rounded-3xl bg-slate-800/40 border border-slate-700/50 p-6 flex flex-col items-center justify-center text-center relative overflow-hidden group">
                 <Transition name="zoom" mode="out-in">
@@ -186,7 +198,7 @@
         </section>
 
         <!-- ── Recent Activity Feed ────────────────────────────────────── -->
-        <section class="w-[420px] shrink-0 bg-slate-800/30 backdrop-blur-3xl border-l border-slate-700 flex flex-col overflow-hidden">
+        <section class="w-full xl:w-[420px] shrink-0 bg-slate-800/30 backdrop-blur-3xl xl:border-l border-t xl:border-t-0 border-slate-700 flex flex-col overflow-hidden min-h-[300px] xl:min-h-0">
           <div class="p-6 border-b border-slate-700 flex items-center justify-between">
             <h2 class="text-sm font-black text-white uppercase tracking-[0.2em]">Recent Activity</h2>
             <div class="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-[9px] font-black text-emerald-500 uppercase">Live Feed</div>
@@ -245,10 +257,15 @@ import { assetPath } from '../../composables/useAsset';
  *
  * See useScanner.js for detailed documentation of each function.
  */
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { Clock, User, Search, LogIn } from 'lucide-vue-next';
 import { RouterLink } from 'vue-router';
 import { useScanner } from '../../composables/useScanner';
+
+const params = new URLSearchParams(window.location.search);
+const schoolId = computed(() => params.get('school_id'));
+const authToken = computed(() => params.get('token'));
+const schoolName = ref(decodeURIComponent(params.get('school_name') || 'Unknown School'));
 
 const {
     // Refs — bound to template
@@ -268,7 +285,7 @@ const {
     formatTime,
     getPhotoUrl,
     manualRetry,
-} = useScanner();
+} = useScanner(schoolId, authToken);
 </script>
 
 <style scoped>

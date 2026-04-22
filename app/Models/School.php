@@ -15,6 +15,11 @@ class School extends Model
 
     protected $fillable = [
         'name',
+        'address',
+        'deped_school_id',
+        'contact_number',
+        'principal_name',
+        'logo_path',
     ];
 
     /* ------------------------------------------------------------------ */

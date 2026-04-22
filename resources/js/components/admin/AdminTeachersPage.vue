@@ -2,8 +2,8 @@
   <div>
     <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
       <!-- Toolbar (match screenshot layout) -->
-      <div class="p-4 sm:p-5 border-b border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-2">
+      <div class="p-4 sm:p-5 border-b border-slate-200 bg-white flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <button
             type="button"
             class="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 shadow-sm transition inline-flex items-center gap-2"
@@ -24,17 +24,17 @@
           </button>
         </div>
 
-        <div class="flex items-center gap-2">
-          <div class="relative">
+        <div class="flex items-center gap-2 w-full md:w-auto">
+          <div class="relative flex-1 md:flex-none">
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <input
               v-model="searchQuery"
               type="search"
               placeholder="Search teachers..."
-              class="w-64 max-w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+              class="w-full md:w-64 rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
             />
           </div>
-          <div class="relative">
+          <div class="relative shrink-0">
             <button
               type="button"
               class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition"

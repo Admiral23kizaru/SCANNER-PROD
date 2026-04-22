@@ -11,6 +11,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * SendSmsNotification — queued job that notifies a student's guardian via Semaphore SMS.
@@ -59,7 +60,7 @@ class SendSmsNotification implements ShouldQueue
      */
     public function handle(): void
     {
-        // ── 1. Resolve the contact number ────────────────────────────────────
+        // ── 1. Resolve the contact number ─────────────────────────────────────
         $contact = $this->formattedNumber ?: ($this->student->contact_number ?: $this->student->emergency_contact);
 
         if (!$contact) {
@@ -67,25 +68,32 @@ class SendSmsNotification implements ShouldQueue
             return;
         }
 
-        // ── 2. Normalise phone number to Semaphore format (639XXXXXXXXX) ─────
+        // ── 2. Normalise phone number to Semaphore format (639XXXXXXXXX) ──────
         $contact = preg_replace('/\D/', '', $contact);
         $contact = preg_replace('/^0/', '63', $contact);
         if (str_starts_with($contact, '9') && strlen($contact) === 10) {
             $contact = '63' . $contact;
         }
 
-        // ── 3. Rapid-fire cooldown (1 minute) ────────────────────────────────
-        // Prevents double-firing when a student accidentally scans twice in a row.
-        // For VIP SMS (pref=2) this is the only gate. For Regular SMS (pref=1) the
-        // per-day gate was already applied in AttendanceController before dispatch.
-        $bypassDuplicateChecks = app()->environment('local');
-        $cooldownKey = "sms_cooldown_{$this->student->id}_{$this->preference}";
-        if (!$bypassDuplicateChecks && Cache::has($cooldownKey)) {
-            Log::info("SMS Skipped: Rapid-fire cooldown active for student {$this->student->id} (pref={$this->preference})");
+        // ── 3. Per-student/session/day rate limit ─────────────────────────────
+        // 1 SMS per student per session per day max.
+        $sessionKey = 'sms:' . $this->student->id . ':' . $this->session . ':' . now()->toDateString();
+        if (RateLimiter::tooManyAttempts($sessionKey, 1)) {
+            Log::info('SMS skipped — already sent this session', ['student_id' => $this->student->id]);
             return;
         }
+        RateLimiter::hit($sessionKey, 43200); // 12 hours
 
-        // ── 4. Load Semaphore credentials ─────────────────────────────────────
+        // ── 4. Global Semaphore API rate limit (max 28 req/min) ───────────────
+        $apiRateKey = 'semaphore:api:rate';
+        if (RateLimiter::tooManyAttempts($apiRateKey, 28)) {
+            Log::info('SMS throttled — Semaphore rate limit reached, retrying in 65s');
+            $this->release(65);
+            return;
+        }
+        RateLimiter::hit($apiRateKey, 60);
+
+        // ── 5. Load Semaphore credentials ─────────────────────────────────────
         $apiKey = config('services.semaphore.key');
         $sender = config('services.semaphore.sender', 'SEMAPHORE');
 

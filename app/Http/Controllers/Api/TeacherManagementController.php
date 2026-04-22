@@ -29,7 +29,14 @@ class TeacherManagementController extends Controller
     /** List all teachers ordered by first name. */
     public function index(): JsonResponse
     {
-        $data = Teacher::orderBy('first_name')->get()->map(fn (Teacher $t) => $this->teacherToArray($t));
+        $schoolId = auth()->user()->school_id ?? null;
+        $data = User::where('role_id', 2)
+            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->orderBy('name')
+            ->get()
+            ->map(fn (User $u) => $this->teacherToArray(
+                Teacher::where('user_id', $u->id)->first() ?? $u
+            ));
 
         return response()->json(['data' => $data]);
     }

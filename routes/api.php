@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\IdCardController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\SetupController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\SectionController;
@@ -21,6 +22,15 @@ Route::controller(AuthController::class)->group(function () {
     Route::post('/login', 'login');
 });
 
+// 1. Public endpoint — Guard Terminal fetches school name for display
+Route::get('/school/{id}/info', function ($id) {
+    $school = \App\Models\School::findOrFail($id);
+    return response()->json(['id' => $school->id, 'name' => $school->name]);
+});
+
+// 2. Bat file launcher — register a new school, admin user, settings, and school year
+Route::post('/setup/register-school', [SetupController::class, 'registerSchool']);
+
 Route::controller(PasswordResetController::class)->prefix('password')->group(function () {
     Route::post('/request-otp', 'requestOtp');
     Route::post('/verify-otp', 'verifyOtp');
@@ -29,7 +39,8 @@ Route::controller(PasswordResetController::class)->prefix('password')->group(fun
 
 Route::controller(AttendanceController::class)->group(function () {
     // Protocol Comment: Source: API Router; Destination: AttendanceController; Function: Creating the bridge for QR scanning.
-    Route::post('/attendance/scan', [AttendanceController::class, 'scan']);
+    // Moved to auth:sanctum
+
     Route::get('/attendance/public/recent', 'publicRecent');
     Route::get('/attendance/public/stats', 'publicStats');  // public stats for Guard Terminal
 });
@@ -53,6 +64,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', 'logout');
         Route::get('/user', 'user');
     });
+
+    Route::post('/attendance/scan', [AttendanceController::class, 'scanPublic']);
 
     /* ------------------------------------------------------------------ */
     /*  ID-card signed URL generators (Teacher + Admin)                    */
