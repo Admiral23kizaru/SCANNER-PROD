@@ -10,7 +10,7 @@
  *   const { cameraStatus, scanMessage, attendanceList, stats, ... } = useScanner();
  */
 
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { Html5Qrcode } from 'html5-qrcode';
 import { scanAttendancePublic, fetchRecentAttendancePublic, fetchGuardStatsPublic } from '../services/attendanceService';
 import { assetPath } from './useAsset';
@@ -31,7 +31,7 @@ const AUTO_RETRY_DELAY_S = 8;
 
 // ─── Composable ───────────────────────────────────────────────────────────────
 
-export function useScanner(schoolId, authToken) {
+export function useScanner(schoolId) {
     // ── Reactive state ──────────────────────────────────────────────────────
 
     /** Camera element reference (bound to the #qr-reader div). */
@@ -300,9 +300,9 @@ export function useScanner(schoolId, authToken) {
             scanProcessing.value = true;
             showMessage('Processing...', 'warning', 0);
             
-            // Inject school_id from URL params
+            // Inject school_id from resolved school lookup
             const payload = { student_id: raw, school_id: schoolId.value };
-            const res = await scanAttendancePublic(payload, authToken.value);
+            const res = await scanAttendancePublic(payload);
 
             if (res?.status !== 'success') {
                 if (res.status === 'already_scanned') {
@@ -477,13 +477,22 @@ export function useScanner(schoolId, authToken) {
     // ── Lifecycle ────────────────────────────────────────────────────────────
 
     onMounted(() => {
-        // Halt camera boot if missing credentials
-        if (!schoolId?.value || !authToken?.value) return;
-
         updateClock();
         clockInterval = setInterval(updateClock, 1000);
-        loadRecent();
-        startCamera();
+
+        // If schoolId is already set (unlikely but safe), boot immediately
+        if (schoolId?.value) {
+            loadRecent();
+            startCamera();
+        }
+    });
+
+    // Watch for schoolId to become truthy (set after API fetch resolves)
+    watch(() => schoolId?.value, (newVal) => {
+        if (newVal && !destroyed) {
+            loadRecent();
+            startCamera();
+        }
     });
 
     onUnmounted(async () => {

@@ -28,6 +28,15 @@ Route::get('/school/{id}/info', function ($id) {
     return response()->json(['id' => $school->id, 'name' => $school->name]);
 });
 
+// 2. Public endpoint — Guard Terminal resolves DepEd school ID to internal school_id + name
+Route::get('/school/by-deped-id/{depedId}', function ($depedId) {
+    $school = \App\Models\School::where('deped_school_id', $depedId)->firstOrFail();
+    return response()->json([
+        'id'   => $school->id,
+        'name' => $school->name,
+    ]);
+});
+
 // 2. Bat file launcher — register a new school, admin user, settings, and school year
 Route::post('/setup/register-school', [SetupController::class, 'registerSchool']);
 
@@ -38,8 +47,8 @@ Route::controller(PasswordResetController::class)->prefix('password')->group(fun
 });
 
 Route::controller(AttendanceController::class)->group(function () {
-    // Protocol Comment: Source: API Router; Destination: AttendanceController; Function: Creating the bridge for QR scanning.
-    // Moved to auth:sanctum
+    // Public scan endpoint — Guard Terminal sends school_id in the request body
+    Route::post('/attendance/scan', [AttendanceController::class, 'scanPublic']);
 
     Route::get('/attendance/public/recent', 'publicRecent');
     Route::get('/attendance/public/stats', 'publicStats');  // public stats for Guard Terminal

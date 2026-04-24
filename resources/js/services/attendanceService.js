@@ -48,7 +48,7 @@ const API_BASE = import.meta.env.VITE_API_SERVER || '';
  *   stats: { total_today: number, present_count: number, late_count: number, absent_count: number }
  * }>} Full scan response from the backend.
  */
-export async function scanAttendancePublic(data, token) {
+export async function scanAttendancePublic(data) {
     const sessionName = new Date().getHours() < 12 ? 'morning' : 'dismissal';
     const res = await axios.post(
         `${API_BASE}/api/attendance/scan`,
@@ -58,7 +58,7 @@ export async function scanAttendancePublic(data, token) {
             session: sessionName
         },
         { 
-            headers: { ...jsonHeaders, Authorization: `Bearer ${token}` },
+            headers: jsonHeaders,
             withCredentials: false 
         }
     );

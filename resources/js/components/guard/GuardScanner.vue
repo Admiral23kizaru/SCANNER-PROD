@@ -17,7 +17,7 @@
       └──────────────────────┴──────────────────────────┘
   -->
   <!-- Blocking UI for Missing Credentials -->
-  <div v-if="!schoolId || !authToken" class="flex flex-col h-screen w-full bg-slate-900 text-slate-100 items-center justify-center p-6 text-center">
+  <div v-if="!depedId" class="flex flex-col h-screen w-full bg-slate-900 text-slate-100 items-center justify-center p-6 text-center">
     <div class="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center mb-6 border border-red-500/50">
       <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -25,6 +25,12 @@
     </div>
     <h1 class="text-2xl font-black text-white mb-2">Missing School Credentials</h1>
     <p class="text-slate-400 max-w-md">Please ask your principal to use the launcher to open this terminal.</p>
+  </div>
+
+  <!-- Loading state while fetching school info -->
+  <div v-else-if="!schoolReady" class="flex flex-col h-screen w-full bg-slate-900 text-slate-100 items-center justify-center p-6 text-center">
+    <div class="w-12 h-12 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mb-6"></div>
+    <p class="text-slate-400 text-sm font-bold uppercase tracking-widest">Loading School Info...</p>
   </div>
 
   <!-- Main Terminal UI -->
@@ -257,15 +263,20 @@ import { assetPath } from '../../composables/useAsset';
  *
  * See useScanner.js for detailed documentation of each function.
  */
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import axios from 'axios';
 import { Clock, User, Search, LogIn } from 'lucide-vue-next';
 import { RouterLink } from 'vue-router';
 import { useScanner } from '../../composables/useScanner';
 
+// Read deped_id from URL (e.g. ?deped_id=128191)
 const params = new URLSearchParams(window.location.search);
-const schoolId = computed(() => params.get('school_id'));
-const authToken = computed(() => params.get('token'));
-const schoolName = ref(decodeURIComponent(params.get('school_name') || 'Unknown School'));
+const depedId = params.get('deped_id');
+
+// These get populated after the API lookup
+const schoolId = ref(null);
+const schoolName = ref('Unknown School');
+const schoolReady = ref(false);
 
 const {
     // Refs — bound to template
@@ -285,7 +296,22 @@ const {
     formatTime,
     getPhotoUrl,
     manualRetry,
-} = useScanner(schoolId, authToken);
+} = useScanner(schoolId);
+
+// Fetch school info from deped_id on mount
+onMounted(async () => {
+    if (!depedId) return;
+    try {
+        const API_BASE = import.meta.env.VITE_API_SERVER || '';
+        const { data } = await axios.get(`${API_BASE}/api/school/by-deped-id/${depedId}`);
+        schoolId.value = data.id;
+        schoolName.value = data.name;
+        schoolReady.value = true;
+    } catch (err) {
+        console.error('Failed to fetch school info:', err);
+        schoolName.value = 'School Not Found';
+    }
+});
 </script>
 
 <style scoped>
