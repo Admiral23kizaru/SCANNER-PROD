@@ -55,23 +55,25 @@ class AttendanceController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'student_id' => ['required', 'string'],
-                'school_id'  => ['required', 'integer', 'exists:schools,id'],
+                'deped_id'   => ['required', 'string', 'exists:schools,deped_school_id'],
                 'session'    => ['required', 'string'],
             ], [
                 'student_id.required' => 'Invalid QR code.',
-                'school_id.required'  => 'School missing from terminal config.',
+                'deped_id.required'   => 'School missing from terminal config.',
+                'deped_id.exists'     => 'School not found in system.',
                 'session.required'    => 'Session determines the log period.',
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
                     'status'  => 'invalid',
-                    'message' => 'Invalid QR code.',
+                    'message' => 'Invalid QR code or School config.',
                     'errors'  => $validator->errors(),
                 ], 422);
             }
 
-            $schoolId = $request->input('school_id');
+            $school   = \App\Models\School::where('deped_school_id', $request->input('deped_id'))->first();
+            $schoolId = $school->id;
             $input    = trim((string) $request->student_id);
             $person   = null;
             $personType = 'student';

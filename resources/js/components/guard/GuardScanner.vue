@@ -27,12 +27,6 @@
     <p class="text-slate-400 max-w-md">Please ask your principal to use the launcher to open this terminal.</p>
   </div>
 
-  <!-- Loading state while fetching school info -->
-  <div v-else-if="!schoolReady" class="flex flex-col h-screen w-full bg-slate-900 text-slate-100 items-center justify-center p-6 text-center">
-    <div class="w-12 h-12 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mb-6"></div>
-    <p class="text-slate-400 text-sm font-bold uppercase tracking-widest">Loading School Info...</p>
-  </div>
-
   <!-- Main Terminal UI -->
   <div v-else class="flex flex-col h-screen w-full bg-slate-900 text-slate-100 overflow-hidden">
     <!-- ── Header ───────────────────────────────────────────────────────── -->
@@ -263,20 +257,15 @@ import { assetPath } from '../../composables/useAsset';
  *
  * See useScanner.js for detailed documentation of each function.
  */
-import { ref, computed, onMounted } from 'vue';
-import axios from 'axios';
+import { computed } from 'vue';
 import { Clock, User, Search, LogIn } from 'lucide-vue-next';
 import { RouterLink } from 'vue-router';
 import { useScanner } from '../../composables/useScanner';
 
-// Read deped_id from URL (e.g. ?deped_id=128191)
+// Read deped_id and school_name from URL
 const params = new URLSearchParams(window.location.search);
-const depedId = params.get('deped_id');
-
-// These get populated after the API lookup
-const schoolId = ref(null);
-const schoolName = ref('Unknown School');
-const schoolReady = ref(false);
+const depedId = computed(() => params.get('deped_id'));
+const schoolName = computed(() => params.get('school_name') || 'Unknown School');
 
 const {
     // Refs — bound to template
@@ -296,22 +285,7 @@ const {
     formatTime,
     getPhotoUrl,
     manualRetry,
-} = useScanner(schoolId);
-
-// Fetch school info from deped_id on mount
-onMounted(async () => {
-    if (!depedId) return;
-    try {
-        const API_BASE = import.meta.env.VITE_API_SERVER || '';
-        const { data } = await axios.get(`${API_BASE}/api/school/by-deped-id/${depedId}`);
-        schoolId.value = data.id;
-        schoolName.value = data.name;
-        schoolReady.value = true;
-    } catch (err) {
-        console.error('Failed to fetch school info:', err);
-        schoolName.value = 'School Not Found';
-    }
-});
+} = useScanner(depedId);
 </script>
 
 <style scoped>

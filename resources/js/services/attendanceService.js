@@ -54,7 +54,7 @@ export async function scanAttendancePublic(data) {
         `${API_BASE}/api/attendance/scan`,
         { 
             student_id: data.student_id,
-            school_id: data.school_id,
+            deped_id: data.deped_id,
             session: sessionName
         },
         { 

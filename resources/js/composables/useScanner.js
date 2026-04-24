@@ -10,7 +10,7 @@
  *   const { cameraStatus, scanMessage, attendanceList, stats, ... } = useScanner();
  */
 
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { Html5Qrcode } from 'html5-qrcode';
 import { scanAttendancePublic, fetchRecentAttendancePublic, fetchGuardStatsPublic } from '../services/attendanceService';
 import { assetPath } from './useAsset';
@@ -31,7 +31,7 @@ const AUTO_RETRY_DELAY_S = 8;
 
 // ─── Composable ───────────────────────────────────────────────────────────────
 
-export function useScanner(schoolId) {
+export function useScanner(depedId) {
     // ── Reactive state ──────────────────────────────────────────────────────
 
     /** Camera element reference (bound to the #qr-reader div). */
@@ -300,8 +300,8 @@ export function useScanner(schoolId) {
             scanProcessing.value = true;
             showMessage('Processing...', 'warning', 0);
             
-            // Inject school_id from resolved school lookup
-            const payload = { student_id: raw, school_id: schoolId.value };
+            // Inject deped_id from URL
+            const payload = { student_id: raw, deped_id: depedId.value };
             const res = await scanAttendancePublic(payload);
 
             if (res?.status !== 'success') {
@@ -477,22 +477,13 @@ export function useScanner(schoolId) {
     // ── Lifecycle ────────────────────────────────────────────────────────────
 
     onMounted(() => {
+        // Halt camera boot if missing credentials
+        if (!depedId?.value) return;
+
         updateClock();
         clockInterval = setInterval(updateClock, 1000);
-
-        // If schoolId is already set (unlikely but safe), boot immediately
-        if (schoolId?.value) {
-            loadRecent();
-            startCamera();
-        }
-    });
-
-    // Watch for schoolId to become truthy (set after API fetch resolves)
-    watch(() => schoolId?.value, (newVal) => {
-        if (newVal && !destroyed) {
-            loadRecent();
-            startCamera();
-        }
+        loadRecent();
+        startCamera();
     });
 
     onUnmounted(async () => {
