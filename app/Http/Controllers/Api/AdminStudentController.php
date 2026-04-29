@@ -24,7 +24,9 @@ class AdminStudentController extends Controller
     /** Returns the school_id of the current admin. NULL = SuperAdmin (sees all). */
     private function schoolScope()
     {
-        return auth()->user()->school_id;
+        /** @var \App\Models\User|null $user */
+        $user = auth()->user();
+        return $user?->school_id;
     }
 
     /* ====================================================================== */

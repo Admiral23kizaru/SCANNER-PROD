@@ -457,6 +457,12 @@ import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeach
 const teachers = ref([]);
 const searchQuery = ref('');
 const loading = ref(false);
+const loadError = ref('');
+
+function getAuthHeaders() {
+  const token = localStorage.getItem('scan_up_token');
+  return token ? { Authorization: `Bearer ${token}`, Accept: 'application/json' } : { Accept: 'application/json' };
+}
 
 const showFilterPanel = ref(false);
 const filterGrade = ref('');
@@ -560,7 +566,10 @@ const filteredTeachers = computed(() => {
 });
 
 const emptyTeachersMessage = computed(() => {
-  if (!teachers.value.length) return 'No teachers yet.';
+  if (!teachers.value.length) {
+    if (loadError.value) return loadError.value;
+    return 'No teachers yet.';
+  }
   if (filteredTeachers.value.length) return '';
   if (searchQuery.value.trim()) return 'No teachers match your search.';
   if (filterGrade.value || filterSection.value) return 'No teachers match the selected filters.';
@@ -574,7 +583,7 @@ function clearGradeSectionFilters() {
 
 async function loadSchoolSections() {
   try {
-    const res = await axios.get('/api/admin/sections');
+    const res = await axios.get('/api/admin/sections', { headers: getAuthHeaders() });
     schoolSections.value = res.data?.data || [];
   } catch {
     schoolSections.value = [];
@@ -753,6 +762,7 @@ function confirmDelete(t) {
 
 async function load() {
   loading.value = true;
+  loadError.value = '';
   try {
     const [res] = await Promise.all([
       fetchTeachers(),
@@ -762,6 +772,27 @@ async function load() {
     photoLoadError.value = {};
   } catch {
     teachers.value = [];
+    loadError.value = 'Failed to load teachers. Please refresh and try again.';
+
+    // Fallback: if /api/admin/teachers is failing server-side, still show teacher names
+    // from the section-scoped dropdown endpoint.
+    try {
+      const res = await axios.get('/api/admin/sections/teachers-list', { headers: getAuthHeaders() });
+      const list = res.data?.data || [];
+      teachers.value = list.map((t) => ({
+        id: t.id,
+        name: t.name,
+        employee_id: null,
+        job_title: null,
+        grade_level: t.grade_level ?? null,
+        section: t.section ?? null,
+        profile_photo: null,
+        created_at: null,
+      }));
+      loadError.value = '';
+    } catch (_) {
+      // keep original loadError
+    }
   } finally {
     loading.value = false;
   }

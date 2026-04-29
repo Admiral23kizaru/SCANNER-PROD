@@ -236,7 +236,10 @@ async function submitForm() {
       password: form.password
     };
     
-    await axios.post('/api/admin/schools', payload);
+    const token = localStorage.getItem('scan_up_token');
+    const headers = { Accept: 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    await axios.post('/api/admin/schools', payload, { headers });
     
     successData.value = {
       school_name: detectedSchool.value,

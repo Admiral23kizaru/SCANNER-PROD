@@ -1,20 +1,16 @@
 <?php
 require __DIR__.'/vendor/autoload.php';
 $app = require_once __DIR__.'/bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
-$response = $kernel->handle(
-    $request = Illuminate\Http\Request::create(
-        '/api/admin/teachers',
-        'GET'
-    )
-);
-$request->setUserResolver(function() {
-    return \App\Models\User::where('email', 'admin@gmail.com')->first();
-});
-try {
-    $controller = app(\App\Http\Controllers\Api\TeacherManagementController::class);
-    $response = $controller->index();
-    echo $response->getContent();
-} catch (\Exception $e) {
-    echo "ERROR: " . $e->getMessage() . "\n" . $e->getTraceAsString();
-}
+$kernel = $app->make(\Illuminate\Contracts\Http\Kernel::class);
+
+// Create a token for user 1
+$user = \App\Models\User::find(1);
+$token = $user->createToken('debug')->plainTextToken;
+
+$req = \Illuminate\Http\Request::create('/api/admin/teachers', 'GET');
+$req->headers->set('Accept', 'application/json');
+$req->headers->set('Authorization', 'Bearer ' . $token);
+
+$resp = $kernel->handle($req);
+echo "STATUS: " . $resp->getStatusCode() . "\n";
+echo $resp->getContent() . "\n";

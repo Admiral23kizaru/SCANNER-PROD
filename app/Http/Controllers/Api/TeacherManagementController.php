@@ -29,24 +29,35 @@ class TeacherManagementController extends Controller
     /** List all teachers ordered by first name. */
     public function index(): JsonResponse
     {
-        try {
-            $schoolId = auth()->user()->school_id ?? null;
-            $data = User::where('role_id', 2)
-                ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
-                ->orderBy('name')
-                ->get()
-                ->map(function (User $u) {
-                    $teacher = Teacher::where('email', $u->email)->first();
-                    return $this->teacherToArray($teacher ?? $u);
-                });
+        /** @var \App\Models\User|null $user */
+        $user = auth()->user();
+        $schoolId = $user?->school_id;
 
-            return response()->json(['data' => $data]);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('TeacherManagement@index failed: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
+        $data = User::where('role_id', 2)
+            ->when($schoolId, function ($q) use ($schoolId) {
+                $q->where('school_id', $schoolId);
+            })
+            ->orderBy('name')
+            ->get()
+            ->map(function ($u) {
+                $photo = $u->profile_photo
+                    ? ltrim(str_replace('storage/', '', $u->profile_photo), '/')
+                    : null;
+
+                return [
+                    'id'            => $u->id,
+                    'name'          => $u->name,
+                    'employee_id'   => $u->employee_id,
+                    'school_name'   => $u->school_name,
+                    'job_title'     => $u->job_title,
+                    'grade_level'   => $u->grade_level,
+                    'section'       => $u->section,
+                    'profile_photo' => $photo,
+                    'created_at'    => $u->created_at?->toIso8601String(),
+                ];
+            });
+
+        return response()->json(['data' => $data]);
     }
 
     /* ====================================================================== */
