@@ -29,16 +29,24 @@ class TeacherManagementController extends Controller
     /** List all teachers ordered by first name. */
     public function index(): JsonResponse
     {
-        $schoolId = auth()->user()->school_id ?? null;
-        $data = User::where('role_id', 2)
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
-            ->orderBy('name')
-            ->get()
-            ->map(fn (User $u) => $this->teacherToArray(
-                Teacher::where('user_id', $u->id)->first() ?? $u
-            ));
+        try {
+            $schoolId = auth()->user()->school_id ?? null;
+            $data = User::where('role_id', 2)
+                ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+                ->orderBy('name')
+                ->get()
+                ->map(function (User $u) {
+                    $teacher = Teacher::where('email', $u->email)->first();
+                    return $this->teacherToArray($teacher ?? $u);
+                });
 
-        return response()->json(['data' => $data]);
+            return response()->json(['data' => $data]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('TeacherManagement@index failed: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     /* ====================================================================== */
@@ -270,14 +278,19 @@ class TeacherManagementController extends Controller
      * Action: Implementing Section-based Teacher Assignment and Gender-specific Dashboard Analytics.
      * Serialize a Teacher model into the standard API response shape.
      */
-    private function teacherToArray(Teacher $teacher): array
+    private function teacherToArray($teacher): array
     {
         // Also fetch grade_level/section from the linked users record
         $user = User::where('email', $teacher->email)->first();
 
+        $name = trim(($teacher->first_name ?? '') . ' ' . ($teacher->last_name ?? ''));
+        if (empty($name) && isset($teacher->name)) {
+            $name = $teacher->name;
+        }
+
         return [
             'id'            => $teacher->id,
-            'name'          => trim(($teacher->first_name ?? '') . ' ' . ($teacher->last_name ?? '')),
+            'name'          => $name,
             'employee_id'   => $teacher->employee_id,
             'school_name'   => $teacher->school_name,
             'job_title'     => $teacher->job_title,

@@ -16,19 +16,8 @@
       │ Scan Result Card     │                          │
       └──────────────────────┴──────────────────────────┘
   -->
-  <!-- Blocking UI for Missing Credentials -->
-  <div v-if="!depedId" class="flex flex-col h-screen w-full bg-slate-900 text-slate-100 items-center justify-center p-6 text-center">
-    <div class="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center mb-6 border border-red-500/50">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-      </svg>
-    </div>
-    <h1 class="text-2xl font-black text-white mb-2">Missing School Credentials</h1>
-    <p class="text-slate-400 max-w-md">Please ask your principal to use the launcher to open this terminal.</p>
-  </div>
-
   <!-- Main Terminal UI -->
-  <div v-else class="flex flex-col h-screen w-full bg-slate-900 text-slate-100 overflow-hidden">
+  <div class="flex flex-col h-screen w-full bg-slate-900 text-slate-100 overflow-hidden">
     <!-- ── Header ───────────────────────────────────────────────────────── -->
     <header class="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-700 bg-slate-800/80 backdrop-blur-md gap-4 sm:gap-0">
       <!-- Left: branding -->
@@ -46,12 +35,6 @@
         <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{{ currentDate }}</div>
       </div>
 
-      <!-- Right: login button for Teacher / Admin -->
-      <RouterLink to="/login"
-         class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-700/60 hover:bg-emerald-600 border border-slate-600 hover:border-emerald-500 text-slate-300 hover:text-white font-bold text-xs uppercase tracking-widest transition-all duration-200 shadow-lg group">
-        <LogIn class="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-        Teacher / Admin Login
-      </RouterLink>
     </header>
 
     <div class="flex-1 flex flex-col min-h-0 overflow-hidden">

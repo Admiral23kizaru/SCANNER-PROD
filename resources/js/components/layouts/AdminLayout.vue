@@ -5,6 +5,7 @@
       v-model:currentPage="currentPage"
       v-model:isSidebarOpen="isSidebarOpen"
       :logoSrc="logoSrc"
+      :user="user"
     />
 
     <!-- Mobile sidebar overlay -->
@@ -33,6 +34,7 @@
           <AdminTeachersPage v-else-if="currentPage === 'teachers'" />
           <AdminStudentsPage v-else-if="currentPage === 'students'" />
           <ManageSections v-else-if="currentPage === 'sections'" />
+          <AdminCreateSchoolPage v-else-if="currentPage === 'create-school'" />
         </div>
       </main>
     </div>
@@ -54,6 +56,7 @@ import AdminTeachersPage from '../admin/AdminTeachersPage.vue';
 import AdminStudentsPage from '../admin/AdminStudentsPage.vue';
 import ManageSections from '../admin/ManageSections.vue';
 import AdminProfileModal from '../admin/AdminProfileModal.vue';
+import AdminCreateSchoolPage from '../admin/AdminCreateSchoolPage.vue';
 
 const router = useRouter();
 const currentPage = ref('dashboard');

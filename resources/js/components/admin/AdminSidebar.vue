@@ -78,12 +78,28 @@
         <FolderPlus class="h-4 w-4" />
         <span>Manage Sections</span>
       </button>
+
+      <!-- Super Admin Only: Create School Account -->
+      <button
+        v-if="user && user.school_id === null"
+        type="button"
+        class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent cursor-pointer"
+        :class="
+          currentPage === 'create-school'
+            ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm border-l-blue-600'
+            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+        "
+        @click="updatePage('create-school')"
+      >
+        <Building2 class="h-4 w-4" />
+        <span>Create School Account</span>
+      </button>
     </nav>
   </aside>
 </template>
 
 <script setup>
-import { LayoutDashboard, Users, GraduationCap, FolderPlus } from 'lucide-vue-next';
+import { LayoutDashboard, Users, GraduationCap, FolderPlus, Building2 } from 'lucide-vue-next';
 
 const props = defineProps({
   currentPage: {
@@ -97,6 +113,10 @@ const props = defineProps({
   logoSrc: {
     type: String,
     required: true
+  },
+  user: {
+    type: Object,
+    default: null
   }
 });
 

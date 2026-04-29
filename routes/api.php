@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\IdCardController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\SetupController;
+use App\Http\Controllers\Api\SchoolController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\SectionController;
@@ -95,6 +96,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::controller(AdminController::class)->group(function () {
             Route::get('/dashboard', 'dashboard');
         });
+
+        Route::post('/schools', [\App\Http\Controllers\Api\SchoolController::class, 'store']);
 
         Route::controller(StatsController::class)->group(function () {
             Route::get('/stats', 'index');

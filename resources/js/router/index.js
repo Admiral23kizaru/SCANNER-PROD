@@ -74,6 +74,13 @@ const routes = [
         path: '/',
         name: 'Scanner',
         component: GuardScanner,
+        beforeEnter: (to, from, next) => {
+            if (!to.query.school_name && !to.query.deped_id) {
+                next({ path: '/login' });
+            } else {
+                next();
+            }
+        }
     },
     {
         path: '/login',
