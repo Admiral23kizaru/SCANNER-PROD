@@ -84,6 +84,19 @@ class User extends Authenticatable
      */
     public function getSchoolIdAttribute(): ?int
     {
+        // Prefer the actual DB column value if present.
+        // Important: Super Admin accounts intentionally have school_id = NULL.
+        if (array_key_exists('school_id', $this->attributes) && $this->attributes['school_id'] !== null) {
+            return (int) $this->attributes['school_id'];
+        }
+
+        // If this is an Admin account and the DB column is NULL, treat it as Super Admin.
+        // Do not "infer" a school from school_name/teachers table, otherwise the UI
+        // cannot reliably show Super Admin-only features (e.g. Create School Account).
+        if (($this->attributes['role_id'] ?? null) === 1) {
+            return null;
+        }
+
         $teacher = Teacher::where('email', $this->email)->first();
         if ($teacher?->school_id) {
             return $teacher->school_id;
@@ -96,6 +109,8 @@ class User extends Authenticatable
             }
         }
 
-        return School::first()?->id;
+        // If we cannot resolve a school, keep NULL (do not default to "first school"),
+        // otherwise role-based UI (Super Admin) cannot be detected reliably.
+        return null;
     }
 }

@@ -22,9 +22,9 @@
     <header class="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-700 bg-slate-800/80 backdrop-blur-md gap-4 sm:gap-0">
       <!-- Left: branding -->
       <div class="flex items-center gap-3 sm:gap-4 mb-2 sm:mb-0">
-        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-lg ring-2 ring-emerald-500/20 shrink-0">G</div>
+        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-lg ring-2 ring-emerald-500/20 shrink-0">A</div>
         <div>
-          <h1 class="text-base sm:text-lg font-black text-white leading-none">Guard Terminal</h1>
+          <h1 class="text-base sm:text-lg font-black text-white leading-none">Attendance Terminal</h1>
           <p class="text-[8px] sm:text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-1">{{ schoolName }}</p>
         </div>
       </div>
