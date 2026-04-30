@@ -13,6 +13,8 @@ class SchoolYear extends Model
     protected $fillable = [
         'school_id',
         'name',
+        'start_date',
+        'end_date',
         'is_active',
     ];
 

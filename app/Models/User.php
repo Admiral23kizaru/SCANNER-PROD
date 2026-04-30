@@ -31,6 +31,8 @@ class User extends Authenticatable
         'designation',
         'profile_photo',
         'employee_id',
+        'school_id',
+        'status',
         'school_name',
         'grade_level',
         'section',

@@ -75,11 +75,13 @@ const routes = [
         name: 'Scanner',
         component: GuardScanner,
         beforeEnter: (to, from, next) => {
-            if (!to.query.school_name && !to.query.deped_id) {
+            const schoolName = to.query.school_name;
+            const depedId = to.query.deped_id;
+            if (!schoolName || !depedId) {
                 next({ path: '/login' });
-            } else {
-                next();
+                return;
             }
+            next();
         }
     },
     {
@@ -97,6 +99,12 @@ const routes = [
     {
         path: '/admin',
         name: 'Admin',
+        component: AdminLayout,
+        beforeEnter: roleGuard('Admin'),
+    },
+    {
+        path: '/admin/schools/create',
+        name: 'AdminCreateSchool',
         component: AdminLayout,
         beforeEnter: roleGuard('Admin'),
     },

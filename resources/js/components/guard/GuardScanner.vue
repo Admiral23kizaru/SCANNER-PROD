@@ -241,14 +241,21 @@ import { assetPath } from '../../composables/useAsset';
  * See useScanner.js for detailed documentation of each function.
  */
 import { computed } from 'vue';
-import { Clock, User, Search, LogIn } from 'lucide-vue-next';
-import { RouterLink } from 'vue-router';
+import { useRoute } from 'vue-router';
+import { Clock, User, Search } from 'lucide-vue-next';
 import { useScanner } from '../../composables/useScanner';
 
-// Read deped_id and school_name from URL
-const params = new URLSearchParams(window.location.search);
-const depedId = computed(() => params.get('deped_id'));
-const schoolName = computed(() => params.get('school_name') || 'Unknown School');
+const route = useRoute();
+
+const depedId = computed(() => {
+    const v = route.query.deped_id;
+    return Array.isArray(v) ? v[0] : v;
+});
+const schoolName = computed(() => {
+    const v = route.query.school_name;
+    const raw = Array.isArray(v) ? v[0] : v;
+    return raw ? String(raw) : 'Unknown School';
+});
 
 const {
     // Refs — bound to template

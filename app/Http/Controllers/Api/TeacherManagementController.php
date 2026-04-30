@@ -26,38 +26,19 @@ class TeacherManagementController extends Controller
     /*  Read                                                                   */
     /* ====================================================================== */
 
-    /** List all teachers ordered by first name. */
+    /** List all teachers for the authenticated admin's school (role Teacher). */
     public function index(): JsonResponse
     {
-        /** @var \App\Models\User|null $user */
-        $user = auth()->user();
-        $schoolId = $user?->school_id;
+        $schoolId = auth()->user()->school_id;
 
-        $data = User::where('role_id', 2)
+        $teachers = User::where('role_id', 2)
             ->when($schoolId, function ($q) use ($schoolId) {
                 $q->where('school_id', $schoolId);
             })
             ->orderBy('name')
-            ->get()
-            ->map(function ($u) {
-                $photo = $u->profile_photo
-                    ? ltrim(str_replace('storage/', '', $u->profile_photo), '/')
-                    : null;
+            ->get();
 
-                return [
-                    'id'            => $u->id,
-                    'name'          => $u->name,
-                    'employee_id'   => $u->employee_id,
-                    'school_name'   => $u->school_name,
-                    'job_title'     => $u->job_title,
-                    'grade_level'   => $u->grade_level,
-                    'section'       => $u->section,
-                    'profile_photo' => $photo,
-                    'created_at'    => $u->created_at?->toIso8601String(),
-                ];
-            });
-
-        return response()->json(['data' => $data]);
+        return response()->json($teachers);
     }
 
     /* ====================================================================== */

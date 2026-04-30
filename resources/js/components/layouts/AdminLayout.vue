@@ -1,8 +1,9 @@
 <template>
   <div class="h-screen overflow-hidden bg-slate-50 text-slate-900 flex">
     <!-- Sidebar -->
-    <AdminSidebar 
-      v-model:currentPage="currentPage"
+    <AdminSidebar
+      :currentPage="currentPage"
+      @update:currentPage="onSidebarPage"
       v-model:isSidebarOpen="isSidebarOpen"
       :logoSrc="logoSrc"
       :user="user"
@@ -45,8 +46,8 @@
 
 <script setup>
 import { assetPath } from '../../composables/useAsset';
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { fetchUser } from '../../services/authService';
 import { useLogout } from '../../composables/useLogout';
 import AdminHeader from '../admin/AdminHeader.vue';
@@ -59,6 +60,7 @@ import AdminProfileModal from '../admin/AdminProfileModal.vue';
 import AdminCreateSchoolPage from '../admin/AdminCreateSchoolPage.vue';
 
 const router = useRouter();
+const route = useRoute();
 const currentPage = ref('dashboard');
 const isSidebarOpen = ref(false);
 const logoSrc = assetPath('/logo/depedozamiz.png');
@@ -79,6 +81,7 @@ const pageTitle = computed(() => {
   if (currentPage.value === 'teachers') return 'TEACHERS';
   if (currentPage.value === 'students') return 'STUDENTS';
   if (currentPage.value === 'sections') return 'SECTIONS';
+  if (currentPage.value === 'create-school') return 'CREATE SCHOOL';
   return 'DASHBOARD';
 });
 
@@ -86,8 +89,34 @@ const pageSubtitle = computed(() => {
   if (currentPage.value === 'teachers') return 'Manage teacher accounts and profiles';
   if (currentPage.value === 'students') return 'Master list and records for students';
   if (currentPage.value === 'sections') return 'Create and manage class sections';
+  if (currentPage.value === 'create-school') return 'Register a new school and its admin account';
   return 'Overview of Ozamiz Schools QR-ID System activity';
 });
+
+function syncRouteToCurrentPage() {
+  if (route.name === 'AdminCreateSchool') {
+    currentPage.value = 'create-school';
+  }
+}
+
+function onSidebarPage(page) {
+  currentPage.value = page;
+  if (page === 'create-school') {
+    router.push({ name: 'AdminCreateSchool' });
+    return;
+  }
+  if (route.name === 'AdminCreateSchool') {
+    router.replace({ name: 'Admin' });
+  }
+}
+
+watch(
+  () => route.name,
+  () => {
+    syncRouteToCurrentPage();
+  },
+  { immediate: true },
+);
 
 
 
@@ -96,5 +125,6 @@ onMounted(async () => {
     const data = await fetchUser();
     user.value = data;
   } catch (_) {}
+  syncRouteToCurrentPage();
 });
 </script>

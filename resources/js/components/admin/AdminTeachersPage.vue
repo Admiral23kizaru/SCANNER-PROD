@@ -768,31 +768,12 @@ async function load() {
       fetchTeachers(),
       loadSchoolSections(),
     ]);
-    teachers.value = res.data || [];
+    const list = Array.isArray(res) ? res : (res?.data ?? []);
+    teachers.value = list;
     photoLoadError.value = {};
   } catch {
     teachers.value = [];
     loadError.value = 'Failed to load teachers. Please refresh and try again.';
-
-    // Fallback: if /api/admin/teachers is failing server-side, still show teacher names
-    // from the section-scoped dropdown endpoint.
-    try {
-      const res = await axios.get('/api/admin/sections/teachers-list', { headers: getAuthHeaders() });
-      const list = res.data?.data || [];
-      teachers.value = list.map((t) => ({
-        id: t.id,
-        name: t.name,
-        employee_id: null,
-        job_title: null,
-        grade_level: t.grade_level ?? null,
-        section: t.section ?? null,
-        profile_photo: null,
-        created_at: null,
-      }));
-      loadError.value = '';
-    } catch (_) {
-      // keep original loadError
-    }
   } finally {
     loading.value = false;
   }

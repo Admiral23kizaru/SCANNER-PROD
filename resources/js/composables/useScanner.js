@@ -477,9 +477,6 @@ export function useScanner(depedId) {
     // ── Lifecycle ────────────────────────────────────────────────────────────
 
     onMounted(() => {
-        // Halt camera boot if missing credentials
-        if (!depedId?.value) return;
-
         updateClock();
         clockInterval = setInterval(updateClock, 1000);
         loadRecent();
