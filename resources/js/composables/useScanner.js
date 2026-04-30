@@ -31,7 +31,7 @@ const AUTO_RETRY_DELAY_S = 8;
 
 // ─── Composable ───────────────────────────────────────────────────────────────
 
-export function useScanner(depedId) {
+export function useScanner(depedId, schoolName) {
     // ── Reactive state ──────────────────────────────────────────────────────
 
     /** Camera element reference (bound to the #qr-reader div). */
@@ -300,8 +300,8 @@ export function useScanner(depedId) {
             scanProcessing.value = true;
             showMessage('Processing...', 'warning', 0);
             
-            // Inject deped_id from URL
-            const payload = { student_id: raw, deped_id: depedId.value };
+            // Inject deped_id and school_name from URL
+            const payload = { student_id: raw, deped_id: depedId.value, school_name: schoolName.value };
             const res = await scanAttendancePublic(payload);
 
             if (res?.status !== 'success') {

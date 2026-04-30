@@ -275,7 +275,7 @@ const {
     formatTime,
     getPhotoUrl,
     manualRetry,
-} = useScanner(depedId);
+} = useScanner(depedId, schoolName);
 </script>
 
 <style scoped>

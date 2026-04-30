@@ -28,7 +28,9 @@ class StatsController extends Controller
     /** Return high-level counts: total students, teachers, and today's scan count. */
     public function index(): JsonResponse
     {
-        $schoolId = auth()->user()->school_id ?? null;
+        /** @var \App\Models\User|null $authUser */
+        $authUser = auth()->user();
+        $schoolId = $authUser?->school_id;
         $teacherRoleId = Role::where('name', 'Teacher')->value('id');
         if ($teacherRoleId === null) {
             return response()->json([
@@ -55,7 +57,9 @@ class StatsController extends Controller
     public function overview(): JsonResponse
     {
         $base     = $this->index()->getData(true);
-        $schoolId = auth()->user()->school_id ?? null;
+        /** @var \App\Models\User|null $authUser */
+        $authUser = auth()->user();
+        $schoolId = $authUser?->school_id;
 
         $recentAttendance = Attendance::with('student')
             ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
@@ -106,7 +110,9 @@ class StatsController extends Controller
      */
     public function dashboardStats(): JsonResponse
     {
-        $schoolId = auth()->user()->school_id ?? null;
+        /** @var \App\Models\User|null $authUser */
+        $authUser = auth()->user();
+        $schoolId = $authUser?->school_id;
         $cacheKey = 'admin_dashboard_stats_' . ($schoolId ?? 'super');
 
         $data = Cache::remember($cacheKey, 180, function () use ($schoolId) {
@@ -170,7 +176,9 @@ class StatsController extends Controller
         $groupBy  = $request->input('group_by', 'day');
         $grade    = $request->input('grade');
         $section  = $request->input('section');
-        $schoolId = auth()->user()->school_id ?? null;
+        /** @var \App\Models\User|null $authUser */
+        $authUser = auth()->user();
+        $schoolId = $authUser?->school_id;
 
         $query = Attendance::query()
             ->join('students', 'attendance.student_id', '=', 'students.id')
@@ -282,7 +290,9 @@ class StatsController extends Controller
     public function getPopulationDetails(Request $request): \Illuminate\Http\JsonResponse
     {
         $type     = $request->query('type');
-        $schoolId = auth()->user()->school_id ?? null;
+        /** @var \App\Models\User|null $authUser */
+        $authUser = auth()->user();
+        $schoolId = $authUser?->school_id;
         $query    = \App\Models\Student::query()
             ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
             ->orderBy('last_name')->orderBy('first_name');

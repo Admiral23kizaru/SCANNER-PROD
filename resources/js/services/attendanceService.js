@@ -55,6 +55,7 @@ export async function scanAttendancePublic(data) {
         { 
             student_id: data.student_id,
             deped_id: data.deped_id,
+            school_name: data.school_name,
             session: sessionName
         },
         { 

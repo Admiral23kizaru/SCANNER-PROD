@@ -54,13 +54,13 @@ class AttendanceController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'student_id' => ['required', 'string'],
-                'deped_id'   => ['required', 'string', 'exists:schools,deped_school_id'],
-                'session'    => ['required', 'string'],
+                'student_id'  => ['required', 'string'],
+                'deped_id'    => ['required', 'string'],
+                'school_name' => ['nullable', 'string'],
+                'session'     => ['required', 'string'],
             ], [
                 'student_id.required' => 'Invalid QR code.',
                 'deped_id.required'   => 'School missing from terminal config.',
-                'deped_id.exists'     => 'School not found in system.',
                 'session.required'    => 'Session determines the log period.',
             ]);
 
@@ -72,7 +72,17 @@ class AttendanceController extends Controller
                 ], 422);
             }
 
-            $school   = \App\Models\School::where('deped_school_id', $request->input('deped_id'))->first();
+            $depedId = $request->input('deped_id');
+            $schoolName = $request->input('school_name', 'Unknown School');
+
+            $school = \App\Models\School::where('deped_school_id', $depedId)->first();
+            if (!$school) {
+                $school = \App\Models\School::create([
+                    'name'            => $schoolName,
+                    'deped_school_id' => $depedId,
+                ]);
+            }
+
             $schoolId = $school->id;
             $input    = trim((string) $request->student_id);
             $person   = null;
