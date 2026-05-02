@@ -5,7 +5,7 @@ use App\Http\Controllers\Api\AdminProfileController;
 use App\Http\Controllers\Api\AdminStudentController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\GuardController;
+use App\Http\Controllers\Api\GuardAuthController;
 use App\Http\Controllers\Api\IdCardController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\SetupController;
@@ -39,11 +39,17 @@ Route::get('/school/by-deped-id/{depedId}', function ($depedId) {
     ]);
 });
 
+// PUBLIC — BAT Step 1: check DepEd school ID before POST /guard/login
+Route::get('/school/check/{deped_id}', [SchoolController::class, 'check']);
+
 // 2. Bat file launcher — register a new school, admin user, settings, and school year
 Route::post('/setup/register-school', [SetupController::class, 'registerSchool']);
 
-// Guard Terminal launcher (Bat) — DepEd ID + password → Sanctum token (public)
-Route::post('/guard/login', [GuardController::class, 'login']);
+// PUBLIC — BAT file login (no auth)
+Route::post('/guard/login', [GuardAuthController::class, 'login']);
+
+// PUBLIC — scanner attendance (Guard Terminal kiosk; Bearer optional after bat login)
+Route::post('/attendance/scan', [AttendanceController::class, 'scanPublic']);
 
 Route::controller(PasswordResetController::class)->prefix('password')->group(function () {
     Route::post('/request-otp', 'requestOtp');
@@ -52,9 +58,6 @@ Route::controller(PasswordResetController::class)->prefix('password')->group(fun
 });
 
 Route::controller(AttendanceController::class)->group(function () {
-    // Public scan endpoint — Guard Terminal sends school_id in the request body
-    Route::post('/attendance/scan', [AttendanceController::class, 'scanPublic']);
-
     Route::get('/attendance/public/recent', 'publicRecent');
     Route::get('/attendance/public/stats', 'publicStats');  // public stats for Guard Terminal
 });
@@ -78,8 +81,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', 'logout');
         Route::get('/user', 'user');
     });
-
-    Route::post('/attendance/scan', [AttendanceController::class, 'scanPublic']);
 
     /* ------------------------------------------------------------------ */
     /*  ID-card signed URL generators (Teacher + Admin)                    */

@@ -10,6 +10,7 @@ use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
@@ -28,9 +29,7 @@ class StatsController extends Controller
     /** Return high-level counts: total students, teachers, and today's scan count. */
     public function index(): JsonResponse
     {
-        /** @var \App\Models\User|null $authUser */
-        $authUser = auth()->user();
-        $schoolId = $authUser?->school_id;
+        $schoolId = $this->resolvedAuthUser()?->school_id;
         $teacherRoleId = Role::where('name', 'Teacher')->value('id');
         if ($teacherRoleId === null) {
             return response()->json([
@@ -57,9 +56,7 @@ class StatsController extends Controller
     public function overview(): JsonResponse
     {
         $base     = $this->index()->getData(true);
-        /** @var \App\Models\User|null $authUser */
-        $authUser = auth()->user();
-        $schoolId = $authUser?->school_id;
+        $schoolId = $this->resolvedAuthUser()?->school_id;
 
         $recentAttendance = Attendance::with('student')
             ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
@@ -110,9 +107,7 @@ class StatsController extends Controller
      */
     public function dashboardStats(): JsonResponse
     {
-        /** @var \App\Models\User|null $authUser */
-        $authUser = auth()->user();
-        $schoolId = $authUser?->school_id;
+        $schoolId = $this->resolvedAuthUser()?->school_id;
         $cacheKey = 'admin_dashboard_stats_' . ($schoolId ?? 'super');
 
         $data = Cache::remember($cacheKey, 180, function () use ($schoolId) {
@@ -176,9 +171,7 @@ class StatsController extends Controller
         $groupBy  = $request->input('group_by', 'day');
         $grade    = $request->input('grade');
         $section  = $request->input('section');
-        /** @var \App\Models\User|null $authUser */
-        $authUser = auth()->user();
-        $schoolId = $authUser?->school_id;
+        $schoolId = $this->resolvedAuthUser()?->school_id;
 
         $query = Attendance::query()
             ->join('students', 'attendance.student_id', '=', 'students.id')
@@ -290,9 +283,7 @@ class StatsController extends Controller
     public function getPopulationDetails(Request $request): \Illuminate\Http\JsonResponse
     {
         $type     = $request->query('type');
-        /** @var \App\Models\User|null $authUser */
-        $authUser = auth()->user();
-        $schoolId = $authUser?->school_id;
+        $schoolId = $this->resolvedAuthUser()?->school_id;
         $query    = \App\Models\Student::query()
             ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
             ->orderBy('last_name')->orderBy('first_name');
@@ -325,5 +316,13 @@ class StatsController extends Controller
         }
 
         return response()->json(['data' => $query->get()]);
+    }
+
+    /** Sanctum user narrowed to App\Models\User for typed school_id access. */
+    private function resolvedAuthUser(): ?User
+    {
+        $user = Auth::user();
+
+        return $user instanceof User ? $user : null;
     }
 }

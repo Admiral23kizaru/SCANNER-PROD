@@ -13,6 +13,26 @@ use Illuminate\Support\Facades\DB;
 
 class SchoolController extends Controller
 {
+    /** BAT Step 1 — verify DepEd ID exists before POST /guard/login. */
+    public function check(string $deped_id): JsonResponse
+    {
+        $school = School::where('deped_school_id', $deped_id)->first();
+
+        if (!$school) {
+            return response()->json([
+                'exists'      => false,
+                'school_name' => null,
+                'error'       => 'School ID not found.',
+            ], 404);
+        }
+
+        return response()->json([
+            'exists'      => true,
+            'school_name' => $school->name,
+            'deped_id'    => $school->deped_school_id,
+        ], 200);
+    }
+
     /**
      * Create a new school and its admin account (Super Admin only).
      */
