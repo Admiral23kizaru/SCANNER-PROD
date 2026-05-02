@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AdminProfileController;
 use App\Http\Controllers\Api\AdminStudentController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\GuardController;
 use App\Http\Controllers\Api\IdCardController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\SetupController;
@@ -40,6 +41,9 @@ Route::get('/school/by-deped-id/{depedId}', function ($depedId) {
 
 // 2. Bat file launcher — register a new school, admin user, settings, and school year
 Route::post('/setup/register-school', [SetupController::class, 'registerSchool']);
+
+// Guard Terminal launcher (Bat) — DepEd ID + password → Sanctum token (public)
+Route::post('/guard/login', [GuardController::class, 'login']);
 
 Route::controller(PasswordResetController::class)->prefix('password')->group(function () {
     Route::post('/request-otp', 'requestOtp');
