@@ -293,11 +293,23 @@ class AttendanceController extends Controller
     }
 
     /** Return the 100 most recent attendance records for today (public facing terminal). */
-    public function publicRecent(): JsonResponse
+    public function publicRecent(Request $request): JsonResponse
     {
+        $depedId = $request->query('deped_id');
+
+        $school = null;
+        if ($depedId) {
+            $school = School::where('deped_school_id', $depedId)->first();
+        }
+
+        if (!$school) {
+            return response()->json(['data' => []]);
+        }
+
         $items = Attendance::with('student')
-            ->whereDate('scanned_at', now()->toDateString())
-            ->orderByDesc('scanned_at')
+            ->whereDate('scanned_at', today())
+            ->where('school_id', $school->id)
+            ->latest('scanned_at')
             ->limit(100)
             ->get()
             ->map(fn (Attendance $a) => $this->formatAttendanceRow($a));
@@ -306,18 +318,45 @@ class AttendanceController extends Controller
     }
 
     /** Return today's attendance stats for the public Guard Terminal (no auth required). */
-    public function publicStats(): JsonResponse
+    public function publicStats(Request $request): JsonResponse
     {
-        $today   = now()->toDateString();
-        $present = Attendance::whereDate('scanned_at', $today)->where('session', 'morning')->count();
-        $late    = Attendance::whereDate('scanned_at', $today)->where('session', 'morning')->where('status', 'late')->count();
-        $total   = Student::count();
-        $absent  = max(0, $total - $present);
+        $depedId = $request->query('deped_id');
+
+        $school = null;
+        if ($depedId) {
+            $school = School::where('deped_school_id', $depedId)->first();
+        }
+
+        if (!$school) {
+            return response()->json([
+                'total_today'   => 0,
+                'present_count' => 0,
+                'late_count'    => 0,
+                'absent_count'  => 0,
+            ]);
+        }
+
+        $query = Attendance::whereDate('scanned_at', today())
+            ->where('school_id', $school->id);
+
+        $stats = (clone $query)->selectRaw("
+            COUNT(*) as total_today,
+            SUM(status = 'on_time') as present_count,
+            SUM(status = 'late') as late_count
+        ")->first();
+
+        $enrolled      = Student::where('school_id', $school->id)->count();
+        $morningMarked = Attendance::whereDate('scanned_at', today())
+            ->where('school_id', $school->id)
+            ->where('session', 'morning')
+            ->distinct()
+            ->count('student_id');
+        $absent = max(0, $enrolled - $morningMarked);
 
         return response()->json([
-            'total_today'   => $total,
-            'present_count' => $present,
-            'late_count'    => $late,
+            'total_today'   => (int) ($stats->total_today ?? 0),
+            'present_count' => (int) ($stats->present_count ?? 0),
+            'late_count'    => (int) ($stats->late_count ?? 0),
             'absent_count'  => $absent,
         ]);
     }

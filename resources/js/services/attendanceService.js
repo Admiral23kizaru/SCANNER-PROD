@@ -78,9 +78,13 @@ export async function scanAttendancePublic(data) {
  * }> }>}
  */
 export async function fetchRecentAttendancePublic() {
+    const params = new URLSearchParams(window.location.search);
+    const depedId = params.get('deped_id');
+
     const { data } = await axios.get(`${API_BASE}/api/attendance/public/recent`, {
+        params: { deped_id: depedId },
         headers: { Accept: 'application/json' },
-        withCredentials: false
+        withCredentials: false,
     });
     return data;
 }
@@ -96,9 +100,13 @@ export async function fetchRecentAttendancePublic() {
  * }>}
  */
 export async function fetchGuardStatsPublic() {
+    const params = new URLSearchParams(window.location.search);
+    const depedId = params.get('deped_id');
+
     const { data } = await axios.get(`${API_BASE}/api/attendance/public/stats`, {
+        params: { deped_id: depedId },
         headers: { Accept: 'application/json' },
-        withCredentials: false
+        withCredentials: false,
     });
     return data;
 }

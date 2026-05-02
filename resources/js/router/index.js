@@ -47,6 +47,28 @@ function roleGuard(allowedRole) {
     };
 }
 
+/** Super Admin session: Admin role + no school scoped (matches SchoolController::store). */
+function superAdminSchoolCreateGuard() {
+    return async (to, from, next) => {
+        const user = await fetchCurrentUser();
+        if (!user) {
+            setStoredToken(null);
+            next({ path: '/login', query: { redirect: to.fullPath } });
+            return;
+        }
+        const roleName = user.role?.name || user.role_name;
+        if (roleName !== 'Admin') {
+            next({ path: '/login' });
+            return;
+        }
+        if (user.school_id != null) {
+            next({ path: '/admin' });
+            return;
+        }
+        next();
+    };
+}
+
 async function loginRedirectGuard(to, from, next) {
     const token = getStoredToken();
     if (!token) {
@@ -106,7 +128,7 @@ const routes = [
         path: '/admin/schools/create',
         name: 'AdminCreateSchool',
         component: AdminLayout,
-        beforeEnter: roleGuard('Admin'),
+        beforeEnter: superAdminSchoolCreateGuard(),
     },
     {
         // Keep old /guard URL working — redirect to scanner home
