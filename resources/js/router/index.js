@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import axios from 'axios';
 import Login from '../views/Login.vue';
+import LandingPage from '../views/LandingPage.vue';
 import GuardScanner from '../components/guard/GuardScanner.vue';
 import TeacherDashboard from '../components/teacher/TeacherDashboard.vue';
 import AdminLayout from '../components/layouts/AdminLayout.vue';
@@ -84,7 +85,7 @@ async function loginRedirectGuard(to, from, next) {
         const roleName = user.role?.name || user.role_name;
         if (roleName === 'Admin') next({ path: '/admin' });
         else if (roleName === 'Teacher') next({ path: '/teacher' });
-        else next({ path: '/' }); // Guard → scanner home
+        else next({ path: '/scanner' }); // Guard → scanner home
     } catch {
         next();
     }
@@ -92,25 +93,21 @@ async function loginRedirectGuard(to, from, next) {
 
 const routes = [
     {
-        // Home page = Guard Scanner (public, no auth required)
         path: '/',
-        name: 'Scanner',
-        component: GuardScanner,
-        beforeEnter: (to, from, next) => {
-            const schoolName = to.query.school_name;
-            const depedId = to.query.deped_id;
-            if (!schoolName || !depedId) {
-                next({ path: '/login' });
-                return;
-            }
-            next();
-        }
+        name: 'Home',
+        component: LandingPage,
     },
     {
         path: '/login',
         name: 'Login',
         component: Login,
         beforeEnter: loginRedirectGuard,
+    },
+    {
+        // Guard Scanner (public, no auth required)
+        path: '/scanner',
+        name: 'Scanner',
+        component: GuardScanner,
     },
     {
         path: '/teacher',
@@ -133,7 +130,7 @@ const routes = [
     {
         // Keep old /guard URL working — redirect to scanner home
         path: '/guard',
-        redirect: '/',
+        redirect: '/scanner',
     },
     {
         // Catch-all: any unknown route → scanner home
@@ -143,7 +140,7 @@ const routes = [
 ];
 
 const router = createRouter({
-    history: createWebHistory(import.meta.env.BASE_URL),
+    history: createWebHistory('/SCANNER_PROD1/SCANNER-PROD/public/'),
     routes,
 });
 

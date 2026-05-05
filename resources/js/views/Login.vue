@@ -1,5 +1,10 @@
 <template>
-  <div class="min-h-screen w-full flex flex-col md:flex-row bg-slate-950">
+  <div class="min-h-screen w-full flex flex-col bg-slate-950">
+    <div
+      id="main-content"
+      tabindex="-1"
+      class="flex flex-1 flex-col md:flex-row min-h-screen w-full outline-none"
+    >
     <!-- Left panel: logo + system name -->
     <section
       class="relative flex-1 flex items-center justify-center px-8 py-10 bg-gradient-to-br from-[#fdfaf2] via-[#f2fbf9] to-[#b9e4df]"
@@ -37,9 +42,11 @@
 
     <!-- Right panel: administrative login -->
     <section
-      class="flex-1 flex items-center justify-center px-6 py-10 bg-gradient-to-br from-[#020617] via-[#020617] to-[#0f172a]"
+      class="relative flex-1 flex items-center justify-center px-6 py-10 bg-gradient-to-br from-[#020617] via-[#020617] to-[#0f172a]"
     >
-      <div class="max-w-sm w-full text-slate-50">
+      <AccessibilityToolbar variant="dark" panel-anchor />
+
+      <div class="max-w-sm w-full text-slate-50 login-panel-body">
         <div class="mb-8">
           <p class="text-xs uppercase tracking-[0.32em] text-slate-400">Administrative</p>
           <h2 class="mt-2 text-2xl md:text-3xl font-semibold">Log in</h2>
@@ -119,7 +126,7 @@
 
           <button
             type="submit"
-            class="w-full rounded-md bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-sky-900/40 hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-400 focus:ring-offset-slate-950 disabled:opacity-60 disabled:cursor-not-allowed"
+            class="login-sign-in-btn w-full rounded-md bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-950 hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-400 focus:ring-offset-slate-950 disabled:opacity-60 disabled:cursor-not-allowed"
             :disabled="loading"
           >
             {{ loading ? 'Signing in…' : 'Sign in' }}
@@ -137,6 +144,19 @@
         </div>
       </div>
     </section>
+    </div>
+
+    <div
+      id="a11y-statement"
+      tabindex="-1"
+      class="sr-only"
+    >
+      Accessibility statement: This application supports keyboard navigation, adjustable text size, and high contrast
+      via the toolbar on the login screen. For help, contact your school administrator.
+    </div>
+
+    <div id="page-end" tabindex="-1" class="sr-only" aria-hidden="true" />
+
   </div>
 
   <!-- Password reset modal -->
@@ -287,6 +307,7 @@ import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { setStoredToken } from '../router';
 import { assetPath } from '../composables/useAsset';
+import AccessibilityToolbar from '../components/AccessibilityToolbar.vue';
 
 const depedLogo = assetPath('/logo/depedozamiz.png');
 
@@ -426,3 +447,23 @@ async function submit() {
   }
 }
 </script>
+
+<style scoped>
+/* Clear absolutely positioned toolbar (top 16px + ~40px controls) */
+.login-panel-body {
+  padding-top: 4.5rem;
+}
+
+.login-sign-in-btn {
+  box-shadow:
+    0 0 12px rgba(0, 220, 180, 0.6),
+    0 0 24px rgba(0, 220, 180, 0.3);
+  transition: box-shadow 0.3s ease;
+}
+
+.login-sign-in-btn:hover:not(:disabled) {
+  box-shadow:
+    0 0 18px rgba(0, 220, 180, 0.8),
+    0 0 36px rgba(0, 220, 180, 0.4);
+}
+</style>

@@ -4,12 +4,7 @@ import vue from '@vitejs/plugin-vue';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-    // --- TOGGLE BASE FOR LOCAL VS DEPLOYMENT ---
-    // [1] FOR LOCAL (No subdirectory):
-    base: '/',
-    // [2] FOR DEPLOYMENT (Using subdirectory /qrid/):
-    // base: '/qrid/',
-    // -------------------------------------------
+    base: '/SCANNER_PROD1/SCANNER-PROD/public/',
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.js'],

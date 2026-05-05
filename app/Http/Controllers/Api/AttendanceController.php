@@ -327,6 +327,31 @@ class AttendanceController extends Controller
             $school = School::where('deped_school_id', $depedId)->first();
         }
 
+        // If deped_id is absent, return global stats for landing pages / public dashboards.
+        if (!$depedId) {
+            $query = Attendance::whereDate('scanned_at', today());
+
+            $stats = (clone $query)->selectRaw("
+                COUNT(*) as total_today,
+                SUM(status = 'on_time') as present_count,
+                SUM(status = 'late') as late_count
+            ")->first();
+
+            $enrolled      = Student::count();
+            $morningMarked = Attendance::whereDate('scanned_at', today())
+                ->where('session', 'morning')
+                ->distinct()
+                ->count('student_id');
+            $absent = max(0, $enrolled - $morningMarked);
+
+            return response()->json([
+                'total_today'   => (int) ($stats->total_today ?? 0),
+                'present_count' => (int) ($stats->present_count ?? 0),
+                'late_count'    => (int) ($stats->late_count ?? 0),
+                'absent_count'  => $absent,
+            ]);
+        }
+
         if (!$school) {
             return response()->json([
                 'total_today'   => 0,

@@ -45,6 +45,11 @@ if (app()->environment('local')) {
     })->where('path', '.*');
 }
 
+// Explicit SPA entry points for subdirectory hosting stability.
+Route::view('/', 'app');
+Route::view('/login', 'app');
+Route::view('/scanner', 'app');
+
 Route::get('/{any}', function () {
     return view('app');
 })->where('any', '.*');

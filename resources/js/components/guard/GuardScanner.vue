@@ -19,7 +19,9 @@
   <!-- Main Terminal UI -->
   <div class="flex flex-col h-screen w-full bg-slate-900 text-slate-100 overflow-hidden">
     <!-- ── Header ───────────────────────────────────────────────────────── -->
-    <header class="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-700 bg-slate-800/80 backdrop-blur-md gap-4 sm:gap-0">
+    <header
+      class="shrink-0 relative flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-700 bg-slate-800/80 backdrop-blur-md gap-4 sm:gap-0"
+    >
       <!-- Left: branding -->
       <div class="flex items-center gap-3 sm:gap-4 mb-2 sm:mb-0">
         <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-lg ring-2 ring-emerald-500/20 shrink-0">A</div>
@@ -29,15 +31,18 @@
         </div>
       </div>
 
-      <!-- Centre: Live clock (hidden on tiny screens, or shown center) -->
-      <div class="text-center hidden md:block">
+      <!-- Centre: Live clock -->
+      <div class="text-center hidden md:block pointer-events-none md:absolute md:left-1/2 md:-translate-x-1/2">
         <div class="text-3xl font-black text-white tabular-nums tracking-tighter">{{ currentTime }}</div>
         <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{{ currentDate }}</div>
       </div>
 
+      <div class="flex justify-end sm:ml-auto shrink-0">
+        <AccessibilityToolbar variant="dark" />
+      </div>
     </header>
 
-    <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
+    <div id="main-content" tabindex="-1" class="flex-1 flex flex-col min-h-0 overflow-hidden outline-none">
       <!-- ── Stats Row ──────────────────────────────────────────────────── -->
       <section class="shrink-0 p-4 border-b border-slate-700 bg-slate-800/20">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 max-w-7xl mx-auto">
@@ -222,11 +227,23 @@
         </section>
       </div>
     </div>
+
+    <div
+      id="a11y-statement"
+      tabindex="-1"
+      class="sr-only"
+    >
+      Accessibility statement: This terminal supports keyboard navigation, text size, and high contrast from the header
+      toolbar.
+    </div>
+
+    <div id="page-end" tabindex="-1" class="sr-only" aria-hidden="true" />
   </div>
 </template>
 
 <script setup>
 import { assetPath } from '../../composables/useAsset';
+import AccessibilityToolbar from '../AccessibilityToolbar.vue';
 /**
  * GuardScanner.vue — Guard Terminal UI
  *
