@@ -5,26 +5,35 @@
       <a class="govph" href="https://www.gov.ph" target="_blank" rel="noreferrer">GOVPH</a>
 
       <nav class="nav-links" aria-label="Primary">
-        <a href="#home" @click.prevent="scrollTo('home')">Home</a>
+        <a class="active" href="#home" @click.prevent="scrollTo('home')">Home</a>
         <a href="#about" @click.prevent="scrollTo('about')">About</a>
-        <a href="#how" @click.prevent="scrollTo('how')">How It Works</a>
-        <a href="#schools" @click.prevent="scrollTo('schools')">Schools</a>
-        <a href="#contact" @click.prevent="scrollTo('contact')">Contact</a>
+        <a href="#how" @click.prevent="scrollTo('how')">Resources</a>
+        <a href="#schools" @click.prevent="scrollTo('schools')">Procurement</a>
+        <a href="#contact" @click.prevent="scrollTo('contact')">Contact Us</a>
       </nav>
 
       <div class="nav-right">
+        <RouterLink class="login-link" to="/login">Login</RouterLink>
         <div class="search-wrap">
           <FontAwesomeIcon :icon="faMagnifyingGlass" class="search-icon" />
-          <input v-model="search" class="search-input" type="search" placeholder="Search" aria-label="Search" />
+          <input v-model="search" class="search-input" type="search" placeholder="Search ..." aria-label="Search" />
         </div>
-        <RouterLink class="login-btn" to="/login">Login</RouterLink>
         <AccessibilityToolbar variant="light" />
       </div>
     </header>
 
-    <!-- Section 2 — Orange header banner -->
-    <section id="home" class="banner">
-      <div class="banner-inner">
+    <!-- Section 2 — Department banner -->
+    <section id="home" class="banner" aria-label="Division banner">
+      <img
+        class="banner-header-img"
+        :src="landingHeaderImg"
+        alt="Department of Education Division of Ozamiz City"
+        width="1920"
+        height="360"
+        loading="eager"
+        decoding="async"
+      />
+      <div class="banner-overlay">
         <div class="banner-left">
           <div class="seal">
             <img :src="depedLogo" alt="DepEd Ozamiz City Seal" />
@@ -35,13 +44,9 @@
             <div class="motto">Para sa Diyos, Para sa Bata, Para sa Bayan</div>
           </div>
         </div>
-
-        <div class="banner-right" aria-live="polite">
-          <div class="pst-label">Philippine Standard Time:</div>
-          <div class="pst-time">
-            <FontAwesomeIcon :icon="faClock" class="pst-icon" />
-            <span>{{ pstNow }}</span>
-          </div>
+        <div class="banner-time" aria-live="polite">
+          <div class="pst-label">Philippine Standard Time</div>
+          <div class="pst-time">{{ pstNow }}</div>
         </div>
       </div>
     </section>
@@ -68,24 +73,35 @@
     <section id="schools" class="systems">
       <div class="systems-inner">
         <div class="systems-grid">
-          <div class="sys-card">
+          <a class="sys-card" href="http://58.69.118.16:88/dts/" target="_blank" rel="noopener noreferrer">
             <div class="sys-logo sys-logo--doc">DT</div>
             <div class="sys-name">DocTracS</div>
             <div class="sys-desc">Document Tracking System</div>
-          </div>
-          <div class="sys-card">
-            <div class="sys-logo sys-logo--dawn">DP</div>
+          </a>
+          <a class="sys-card" href="http://58.69.118.16:83/ehris/" target="_blank" rel="noopener noreferrer">
+            <div class="sys-logo sys-logo--dawn">
+              <img :src="dawnImg" alt="D.A.W.N. Protocol" class="sys-icon-img" />
+            </div>
             <div class="sys-name">D.A.W.N. Protocol</div>
             <div class="sys-desc">Disaster & safety protocol</div>
-          </div>
-          <div class="sys-card">
-            <div class="sys-logo sys-logo--crys">CR</div>
+          </a>
+          <a class="sys-card" href="https://ozamiz.deped.gov.ph/crystal/" target="_blank" rel="noopener noreferrer">
+            <div class="sys-logo sys-logo--crys">
+              <img :src="crystalImg" alt="CRYSTaL" class="sys-icon-img" />
+            </div>
             <div class="sys-name">CRYSTaL</div>
             <div class="sys-desc">Reporting & analytics</div>
+          </a>
+          <div class="sys-card">
+            <div class="sys-logo">
+              <img :src="roxsCmssImg" alt="ROX-CMSSS" class="sys-icon-img" />
+            </div>
+            <div class="sys-name">ROX-CMSSS</div>
+            <div class="sys-desc">Curriculum Management Survey System</div>
           </div>
           <RouterLink class="sys-card sys-card--scanup" to="/scanner">
             <div class="sys-logo sys-logo--scan">
-              <FontAwesomeIcon :icon="faQrcode" />
+              <img :src="scanupImg" alt="ScanUp" class="sys-icon-img" />
             </div>
             <div class="sys-name">ScanUp</div>
             <div class="sys-desc">QR Attendance System</div>
@@ -215,10 +231,15 @@ import axios from 'axios';
 import AccessibilityToolbar from '../components/AccessibilityToolbar.vue';
 import { assetPath } from '../composables/useAsset';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faPhone, faEnvelope, faMagnifyingGlass, faClock, faQrcode } from '@fortawesome/free-solid-svg-icons';
+import { faPhone, faEnvelope, faMagnifyingGlass, faQrcode } from '@fortawesome/free-solid-svg-icons';
 import { faFacebook } from '@fortawesome/free-brands-svg-icons';
 
 const depedLogo = assetPath('/logo/depedozamiz.png');
+const landingHeaderImg = assetPath('/images/landing-header.jpg');
+const crystalImg = assetPath('/images/crystal2.png');
+const dawnImg = assetPath('/images/dawn.png');
+const roxsCmssImg = assetPath('/images/roxs-cmss.png');
+const scanupImg = assetPath('/images/scanup.png');
 
 const search = ref('');
 const pstNow = ref('');
@@ -226,27 +247,6 @@ let tick = null;
 
 const scansToday = ref(null);
 const studentsEnrolled = ref(null);
-
-function formatPhilippineTime(date) {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Manila',
-    weekday: 'long',
-    month: 'long',
-    day: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-  }).formatToParts(date);
-
-  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
-  return `${map.weekday}, ${map.month} ${map.day}, ${map.year}  ${map.hour}:${map.minute}:${map.second} ${map.dayPeriod}`;
-}
-
-function updateClock() {
-  pstNow.value = formatPhilippineTime(new Date());
-}
 
 function scrollTo(id) {
   const el = document.getElementById(id);
@@ -256,6 +256,27 @@ function scrollTo(id) {
 
 const scansTodayText = computed(() => (scansToday.value == null ? '—' : String(scansToday.value)));
 const studentsEnrolledText = computed(() => (studentsEnrolled.value == null ? '—' : String(studentsEnrolled.value)));
+
+function formatPhilippineTime(date) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    weekday: 'long',
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  }).formatToParts(date);
+
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  return `${map.weekday}, ${map.month} ${map.day}, ${map.year}, ${map.hour}:${map.minute}:${map.second} ${map.dayPeriod}`;
+}
+
+function updateClock() {
+  pstNow.value = formatPhilippineTime(new Date());
+}
 
 async function loadStats() {
   try {
@@ -287,48 +308,62 @@ onUnmounted(() => {
 /* Top navbar */
 .top-nav {
   display: grid;
-  grid-template-columns: 140px 1fr auto;
+  grid-template-columns: 150px 1fr auto;
   align-items: center;
-  gap: 16px;
-  padding: 10px 16px;
+  gap: 0;
+  padding: 0;
   background: #ffffff;
-  border-bottom: 1px solid rgba(31, 41, 55, 0.12);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
   z-index: 40;
 }
 
 .govph {
-  color: #1e3a5f;
-  font-weight: 800;
+  color: #111827;
+  font-weight: 700;
   text-decoration: none;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
+  padding: 12px 16px;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  text-align: center;
 }
 
 .nav-links {
   display: flex;
-  justify-content: center;
-  gap: 18px;
-  flex-wrap: wrap;
+  align-items: stretch;
 }
 
 .nav-links a {
-  color: #1f2937;
+  color: #111827;
   text-decoration: none;
   font-weight: 600;
-  padding: 6px 8px;
-  border-radius: 6px;
+  font-size: 13px;
+  padding: 12px 14px;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-.nav-links a:hover {
-  background: rgba(249, 115, 22, 0.1);
-  color: #ea580c;
+.nav-links a.active {
+  background: #f3f4f6;
+  font-weight: 700;
 }
 
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  padding: 6px 12px;
+}
+
+.login-link {
+  color: #111827;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.login-link:hover {
+  text-decoration: underline;
 }
 
 .search-wrap {
@@ -346,59 +381,60 @@ onUnmounted(() => {
 }
 
 .search-input {
-  width: 170px;
-  padding: 8px 10px 8px 30px;
-  border: 1px solid rgba(31, 41, 55, 0.2);
-  border-radius: 999px;
+  width: 155px;
+  padding: 7px 10px 7px 28px;
+  border: 1px solid rgba(31, 41, 55, 0.25);
+  border-radius: 0;
   outline: none;
+  font-size: 12px;
 }
 
 .search-input:focus {
-  border-color: rgba(234, 88, 12, 0.65);
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.18);
+  border-color: rgba(234, 88, 12, 0.7);
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.12);
 }
 
-.login-btn {
-  background: #ea580c;
-  color: #ffffff;
-  text-decoration: none;
-  font-weight: 700;
-  padding: 9px 12px;
-  border-radius: 999px;
-}
-
-.login-btn:hover {
-  background: #f97316;
-}
-
-/* Banner */
+/* Header image banner */
 .banner {
-  background: linear-gradient(90deg, #f97316, #ea580c);
-  color: #ffffff;
+  position: relative;
+  margin: 0;
+  padding: 0;
+  line-height: normal;
+  background: #ea580c;
 }
 
-.banner-inner {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 18px 16px;
-  display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 18px;
+.banner-header-img {
+  width: 100%;
+  height: 86px;
+  display: block;
+  object-fit: cover;
+  object-position: center center;
+  filter: saturate(1.1);
+}
+
+.banner-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 16px;
 }
 
 .banner-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .seal {
-  width: 64px;
-  height: 64px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -406,58 +442,50 @@ onUnmounted(() => {
 }
 
 .seal img {
-  width: 58px;
-  height: 58px;
+  width: 52px;
+  height: 52px;
   object-fit: contain;
 }
 
+.banner-text {
+  color: #0f172a;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
 .rp {
-  font-weight: 800;
+  font-weight: 700;
+  font-size: 10px;
+  line-height: 1.05;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-size: 12px;
 }
 
 .dept {
   font-weight: 800;
-  font-size: 16px;
-  margin-top: 2px;
+  font-size: 18px;
+  line-height: 1.15;
 }
 
 .motto {
-  opacity: 0.92;
-  margin-top: 4px;
-  font-size: 13px;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
 }
 
-.banner-right {
-  background: rgba(30, 58, 95, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 14px;
-  padding: 12px 14px;
+.banner-time {
+  text-align: right;
+  color: #111827;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .pst-label {
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   font-size: 11px;
-  opacity: 0.95;
+  font-weight: 700;
 }
 
 .pst-time {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 800;
-  font-size: 14px;
-  margin-top: 8px;
-  white-space: nowrap;
-}
-
-.pst-icon {
-  width: 16px;
-  height: 16px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 /* Contact bar */
@@ -534,6 +562,14 @@ onUnmounted(() => {
   font-weight: 900;
   background: rgba(30, 58, 95, 0.1);
   color: #1e3a5f;
+  overflow: hidden;
+}
+
+.sys-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .sys-logo--scan {
@@ -837,17 +873,37 @@ onUnmounted(() => {
 @media (max-width: 980px) {
   .top-nav {
     grid-template-columns: 1fr;
-    justify-items: start;
+    gap: 0;
+    padding: 0;
   }
   .nav-links {
+    flex-wrap: wrap;
     justify-content: flex-start;
   }
   .nav-right {
     width: 100%;
     justify-content: space-between;
+    padding: 8px 12px;
   }
-  .banner-inner {
-    grid-template-columns: 1fr;
+  .banner-header-img {
+    height: 120px;
+  }
+  .banner-overlay {
+    position: static;
+    padding: 10px 12px;
+    background: #ea580c;
+  }
+  .banner-time {
+    display: none;
+  }
+  .rp {
+    font-size: 14px;
+  }
+  .dept {
+    font-size: 17px;
+  }
+  .motto {
+    font-size: 13px;
   }
   .systems-grid {
     grid-template-columns: repeat(2, 1fr);
