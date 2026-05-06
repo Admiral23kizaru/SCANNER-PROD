@@ -418,7 +418,7 @@ import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { fetchUser, logoutUser } from '../../services/authService';
 import QRCode from 'qrcode';
 import { Search, Upload, Plus, User, Pencil, ChevronLeft, ChevronRight, Filter } from 'lucide-vue-next';
-import { setStoredToken } from '../../router';
+import router, { setStoredToken } from '../../router';
 import { fetchStudents, createStudent, createStudentWithFormData, updateStudent, updateStudentWithFormData, uploadStudentPhoto, bulkImportStudents } from '../../services/studentService';
 import TeacherProfileModal from './TeacherProfileModal.vue';
 import AttendanceMonitor from '../AttendanceMonitor.vue';
@@ -463,10 +463,6 @@ function onProfileUpdated(updatedProfile) {
   if (user.value && updatedProfile) {
     user.value = { ...user.value, ...updatedProfile };
   }
-}
-
-function getPhotoUrl(path) {
-  return '';
 }
 
 const pageTitle = computed(() => {

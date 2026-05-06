@@ -432,7 +432,7 @@ async function submit() {
     } else if (roleName === 'Teacher') {
       await router.replace('/teacher');
     } else if (roleName === 'Guard') {
-      window.location.href = '/guard';
+      await router.replace({ name: 'Scanner' });
       return;
     } else {
       await router.replace('/login');
