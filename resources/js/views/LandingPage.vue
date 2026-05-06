@@ -74,36 +74,38 @@
       <div class="systems-inner">
         <div class="systems-grid">
           <a class="sys-card" href="http://58.69.118.16:88/dts/" target="_blank" rel="noopener noreferrer">
-            <div class="sys-logo sys-logo--doc">DT</div>
-            <div class="sys-name">DocTracS</div>
+            <div class="sys-logo">
+              <img :src="doctracsImg" alt="DocTracS" class="sys-icon-img" />
+            </div>
             <div class="sys-desc">Document Tracking System</div>
           </a>
           <a class="sys-card" href="http://58.69.118.16:83/ehris/" target="_blank" rel="noopener noreferrer">
             <div class="sys-logo sys-logo--dawn">
               <img :src="dawnImg" alt="D.A.W.N. Protocol" class="sys-icon-img" />
             </div>
-            <div class="sys-name">D.A.W.N. Protocol</div>
             <div class="sys-desc">Disaster & safety protocol</div>
           </a>
           <a class="sys-card" href="https://ozamiz.deped.gov.ph/crystal/" target="_blank" rel="noopener noreferrer">
             <div class="sys-logo sys-logo--crys">
               <img :src="crystalImg" alt="CRYSTaL" class="sys-icon-img" />
             </div>
-            <div class="sys-name">CRYSTaL</div>
             <div class="sys-desc">Reporting & analytics</div>
           </a>
-          <div class="sys-card">
+          <a
+            class="sys-card"
+            href="https://dtsnew.deped10.com/login"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <div class="sys-logo">
               <img :src="roxsCmssImg" alt="ROX-CMSSS" class="sys-icon-img" />
             </div>
-            <div class="sys-name">ROX-CMSSS</div>
             <div class="sys-desc">Curriculum Management Survey System</div>
-          </div>
+          </a>
           <RouterLink class="sys-card sys-card--scanup" to="/scanner">
             <div class="sys-logo sys-logo--scan">
               <img :src="scanupImg" alt="ScanUp" class="sys-icon-img" />
             </div>
-            <div class="sys-name">ScanUp</div>
             <div class="sys-desc">QR Attendance System</div>
           </RouterLink>
         </div>
@@ -236,6 +238,7 @@ import { faFacebook } from '@fortawesome/free-brands-svg-icons';
 
 const depedLogo = assetPath('/logo/depedozamiz.png');
 const landingHeaderImg = assetPath('/images/landing-header.jpg');
+const doctracsImg = assetPath('/images/doctracs.png');
 const crystalImg = assetPath('/images/crystal2.png');
 const dawnImg = assetPath('/images/dawn.png');
 const roxsCmssImg = assetPath('/images/roxs-cmss.png');
@@ -544,6 +547,9 @@ onUnmounted(() => {
   color: inherit;
   box-shadow: 0 8px 20px rgba(31, 41, 55, 0.06);
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .sys-card:hover {
@@ -553,14 +559,14 @@ onUnmounted(() => {
 }
 
 .sys-logo {
-  width: 44px;
-  height: 44px;
+  width: 100%;
+  height: 56px;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 900;
-  background: rgba(30, 58, 95, 0.1);
+  background: transparent;
   color: #1e3a5f;
   overflow: hidden;
 }
@@ -573,18 +579,13 @@ onUnmounted(() => {
 }
 
 .sys-logo--scan {
-  background: rgba(249, 115, 22, 0.14);
-  color: #ea580c;
-  font-size: 18px;
-}
-
-.sys-name {
-  margin-top: 10px;
-  font-weight: 900;
+  background: transparent;
+  color: inherit;
+  font-size: unset;
 }
 
 .sys-desc {
-  margin-top: 2px;
+  margin-top: 0;
   color: rgba(31, 41, 55, 0.75);
   font-size: 13px;
 }
