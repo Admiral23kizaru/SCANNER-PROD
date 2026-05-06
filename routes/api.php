@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AdminProfileController;
 use App\Http\Controllers\Api\AdminStudentController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\GmrcController;
 use App\Http\Controllers\Api\GuardAuthController;
 use App\Http\Controllers\Api\IdCardController;
 use App\Http\Controllers\Api\PasswordResetController;
@@ -185,6 +186,18 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/update-profile', 'update');
             Route::post('/update-profile/photo', 'uploadPhoto');
             Route::put('/update-profile/password', 'changePassword');
+        });
+
+        /* ------------------------------------------------------------------ */
+        /*  GMRC Quick Entry + Export                                          */
+        /* ------------------------------------------------------------------ */
+
+        Route::controller(GmrcController::class)->prefix('gmrc')->group(function () {
+            Route::get('/meta', 'meta');
+            Route::get('/students', 'students');
+            Route::get('/recent', 'recent');
+            Route::post('/scores', 'store');
+            Route::get('/export', 'export');
         });
     });
 

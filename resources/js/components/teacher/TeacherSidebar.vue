@@ -40,12 +40,22 @@
         <ClipboardList class="h-4 w-4" />
         <span>Attendance Monitor</span>
       </button>
+
+      <button
+        type="button"
+        class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition cursor-pointer"
+        :class="currentTab === 'gmrc' ? 'bg-stone-800 text-white shadow-sm' : 'text-stone-400 hover:bg-stone-800/50 hover:text-white'"
+        @click="$emit('update:currentTab', 'gmrc'); $emit('update:isSidebarOpen', false)"
+      >
+        <ClipboardPen class="h-4 w-4" />
+        <span>GMRC Entry</span>
+      </button>
     </nav>
   </aside>
 </template>
 
 <script setup>
-import { Users, ClipboardList } from 'lucide-vue-next';
+import { Users, ClipboardList, ClipboardPen } from 'lucide-vue-next';
 
 defineProps({
   isSidebarOpen: {

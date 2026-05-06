@@ -82,8 +82,11 @@
 
 <script setup>
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faUniversalAccess, faArrowDown, faArrowsDownToLine } from '@fortawesome/free-solid-svg-icons';
-import { faFileLines, faEye } from '@fortawesome/free-regular-svg-icons';
+import { faUniversalAccess } from '@fortawesome/free-solid-svg-icons/faUniversalAccess';
+import { faArrowDown } from '@fortawesome/free-solid-svg-icons/faArrowDown';
+import { faArrowsDownToLine } from '@fortawesome/free-solid-svg-icons/faArrowsDownToLine';
+import { faFileLines } from '@fortawesome/free-regular-svg-icons/faFileLines';
+import { faEye } from '@fortawesome/free-regular-svg-icons/faEye';
 import { onMounted, onUnmounted, ref } from 'vue';
 
 /**

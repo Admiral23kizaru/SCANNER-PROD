@@ -184,6 +184,10 @@
         </div>
       </div>
     </div>
+    <!-- ═══ GMRC Entry Tab ═══ -->
+    <div v-show="currentTab === 'gmrc'" class="w-full">
+      <GmrcEntry />
+    </div>
     <!-- 
       Header Comment: Action: Implementing static backdrop to prevent accidental data loss during student editing.
     -->
@@ -423,6 +427,7 @@ import { fetchStudents, createStudent, createStudentWithFormData, updateStudent,
 import TeacherProfileModal from './TeacherProfileModal.vue';
 import AttendanceMonitor from '../AttendanceMonitor.vue';
 import TeacherLayout from '../layouts/TeacherLayout.vue';
+import GmrcEntry from './GmrcEntry.vue';
 
 const attendanceMonitorRef = ref(null);
 
@@ -471,11 +476,13 @@ function getPhotoUrl(path) {
 
 const pageTitle = computed(() => {
   if (currentTab.value === 'monitor') return 'ATTENDANCE MONITOR';
+  if (currentTab.value === 'gmrc') return 'GMRC ENTRY';
   return 'LEARNERS';
 });
 
 const pageSubtitle = computed(() => {
   if (currentTab.value === 'monitor') return 'Real-time attendance tracking';
+  if (currentTab.value === 'gmrc') return 'GMRC Quick Entry and Excel export';
   return 'Manage student records';
 });
 
