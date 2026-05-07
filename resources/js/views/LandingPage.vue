@@ -231,47 +231,79 @@
       </div>
     </section>
 
-    <!-- Section 5 — Hero -->
-    <section id="about" class="hero">
-      <div class="hero-inner">
-        <div class="hero-left">
-          <h1>Ozamiz Schools QR-ID Attendance System</h1>
-          <p>
-            Automated student attendance recording via QR code scanning for schools in the Division of Ozamiz City, DepEd
-            Region X
-          </p>
-          <div class="hero-actions">
-            <RouterLink class="btn btn-primary" to="/scanner">Get Started</RouterLink>
-            <RouterLink class="btn btn-secondary" to="/login">Admin Login</RouterLink>
+    <!-- Section 5 — Content Row: Carousel + YouTube + Sidebar -->
+    <section class="content-row-wrapper">
+      <div class="content-row">
+        <!-- Left: Carousel + YouTube -->
+        <div class="content-left">
+          <!-- Image Carousel -->
+          <div class="carousel">
+            <div class="carousel-slides">
+              <div
+                v-for="(slide, idx) in carouselSlides"
+                :key="idx"
+                class="carousel-slide"
+                :class="{ active: currentSlide === idx }"
+              >
+                <img :src="slide.src" :alt="slide.alt" @error="onFooterImgError($event, slide.filename)" />
+              </div>
+            </div>
+            <button class="carousel-btn prev" @click="prevSlide" aria-label="Previous slide">&#8249;</button>
+            <button class="carousel-btn next" @click="nextSlide" aria-label="Next slide">&#8250;</button>
+            <div class="carousel-dots">
+              <button
+                v-for="(slide, idx) in carouselSlides"
+                :key="idx"
+                class="carousel-dot"
+                :class="{ active: currentSlide === idx }"
+                @click="goToSlide(idx)"
+                :aria-label="'Go to slide ' + (idx + 1)"
+              ></button>
+            </div>
           </div>
+
+          <!-- YouTube Embed -->
+          <iframe
+            width="100%"
+            height="400"
+            src="https://www.youtube.com/embed/2d-kepxpafU?si=rajCjyiBAlEXh8dZ"
+            title="YouTube video player"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen
+            style="display:block; margin-top: 20px;"
+          ></iframe>
         </div>
-        <div class="hero-right" aria-hidden="true">
-          <div class="qr-badge">
-            <FontAwesomeIcon :icon="faQrcode" class="qr-icon" />
-          </div>
+
+        <!-- Right: Sidebar widgets -->
+        <div class="content-right">
+          <!-- CSM QR Code -->
+          <a href="https://ozamiz.deped.gov.ph/csm/" target="_blank" rel="noreferrer">
+            <img
+              :src="imageTempSrc('cms-qr.jpg')"
+              @error="onFooterImgError($event, 'cms-qr.jpg')"
+              alt="Division of Ozamiz City Client Satisfaction Measurement"
+              style="width:100%; border-radius:8px;"
+            />
+          </a>
+
+          <!-- Facebook Page Embed -->
+          <iframe
+            src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fdepedtayoozamiz&tabs=timeline&width=340&height=500&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true&appId"
+            width="100%"
+            height="500"
+            style="border:none; overflow:hidden; margin-top:20px; display:block;"
+            scrolling="no"
+            frameborder="0"
+            allowfullscreen="true"
+            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+          ></iframe>
         </div>
       </div>
     </section>
 
-    <!-- Section 6 — Stats -->
-    <section class="stats">
-      <div class="stats-inner">
-        <div class="stat-card">
-          <div class="stat-label">Total Schools</div>
-          <div class="stat-value">58</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Students Enrolled</div>
-          <div class="stat-value">{{ studentsEnrolledText }}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Scans Today</div>
-          <div class="stat-value">{{ scansTodayText }}</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Section 7 — How it works -->
+    <!-- Section 6 — How it works -->
     <section id="how" class="how">
       <div class="how-inner">
         <h2>How ScanUp Works</h2>
@@ -309,6 +341,81 @@
             <div class="step-title">Parents receive notification</div>
             <div class="step-desc">SMS/Email can be sent right after the scan.</div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 7 — Hero -->
+    <section id="about" class="hero">
+      <div class="hero-inner">
+        <div class="hero-left">
+          <h1>Ozamiz Schools QR-ID Attendance System</h1>
+          <p>
+            Automated student attendance recording via QR code scanning for schools in the Division of Ozamiz City, DepEd
+            Region X
+          </p>
+          <div class="hero-actions">
+            <RouterLink class="btn btn-primary" to="/scanner">Get Started</RouterLink>
+            <RouterLink class="btn btn-secondary" to="/login">Admin Login</RouterLink>
+          </div>
+        </div>
+        <div class="hero-right" aria-hidden="true">
+          <div class="hero-illustration">
+            <!-- Student figure -->
+            <div class="illust-student">
+              <div class="illust-head"></div>
+              <div class="illust-body">
+                <div class="illust-arm illust-arm-l"></div>
+                <div class="illust-arm illust-arm-r"></div>
+              </div>
+            </div>
+
+            <!-- ID Card held by student -->
+            <div class="illust-card">
+              <div class="illust-card-photo"></div>
+              <div class="illust-card-line"></div>
+              <div class="illust-card-line illust-card-line-m"></div>
+              <div class="illust-card-line illust-card-line-s"></div>
+              <div class="illust-qr-grid">
+                <span></span><span class="q-b"></span><span></span><span class="q-b"></span>
+                <span class="q-b"></span><span></span><span class="q-b"></span><span></span>
+                <span></span><span class="q-b"></span><span class="q-b"></span><span></span>
+                <span class="q-b"></span><span></span><span></span><span class="q-b"></span>
+              </div>
+              <!-- Scan laser line -->
+              <div class="illust-scan-line"></div>
+            </div>
+
+            <!-- Scanner device -->
+            <div class="illust-scanner">
+              <div class="illust-scanner-screen"></div>
+              <div class="illust-scanner-base"></div>
+            </div>
+
+            <!-- Success checkmark -->
+            <div class="illust-check">✓</div>
+
+            <!-- Notification bubble -->
+            <div class="illust-notify">✓ Parent Notified</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 8 — Stats -->
+    <section class="stats">
+      <div class="stats-inner">
+        <div class="stat-card">
+          <div class="stat-label">Total Schools</div>
+          <div class="stat-value">58</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Students Enrolled</div>
+          <div class="stat-value">{{ studentsEnrolledText }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Scans Today</div>
+          <div class="stat-value">{{ scansTodayText }}</div>
         </div>
       </div>
     </section>
@@ -434,6 +541,32 @@ const router = useRouter();
 const pstNow = ref('');
 let tick = null;
 
+// Carousel state
+const currentSlide = ref(0);
+let carouselInterval = null;
+const carouselSlides = [
+  { src: imageTempSrc('MATATAG-Cover-Photo.jpg'), alt: 'MATATAG Cover Photo', filename: 'MATATAG-Cover-Photo.jpg' },
+  { src: imageTempSrc('BER-banner-2048x759-2.jpg'), alt: 'BER Banner', filename: 'BER-banner-2048x759-2.jpg' },
+  { src: imageTempSrc('Web-banner-01-4-1.png'), alt: 'Web Banner', filename: 'Web-banner-01-4-1.png' },
+];
+
+function nextSlide() {
+  currentSlide.value = (currentSlide.value + 1) % carouselSlides.length;
+}
+function prevSlide() {
+  currentSlide.value = (currentSlide.value - 1 + carouselSlides.length) % carouselSlides.length;
+}
+function goToSlide(idx) {
+  currentSlide.value = idx;
+}
+function startCarousel() {
+  carouselInterval = setInterval(nextSlide, 3000);
+}
+function stopCarousel() {
+  if (carouselInterval) clearInterval(carouselInterval);
+  carouselInterval = null;
+}
+
 const primaryImageTempBase = '/image_temp/';
 const secondaryImageTempBase = '/SCANNER_PROD1/SCANNER-PROD/public/image_temp/';
 
@@ -517,12 +650,14 @@ onMounted(() => {
   updateClock();
   tick = setInterval(updateClock, 1000);
   loadStats();
+  startCarousel();
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
   if (tick) clearInterval(tick);
   tick = null;
+  stopCarousel();
 });
 </script>
 
@@ -948,32 +1083,195 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-.qr-badge {
-  width: 160px;
-  height: 160px;
-  border-radius: 26px;
-  background: linear-gradient(145deg, #f97316, #ea580c);
-  box-shadow: 0 18px 40px rgba(234, 88, 12, 0.25);
+/* ── Hero CSS Illustration ─────────────────────────────── */
+.hero-illustration {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(249, 115, 22, 0.08);
+  border-radius: 20px;
+  overflow: visible;
+  gap: 18px;
+  padding-bottom: 30px;
+}
+
+/* Student figure */
+.illust-student {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 2;
+}
+.illust-head {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #FDBCB4;
+  border: 2px solid #e8a99f;
+  margin-bottom: -4px;
+  z-index: 1;
+}
+.illust-body {
+  width: 50px;
+  height: 60px;
+  background: #1a237e;
+  border-radius: 10px 10px 6px 6px;
+  position: relative;
+}
+.illust-arm {
+  position: absolute;
+  width: 12px;
+  height: 35px;
+  background: #1a237e;
+  border-radius: 6px;
+  top: 8px;
+}
+.illust-arm-l {
+  left: -10px;
+  transform: rotate(25deg);
+}
+.illust-arm-r {
+  right: -10px;
+  transform: rotate(-25deg);
+}
+
+/* ID Card */
+.illust-card {
+  width: 80px;
+  height: 100px;
+  background: #fff;
+  border: 2.5px solid #F97316;
+  border-radius: 8px;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transform: rotate(-5deg);
+  position: relative;
+  z-index: 3;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  margin-left: -18px;
+  margin-bottom: 10px;
+}
+.illust-card-photo {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e0e0e0;
+}
+.illust-card-line {
+  width: 90%;
+  height: 4px;
+  background: #d0d0d0;
+  border-radius: 2px;
+}
+.illust-card-line-m { width: 70%; }
+.illust-card-line-s { width: 50%; }
+.illust-qr-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  width: 32px;
+  height: 32px;
+  margin-top: 2px;
+}
+.illust-qr-grid span {
+  background: #e0e0e0;
+  border-radius: 1px;
+}
+.illust-qr-grid .q-b {
+  background: #222;
+}
+
+/* Scan laser */
+.illust-scan-line {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  background: #00e676;
+  box-shadow: 0 0 8px #00e676, 0 0 16px rgba(0,230,118,0.4);
+  border-radius: 2px;
+  animation: illust-scan 2s ease-in-out infinite;
+}
+@keyframes illust-scan {
+  0%   { top: 10%; opacity: 1; }
+  50%  { top: 80%; opacity: 0.8; }
+  100% { top: 10%; opacity: 1; }
+}
+
+/* Scanner device */
+.illust-scanner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1;
+  margin-left: -10px;
+}
+.illust-scanner-screen {
+  width: 50px;
+  height: 60px;
+  background: #263238;
+  border-radius: 6px 6px 2px 2px;
+  border: 2px solid #455a64;
+  box-shadow: inset 0 0 12px rgba(0,230,118,0.25);
+}
+.illust-scanner-base {
+  width: 60px;
+  height: 10px;
+  background: #90a4ae;
+  border-radius: 0 0 4px 4px;
+}
+
+/* Success checkmark */
+.illust-check {
+  position: absolute;
+  top: 30px;
+  right: 50px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #00c853;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 900;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: float 2.8s ease-in-out infinite;
+  animation: illust-floatUp 3s ease-in-out infinite;
+}
+@keyframes illust-floatUp {
+  0%   { opacity: 0; transform: translateY(0); }
+  30%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-40px); }
 }
 
-.qr-icon {
-  width: 72px;
-  height: 72px;
-  color: #ffffff;
+/* Notification bubble */
+.illust-notify {
+  position: absolute;
+  top: 20px;
+  right: 15px;
+  background: #fff;
+  color: #F97316;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 5px 10px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  white-space: nowrap;
+  animation: illust-notify 4s ease-in-out infinite;
+  animation-delay: 1s;
+  opacity: 0;
 }
-
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
+@keyframes illust-notify {
+  0%   { opacity: 0; transform: translateY(10px); }
+  20%  { opacity: 1; transform: translateY(0); }
+  80%  { opacity: 1; transform: translateY(-10px); }
+  100% { opacity: 0; transform: translateY(-20px); }
 }
 
 /* Stats section */
@@ -1190,6 +1488,94 @@ onUnmounted(() => {
   font-size: 14px;
 }
 
+/* Content Row: Carousel + Sidebar */
+.content-row-wrapper {
+  background: #ffffff;
+}
+.content-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.content-left {
+  min-width: 0;
+}
+.content-right {
+  min-width: 0;
+}
+
+/* Carousel */
+.carousel {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: #000;
+  border-radius: 8px;
+}
+.carousel-slides {
+  position: relative;
+  width: 100%;
+  height: 300px;
+}
+.carousel-slide {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.carousel-slide.active {
+  opacity: 1;
+}
+.carousel-slide img {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  display: block;
+}
+.carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.4);
+  color: white;
+  border: none;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-size: 20px;
+  z-index: 10;
+  border-radius: 3px;
+}
+.carousel-btn:hover {
+  background: rgba(0,0,0,0.7);
+}
+.carousel-btn.prev { left: 10px; }
+.carousel-btn.next { right: 10px; }
+.carousel-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+.carousel-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+.carousel-dot.active {
+  background: white;
+}
+
 /* Responsiveness */
 @media (max-width: 980px) {
   .navbar {
@@ -1246,6 +1632,14 @@ onUnmounted(() => {
   }
   .search-input {
     width: 150px;
+  }
+}
+@media (max-width: 768px) {
+  .content-row {
+    grid-template-columns: 1fr;
+  }
+  .content-right {
+    display: none;
   }
 }
 </style>
