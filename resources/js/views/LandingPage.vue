@@ -1,26 +1,145 @@
 <template>
   <div class="landing">
-    <!-- Section 1 — Top navbar -->
-    <header class="top-nav">
-      <a class="govph" href="https://www.gov.ph" target="_blank" rel="noreferrer">GOVPH</a>
+    <nav class="navbar">
+      <div class="navbar-left">
+        <!-- GOVPH -->
+        <a href="https://www.gov.ph" target="_blank" class="nav-govph" rel="noreferrer">GOVPH</a>
 
-      <nav class="nav-links" aria-label="Primary">
-        <a class="active" href="#home" @click.prevent="scrollTo('home')">Home</a>
-        <a href="#about" @click.prevent="scrollTo('about')">About</a>
-        <a href="#how" @click.prevent="scrollTo('how')">Resources</a>
-        <a href="#schools" @click.prevent="scrollTo('schools')">Procurement</a>
-        <a href="#contact" @click.prevent="scrollTo('contact')">Contact Us</a>
-      </nav>
-
-      <div class="nav-right">
-        <RouterLink class="login-link" to="/login">Login</RouterLink>
-        <div class="search-wrap">
-          <FontAwesomeIcon :icon="faMagnifyingGlass" class="search-icon" />
-          <input v-model="search" class="search-input" type="search" placeholder="Search ..." aria-label="Search" />
+        <!-- Home -->
+        <div class="nav-item">
+          <a href="https://ozamiz.deped.gov.ph/" target="_blank" class="nav-trigger" rel="noreferrer">Home</a>
         </div>
-        <AccessibilityToolbar variant="light" />
+
+        <!-- About -->
+        <div class="nav-item" :class="{ open: openDropdown === 'about' }">
+          <button class="nav-trigger" @click.stop="toggleDropdown('about')">
+            About <span class="nav-arrow">▼</span>
+          </button>
+          <div class="dropdown-menu" v-show="openDropdown === 'about'">
+            <div class="dropdown-section">Overview</div>
+            <a href="https://ozamiz.deped.gov.ph/history/" target="_blank" rel="noreferrer">History</a>
+            <a
+              href="https://ozamiz.deped.gov.ph/vision-mission-core-values-and-mandate/"
+              target="_blank"
+              rel="noreferrer"
+            >Vision, Mission, Core Values, and Mandate</a>
+            <a href="https://ozamiz.deped.gov.ph/division-map/" target="_blank" rel="noreferrer">Division Map</a>
+
+            <div class="dropdown-section">Organizational Structure</div>
+            <a href="https://ozamiz.deped.gov.ph/organizational-structure/" target="_blank" rel="noreferrer">
+              DepEd Ozamiz City Executive Committee
+            </a>
+
+            <div class="dropdown-section">DepEd Data Privacy</div>
+            <a href="https://ozamiz.deped.gov.ph/data-privacy-notice/" target="_blank" rel="noreferrer">Data Privacy Notice</a>
+
+            <div class="dropdown-divider"></div>
+            <a href="https://ozamiz.deped.gov.ph/citizens-charter/" target="_blank" rel="noreferrer" class="direct-link">
+              Citizen's Charter
+            </a>
+            <a href="https://ozamiz.deped.gov.ph/freedom-of-information/" target="_blank" rel="noreferrer" class="direct-link">
+              Freedom of Information
+            </a>
+
+            <div class="dropdown-section">Careers</div>
+            <a href="https://ozamiz.deped.gov.ph/careers/job-opportunities/" target="_blank" rel="noreferrer">Job Opportunities</a>
+            <a href="https://ozamiz.deped.gov.ph/careers/notice-of-appointment/" target="_blank" rel="noreferrer">Notice of Appointment</a>
+          </div>
+        </div>
+
+        <!-- Resources -->
+        <div class="nav-item" :class="{ open: openDropdown === 'resources' }">
+          <button class="nav-trigger" @click.stop="toggleDropdown('resources')">
+            Resources <span class="nav-arrow">▼</span>
+          </button>
+          <div class="dropdown-menu" v-show="openDropdown === 'resources'">
+            <div class="dropdown-section">Issuances</div>
+            <a href="https://ozamiz.deped.gov.ph/category/divisional-memo/" target="_blank" rel="noreferrer">Divisional Memoranda</a>
+            <a href="https://ozamiz.deped.gov.ph/category/divisional-advisories/" target="_blank" rel="noreferrer">Divisional Advisories</a>
+            <a href="https://ozamiz.deped.gov.ph/category/unnumbered-memo/" target="_blank" rel="noreferrer">Unnumbered Memoranda</a>
+
+            <div class="dropdown-section">Downloadables</div>
+            <a href="https://ozamiz.deped.gov.ph/administrative-services/" target="_blank" rel="noreferrer">Administrative Services</a>
+            <a href="https://ozamiz.deped.gov.ph/property-and-supply-services/" target="_blank" rel="noreferrer">Property and Supply Services</a>
+            <a
+              href="https://ozamiz.deped.gov.ph/information-and-communications-technology-office/"
+              target="_blank"
+              rel="noreferrer"
+            >Information and Communications Technology Services</a>
+          </div>
+        </div>
+
+        <!-- Procurement -->
+        <div class="nav-item" :class="{ open: openDropdown === 'procurement' }">
+          <button class="nav-trigger" @click.stop="toggleDropdown('procurement')">
+            Procurement <span class="nav-arrow">▼</span>
+          </button>
+          <div class="dropdown-menu" v-show="openDropdown === 'procurement'">
+            <a href="https://ozamiz.deped.gov.ph/category/bid-opportunity/" target="_blank" rel="noreferrer" class="direct-link">
+              Bid Opportunities
+            </a>
+            <a href="https://ozamiz.deped.gov.ph/category/award-notice/" target="_blank" rel="noreferrer" class="direct-link">
+              Award Notices
+            </a>
+          </div>
+        </div>
+
+        <!-- Contact Us -->
+        <div class="nav-item" :class="{ open: openDropdown === 'contact' }">
+          <button class="nav-trigger" @click.stop="toggleDropdown('contact')">
+            Contact Us <span class="nav-arrow">▼</span>
+          </button>
+          <div class="dropdown-menu" v-show="openDropdown === 'contact'">
+            <a href="https://rb.gy/86zo4" target="_blank" rel="noreferrer" class="direct-link">Request Form</a>
+            <a href="https://rb.gy/62zeg" target="_blank" rel="noreferrer" class="direct-link">Request Form Status</a>
+            <a
+              href="https://docs.google.com/forms/d/13ZMWbDV2yjnbrMcJobupSf_K_iU3WuBW34a2LHlfv84/viewform?edit_requested=true"
+              target="_blank"
+              rel="noreferrer"
+              class="direct-link"
+            >Locator Slip Request</a>
+            <a
+              href="https://docs.google.com/spreadsheets/d/1Y9XKfT_biqEdEHxHrGQhCihb_78fxhZlpneaB-IF-j8/edit?gid=699627690#gid=699627690"
+              target="_blank"
+              rel="noreferrer"
+              class="direct-link"
+            >Print Locator Slip</a>
+            <a href="https://rb.gy/5jm8j0" target="_blank" rel="noreferrer" class="direct-link">Travel Authority Auto-Tagging</a>
+            <a
+              href="https://docs.google.com/spreadsheets/d/1qwHUam829jOMJZKxZhLWmtchIwrEBLGScy92Y_YzJ-g/edit?gid=234499877#gid=234499877"
+              target="_blank"
+              rel="noreferrer"
+              class="direct-link"
+            >Print Travel Authority</a>
+            <a
+              href="https://docs.google.com/forms/d/18KdatsQG3-St6mskBcl3TdBGGwegPnW_YFx7LfxqhCg/edit"
+              target="_blank"
+              rel="noreferrer"
+              class="direct-link"
+            >Request for Vehicle</a>
+            <a
+              href="https://docs.google.com/spreadsheets/d/166wz4hp1Cn8qdtPdkrJvu0pCxH8UKRYLGqs0CnSBhKQ/edit?gid=1562769871#gid=1562769871"
+              target="_blank"
+              rel="noreferrer"
+              class="direct-link"
+            >Print Request for Vehicle</a>
+          </div>
+        </div>
       </div>
-    </header>
+
+      <!-- Right side -->
+      <div class="navbar-right">
+        <router-link to="/login" class="login-btn">Login</router-link>
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Search..."
+          class="search-bar"
+          @keyup="handleSearch"
+        />
+        <AccessibilityToolbar />
+      </div>
+    </nav>
 
     <!-- Section 2 — Department banner -->
     <section id="home" class="banner" aria-label="Division banner">
@@ -196,39 +315,104 @@
 
     <!-- Section 8 — Footer -->
     <footer class="footer">
-      <div class="footer-inner">
-        <div class="footer-col">
-          <div class="footer-title">Republic of the Philippines</div>
-          <div class="footer-logo">
-            <img :src="depedLogo" alt="DepEd logo" />
-          </div>
-          <div class="footer-text">All content is in the public domain unless otherwise stated</div>
+      <div class="systems-banner">
+        <img
+          :src="imageTempSrc('EBEIS.png')"
+          @error="onFooterImgError($event, 'EBEIS.png')"
+          alt="Enhanced Basic Education Information System banner"
+        />
+        <img
+          :src="imageTempSrc('LIS.png')"
+          @error="onFooterImgError($event, 'LIS.png')"
+          alt="Learner Information System banner"
+        />
+        <img
+          :src="imageTempSrc('LRMDS.png')"
+          @error="onFooterImgError($event, 'LRMDS.png')"
+          alt="Learning Resource Management and Development System banner"
+        />
+        <img
+          :src="imageTempSrc('dpds.png')"
+          @error="onFooterImgError($event, 'dpds.png')"
+          alt="DepEd Partnership Database System banner"
+        />
+      </div>
+
+      <div class="seals-row">
+        <div class="seal-item">
+          <img
+            :src="imageTempSrc('foi-logo-160x160-4.png')"
+            @error="onFooterImgError($event, 'foi-logo-160x160-4.png')"
+            alt="Freedom of Information Philippines seal"
+          />
         </div>
-        <div class="footer-col">
-          <div class="footer-title">About ScanUp</div>
-          <div class="footer-text">
-            ScanUp is a QR-ID attendance system designed to help schools in the Division of Ozamiz City record attendance
-            quickly, accurately, and with optional parent notifications.
-          </div>
+        <div class="seal-item">
+          <img
+            :src="imageTempSrc('transparency-seal-160x160-2.png')"
+            @error="onFooterImgError($event, 'transparency-seal-160x160-2.png')"
+            alt="Philippine Transparency Seal"
+          />
         </div>
-        <div class="footer-col">
-          <div class="footer-title">Government Links</div>
-          <ul class="footer-links">
-            <li><a href="https://www.deped.gov.ph" target="_blank" rel="noreferrer">DepEd Central</a></li>
-            <li><a href="https://region10.deped.gov.ph" target="_blank" rel="noreferrer">DepEd Region X</a></li>
-            <li><a href="https://ozamiz.deped.gov.ph" target="_blank" rel="noreferrer">Division of Ozamiz City</a></li>
-            <li><a href="https://www.gov.ph" target="_blank" rel="noreferrer">GOVPH</a></li>
-          </ul>
+        <div class="seal-item">
+          <img
+            :src="imageTempSrc('depedlogo-1.png')"
+            @error="onFooterImgError($event, 'depedlogo-1.png')"
+            alt="Kagawaran ng Edukasyon seal"
+          />
+        </div>
+        <div class="seal-item">
+          <img
+            :src="imageTempSrc('region-1.png')"
+            @error="onFooterImgError($event, 'region-1.png')"
+            alt="DepEd Region X seal"
+          />
         </div>
       </div>
-      <div class="footer-bottom">© {{ new Date().getFullYear() }} ScanUp · DepEd Division of Ozamiz City</div>
+
+      <div class="footer-main">
+        <div class="footer-col">
+          <h3 class="footer-title">REPUBLIC OF THE PHILIPPINES</h3>
+          <img
+            class="footer-deped-logo"
+            :src="imageTempSrc('depedlogo-1.png')"
+            @error="onFooterImgError($event, 'depedlogo-1.png')"
+            alt="Department of Education logo"
+          />
+          <p class="footer-note">
+            All content is in the public domain unless otherwise stated.
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h3 class="footer-title">ABOUT GOVPH</h3>
+          <p class="footer-about">
+            Learn more about the Philippine government, its structure, how government works and the people behind it.
+          </p>
+          <a class="footer-link" href="https://www.gov.ph" target="_blank" rel="noreferrer">GOV.PH</a>
+          <a class="footer-link" href="https://data.gov.ph" target="_blank" rel="noreferrer">Open Data Portal</a>
+          <a class="footer-link" href="https://www.officialgazette.gov.ph" target="_blank" rel="noreferrer">Official Gazette</a>
+        </div>
+
+        <div class="footer-col">
+          <h3 class="footer-title">GOVERNMENT LINKS</h3>
+          <a class="footer-link" href="https://www.president.gov.ph" target="_blank" rel="noreferrer">Office of the President</a>
+          <a class="footer-link" href="https://www.ovp.gov.ph" target="_blank" rel="noreferrer">Office of the Vice President</a>
+          <a class="footer-link" href="https://www.senate.gov.ph" target="_blank" rel="noreferrer">Senate of the Philippines</a>
+          <a class="footer-link" href="https://www.congress.gov.ph" target="_blank" rel="noreferrer">House of Representatives</a>
+          <a class="footer-link" href="https://sc.judiciary.gov.ph" target="_blank" rel="noreferrer">Supreme Court</a>
+          <a class="footer-link" href="https://ca.judiciary.gov.ph" target="_blank" rel="noreferrer">Court of Appeals</a>
+          <a class="footer-link" href="https://www.sandiganbayan.gov.ph" target="_blank" rel="noreferrer">Sandiganbayan</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">© 2026 ScanUp · DepEd Division of Ozamiz City</div>
     </footer>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { RouterLink, useRouter } from 'vue-router';
 import axios from 'axios';
 import AccessibilityToolbar from '../components/AccessibilityToolbar.vue';
 import { assetPath } from '../composables/useAsset';
@@ -244,17 +428,55 @@ const dawnImg = assetPath('/images/dawn.png');
 const roxsCmssImg = assetPath('/images/roxs-cmss.png');
 const scanupImg = assetPath('/images/scanup.png');
 
-const search = ref('');
+const openDropdown = ref(null);
+const searchQuery = ref('');
+const router = useRouter();
 const pstNow = ref('');
 let tick = null;
+
+const primaryImageTempBase = '/image_temp/';
+const secondaryImageTempBase = '/SCANNER_PROD1/SCANNER-PROD/public/image_temp/';
+
+function imageTempSrc(filename) {
+  // Keep slashes, encode spaces/special chars in filename.
+  return primaryImageTempBase + encodeURIComponent(filename).replace(/%2F/g, '/');
+}
+
+function imageTempFallbackSrc(filename) {
+  return secondaryImageTempBase + encodeURIComponent(filename).replace(/%2F/g, '/');
+}
+
+function onFooterImgError(event, filename) {
+  const img = event?.target;
+  if (!img || img.dataset?.fallbackApplied === '1') return;
+  img.dataset.fallbackApplied = '1';
+  img.src = imageTempFallbackSrc(filename);
+}
 
 const scansToday = ref(null);
 const studentsEnrolled = ref(null);
 
-function scrollTo(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+function toggleDropdown(name) {
+  openDropdown.value = openDropdown.value === name ? null : name;
+}
+
+function closeAll() {
+  openDropdown.value = null;
+}
+
+function handleSearch(e) {
+  if (e.key === 'Enter' && searchQuery.value.trim()) {
+    window.open(
+      `https://ozamiz.deped.gov.ph/?s=${encodeURIComponent(searchQuery.value)}`,
+      '_blank',
+    );
+  }
+}
+
+function handleClickOutside(e) {
+  if (!e.target.closest('.nav-item') && !e.target.closest('.nav-trigger')) {
+    closeAll();
+  }
 }
 
 const scansTodayText = computed(() => (scansToday.value == null ? '—' : String(scansToday.value)));
@@ -291,12 +513,14 @@ async function loadStats() {
 }
 
 onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
   updateClock();
   tick = setInterval(updateClock, 1000);
   loadStats();
 });
 
 onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
   if (tick) clearInterval(tick);
   tick = null;
 });
@@ -308,93 +532,150 @@ onUnmounted(() => {
   color: #1f2937;
 }
 
-/* Top navbar */
-.top-nav {
-  display: grid;
-  grid-template-columns: 150px 1fr auto;
+/* Navbar (dropdown, govph style) */
+.navbar {
+  display: flex;
   align-items: center;
-  gap: 0;
-  padding: 0;
-  background: #ffffff;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 0 16px;
   position: sticky;
   top: 0;
-  z-index: 40;
+  z-index: 999;
+  height: 56px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
-
-.govph {
-  color: #111827;
-  font-weight: 700;
-  text-decoration: none;
-  letter-spacing: 0.02em;
-  padding: 12px 16px;
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
-  text-align: center;
-}
-
-.nav-links {
-  display: flex;
-  align-items: stretch;
-}
-
-.nav-links a {
-  color: #111827;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 13px;
-  padding: 12px 14px;
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.nav-links a.active {
-  background: #f3f4f6;
-  font-weight: 700;
-}
-
-.nav-right {
+.navbar-left {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  flex: 1;
+  height: 100%;
 }
-
-.login-link {
-  color: #111827;
-  font-weight: 600;
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+}
+.nav-govph {
+  font-weight: 700;
+  font-size: 14px;
+  color: #333;
   text-decoration: none;
-  font-size: 13px;
+  padding: 0 14px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid #e0e0e0;
 }
-
-.login-link:hover {
-  text-decoration: underline;
+.nav-govph:hover {
+  background: #f5f5f5;
 }
-
-.search-wrap {
+.nav-item {
   position: relative;
+  height: 56px;
   display: flex;
   align-items: center;
 }
-
-.search-icon {
+.nav-trigger {
+  padding: 0 14px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.nav-trigger:hover,
+.nav-item.open .nav-trigger {
+  background: #f0f0f0;
+}
+.nav-arrow {
+  font-size: 9px;
+  transition: transform 0.2s ease;
+  display: inline-block;
+  margin-top: 1px;
+}
+.nav-item.open .nav-arrow {
+  transform: rotate(180deg);
+}
+.dropdown-menu {
   position: absolute;
-  left: 10px;
-  color: rgba(31, 41, 55, 0.65);
-  width: 14px;
-  height: 14px;
+  top: 56px;
+  left: 0;
+  background: white;
+  min-width: 300px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  z-index: 1000;
+  border-top: 3px solid #F97316;
+  padding: 6px 0 10px;
 }
-
-.search-input {
-  width: 155px;
-  padding: 7px 10px 7px 28px;
-  border: 1px solid rgba(31, 41, 55, 0.25);
-  border-radius: 0;
+.dropdown-section {
+  padding: 10px 20px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #aaa;
+  letter-spacing: 0.8px;
+  margin-top: 6px;
+}
+.dropdown-section:first-child {
+  margin-top: 0;
+}
+.dropdown-divider {
+  height: 1px;
+  background: #f0f0f0;
+  margin: 6px 0;
+}
+.dropdown-menu a {
+  display: block;
+  padding: 8px 20px 8px 28px;
+  color: #444;
+  text-decoration: none;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.dropdown-menu a.direct-link {
+  padding-left: 20px;
+  font-weight: 500;
+  color: #333;
+}
+.dropdown-menu a:hover {
+  background: #fff5ee;
+  color: #F97316;
+}
+.login-btn {
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 6px 12px;
+  white-space: nowrap;
+  border-radius: 4px;
+}
+.login-btn:hover {
+  color: #F97316;
+  background: #fff5ee;
+}
+.search-bar {
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 13px;
+  width: 150px;
   outline: none;
-  font-size: 12px;
+  font-family: inherit;
 }
-
-.search-input:focus {
-  border-color: rgba(234, 88, 12, 0.7);
-  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.12);
+.search-bar:focus {
+  border-color: #F97316;
+  box-shadow: 0 0 0 2px rgba(249,115,22,0.15);
 }
 
 /* Header image banner */
@@ -809,82 +1090,121 @@ onUnmounted(() => {
 
 /* Footer */
 .footer {
-  background: #1e3a5f;
-  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
-.footer-inner {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 28px 16px;
+.systems-banner {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+.systems-banner img {
+  width: 100%;
+  height: 60px;
+  object-fit: fill;
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+.seals-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  width: 100%;
+  background: #f0f0f0;
+  padding: 30px 0;
+  margin: 0;
+}
+
+.seals-row .seal-item {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+}
+
+.seals-row img {
+  width: 110px;
+  height: 110px;
+  object-fit: contain;
+}
+
+.footer-main {
+  background: #e8e8e8;
+  padding: 40px;
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 40px;
 }
 
 .footer-title {
-  font-weight: 1000;
-  margin-bottom: 10px;
-  letter-spacing: 0.04em;
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #222222;
+  letter-spacing: 0.02em;
 }
 
-.footer-logo img {
-  width: 54px;
-  height: 54px;
+.footer-deped-logo {
+  width: 80px;
+  height: 80px;
   object-fit: contain;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  padding: 6px;
+  display: block;
+  margin-bottom: 10px;
 }
 
-.footer-text {
-  color: rgba(255, 255, 255, 0.82);
-  font-weight: 600;
+.footer-note,
+.footer-about {
+  margin: 0 0 12px;
   font-size: 13px;
+  color: #555555;
   line-height: 1.5;
 }
 
-.footer-links {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 8px;
-}
-
-.footer-links a {
-  color: rgba(255, 255, 255, 0.9);
+.footer-link {
+  display: block;
+  margin-bottom: 8px;
+  color: #333333;
   text-decoration: none;
-  font-weight: 700;
+  font-size: 13px;
 }
 
-.footer-links a:hover {
+.footer-link:hover {
   text-decoration: underline;
 }
 
 .footer-bottom {
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
-  padding: 12px 16px;
+  background: #333333;
+  color: #ffffff;
   text-align: center;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.8);
+  padding: 15px;
+  font-size: 14px;
 }
 
 /* Responsiveness */
 @media (max-width: 980px) {
-  .top-nav {
-    grid-template-columns: 1fr;
-    gap: 0;
-    padding: 0;
-  }
-  .nav-links {
+  .navbar {
     flex-wrap: wrap;
-    justify-content: flex-start;
+    height: auto;
+    padding: 0 10px;
   }
-  .nav-right {
+  .navbar-left {
     width: 100%;
-    justify-content: space-between;
-    padding: 8px 12px;
+    overflow-x: auto;
+  }
+  .navbar-right {
+    width: 100%;
+    justify-content: flex-end;
+    padding: 6px 0 10px;
   }
   .banner-header-img {
     height: 120px;
@@ -918,7 +1238,10 @@ onUnmounted(() => {
   .how-steps {
     grid-template-columns: 1fr;
   }
-  .footer-inner {
+  .seals-row {
+    gap: 20px;
+  }
+  .footer-main {
     grid-template-columns: 1fr;
   }
   .search-input {
