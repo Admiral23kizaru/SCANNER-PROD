@@ -221,12 +221,6 @@
             </div>
             <div class="sys-desc">Curriculum Management Survey System</div>
           </a>
-          <RouterLink class="sys-card sys-card--scanup" to="/scanner">
-            <div class="sys-logo sys-logo--scan">
-              <img :src="scanupImg" alt="ScanUp" class="sys-icon-img" />
-            </div>
-            <div class="sys-desc">QR Attendance System</div>
-          </RouterLink>
         </div>
       </div>
     </section>
