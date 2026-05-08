@@ -22,14 +22,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class TeacherManagementController extends Controller
 {
-    private function forbiddenIfCrossSchool(?int $schoolId, ?\App\Models\User $linkedUser): ?JsonResponse
-    {
-        if ($schoolId && $linkedUser && $linkedUser->school_id !== $schoolId) {
-            return response()->json(['error' => 'Forbidden'], 403);
-        }
-        return null;
-    }
-
     /* ====================================================================== */
     /*  Read                                                                   */
     /* ====================================================================== */
@@ -86,6 +78,7 @@ class TeacherManagementController extends Controller
         
         // Auto-detect school name fallback from the authenticated admin user
         $schoolName = $request->input('school_name') ?: $request->user()->school_name;
+        $schoolId = $request->user()?->school_id;
 
         $teacher = Teacher::create([
             'first_name'  => $firstName,
@@ -94,6 +87,7 @@ class TeacherManagementController extends Controller
             'password'    => $request->password,
             'employee_id' => $request->employee_id,
             'school_name' => $schoolName,
+            'school_id'   => $schoolId,
             'job_title'   => $request->input('job_title'),
         ]);
 
@@ -106,6 +100,7 @@ class TeacherManagementController extends Controller
                 'password'    => $request->password,
                 'employee_id' => $request->employee_id,
                 'school_name' => $schoolName,
+                'school_id'   => $schoolId,
                 'job_title'   => $request->input('job_title'),
                 'grade_level' => $request->input('grade_level'),
                 'section'     => $request->input('section'),
@@ -126,9 +121,15 @@ class TeacherManagementController extends Controller
             return response()->json(['message' => 'Teacher not found.'], 404);
         }
 
-        $linkedUser = User::where('email', $teacher->email)->first();
-        if ($resp = $this->forbiddenIfCrossSchool($schoolId, $linkedUser)) {
-            return $resp;
+        if ($schoolId) {
+            $linkedUser = \App\Models\User::where(
+                'email', $teacher->email
+            )->first();
+            if (!$linkedUser || $linkedUser->school_id !== $schoolId) {
+                return response()->json([
+                    'message' => 'Forbidden.'
+                ], 403);
+            }
         }
 
         $validator = Validator::make($request->all(), [
@@ -187,11 +188,18 @@ class TeacherManagementController extends Controller
             return response()->json(['message' => 'Teacher not found.'], 404);
         }
 
-        $user = User::where('email', $teacher->email)->first();
-
-        if ($resp = $this->forbiddenIfCrossSchool($schoolId, $user)) {
-            return $resp;
+        if ($schoolId) {
+            $linkedUser = \App\Models\User::where(
+                'email', $teacher->email
+            )->first();
+            if (!$linkedUser || $linkedUser->school_id !== $schoolId) {
+                return response()->json([
+                    'message' => 'Forbidden.'
+                ], 403);
+            }
         }
+
+        $user = User::where('email', $teacher->email)->first();
 
         if ($user && Student::where('created_by', $user->id)->exists()) {
             return response()->json([
@@ -218,9 +226,15 @@ class TeacherManagementController extends Controller
             return response()->json(['message' => 'Teacher not found.'], 404);
         }
 
-        $linkedUser = User::where('email', $teacher->email)->first();
-        if ($resp = $this->forbiddenIfCrossSchool($schoolId, $linkedUser)) {
-            return $resp;
+        if ($schoolId) {
+            $linkedUser = \App\Models\User::where(
+                'email', $teacher->email
+            )->first();
+            if (!$linkedUser || $linkedUser->school_id !== $schoolId) {
+                return response()->json([
+                    'message' => 'Forbidden.'
+                ], 403);
+            }
         }
 
         $request->validate([
@@ -249,11 +263,12 @@ class TeacherManagementController extends Controller
      *
      * Uses chunked processing to support large datasets without exhausting memory.
      */
-    public function export(): StreamedResponse
+    public function export(Request $request): StreamedResponse
     {
+        $schoolId = $request->user()?->school_id;
         $teacherRole = Role::where('name', 'Teacher')->firstOrFail();
 
-        $response = new StreamedResponse(function () use ($teacherRole) {
+        $response = new StreamedResponse(function () use ($teacherRole, $schoolId) {
             if (ob_get_length()) {
                 ob_end_clean();
             }
@@ -264,6 +279,9 @@ class TeacherManagementController extends Controller
             fputcsv($handle, ['ID', 'Name', 'Employee ID', 'Job Title', 'School Name', 'Created At']);
 
             User::where('role_id', $teacherRole->id)
+                ->when($schoolId, function ($q) use ($schoolId) {
+                    $q->where('school_id', $schoolId);
+                })
                 ->orderBy('name')
                 ->chunk(100, function ($users) use ($handle) {
                     foreach ($users as $user) {

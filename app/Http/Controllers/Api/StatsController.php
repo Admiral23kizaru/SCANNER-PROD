@@ -212,8 +212,12 @@ class StatsController extends Controller
             return response()->json(['message' => 'TCPDF is not installed.'], 500);
         }
 
+        $schoolId = $this->resolvedAuthUser()?->school_id;
         $stats  = $this->index()->getData(true);
         $recent = Attendance::with('student')
+            ->when($schoolId, function ($q) use ($schoolId) {
+                $q->where('school_id', $schoolId);
+            })
             ->whereDate('scanned_at', now()->toDateString())
             ->orderByDesc('scanned_at')
             ->limit(20)

@@ -257,16 +257,40 @@ import AccessibilityToolbar from '../AccessibilityToolbar.vue';
  *
  * See useScanner.js for detailed documentation of each function.
  */
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { Clock, User, Search } from 'lucide-vue-next';
 import { useScanner } from '../../composables/useScanner';
 
 const route = useRoute();
 
+onMounted(() => {
+    // Read token and deped_id from URL if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('token');
+    const urlDepedId = urlParams.get('deped_id');
+
+    // Store token from URL to localStorage
+    if (urlToken) {
+        localStorage.setItem('scan_up_token', urlToken);
+    }
+
+    // Store deped_id for scan requests
+    if (urlDepedId) {
+        localStorage.setItem('scan_up_deped_id', urlDepedId);
+    }
+
+    // Clean URL to prevent token in browser history
+    if (urlToken || urlDepedId) {
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+    }
+});
+
 const depedId = computed(() => {
     const v = route.query.deped_id;
-    return Array.isArray(v) ? v[0] : v;
+    const fromQuery = Array.isArray(v) ? v[0] : v;
+    return fromQuery || localStorage.getItem('scan_up_deped_id');
 });
 const schoolName = computed(() => {
     const v = route.query.school_name;

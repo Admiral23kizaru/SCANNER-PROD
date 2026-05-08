@@ -73,6 +73,21 @@ class SectionController extends Controller
             return response()->json(['message' => 'Validation failed.', 'errors' => $validator->errors()], 422);
         }
 
+        if ($request->filled('teacher_id')) {
+            $schoolId = $request->user()?->school_id;
+            if ($schoolId) {
+                $teacherUser = \App\Models\User::where(
+                    'id', $request->teacher_id
+                )->first();
+                if (!$teacherUser ||
+                    $teacherUser->school_id !== $schoolId) {
+                    return response()->json([
+                        'message' => 'Selected teacher does not belong to your school.'
+                    ], 422);
+                }
+            }
+        }
+
         $section = Section::create([
             'name'        => $request->name,
             'grade_level' => $request->grade_level,
@@ -108,6 +123,21 @@ class SectionController extends Controller
 
         if ($validator->fails()) {
             return response()->json(['message' => 'Validation failed.', 'errors' => $validator->errors()], 422);
+        }
+
+        if ($request->filled('teacher_id')) {
+            $schoolId = $request->user()?->school_id;
+            if ($schoolId) {
+                $teacherUser = \App\Models\User::where(
+                    'id', $request->teacher_id
+                )->first();
+                if (!$teacherUser ||
+                    $teacherUser->school_id !== $schoolId) {
+                    return response()->json([
+                        'message' => 'Selected teacher does not belong to your school.'
+                    ], 422);
+                }
+            }
         }
 
         $section->update($request->only(['name', 'grade_level', 'teacher_id']));

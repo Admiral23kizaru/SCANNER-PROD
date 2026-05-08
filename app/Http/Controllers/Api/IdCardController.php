@@ -108,6 +108,18 @@ class IdCardController extends Controller
     {
         $student = Student::findOrFail($id);
         $user = $request->user();
+        $schoolId = $request->user()?->school_id;
+
+        if ($schoolId) {
+            $student = \App\Models\Student::where('id', $id)
+                ->where('school_id', $schoolId)
+                ->first();
+            if (!$student) {
+                return response()->json([
+                    'message' => 'Student not found.'
+                ], 404);
+            }
+        }
 
         // Admin can access any student; Teacher restricted to own students
         if ($user?->role?->name === 'Teacher') {
@@ -135,6 +147,18 @@ class IdCardController extends Controller
     public function getTeacherSignedUrl(Request $request, int $id): JsonResponse
     {
         $teacher = User::findOrFail($id);
+        $schoolId = $request->user()?->school_id;
+
+        if ($schoolId) {
+            $teacher = \App\Models\User::where('id', $id)
+                ->where('school_id', $schoolId)
+                ->first();
+            if (!$teacher) {
+                return response()->json([
+                    'message' => 'Teacher not found.'
+                ], 404);
+            }
+        }
 
         // Ensure target is a Teacher account
         if (!$teacher->role || strcasecmp((string) $teacher->role->name, 'Teacher') !== 0) {

@@ -629,6 +629,7 @@ class AttendanceController extends Controller
     {
         try {
             $user = $request->user();
+            $schoolId = $user?->school_id;
 
             if (!$user) {
                 return response()->json([
@@ -638,7 +639,10 @@ class AttendanceController extends Controller
             }
 
             // Fetch all students belonging to this teacher
-            $query = Student::query();
+            $query = Student::query()
+                ->when($schoolId, function ($q) use ($schoolId) {
+                    $q->where('school_id', $schoolId);
+                });
             if ($user->grade_level && $user->section) {
                 $query->where('grade', $user->grade_level)
                       ->where('section', $user->section);
@@ -658,6 +662,9 @@ class AttendanceController extends Controller
             $studentIds = $students->pluck('id')->toArray();
 
             $todayAttendance = Attendance::whereIn('student_id', $studentIds)
+                ->when($schoolId, function ($q) use ($schoolId) {
+                    $q->where('school_id', $schoolId);
+                })
                 ->whereDate('scanned_at', $today)
                 ->where('session', 'morning')
                 ->get()
