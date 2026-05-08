@@ -45,9 +45,9 @@ class PasswordResetController extends Controller
         $email          = $validated['email'];
         $genericMessage = 'If that email is registered, a verification code has been sent.';
 
-        // Rate limit: 1 OTP request per email per 60 seconds
-        $rateLimitKey = 'otp:' . $email;
-        if (RateLimiter::tooManyAttempts($rateLimitKey, 1)) {
+        // Rate limit: max 3 requests per email per 60 seconds
+        $rateLimitKey = 'otp-request:' . $email;
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 3)) {
             $seconds = RateLimiter::availableIn($rateLimitKey);
             return response()->json([
                 'message' => "Please wait {$seconds} seconds before requesting another code."
@@ -99,13 +99,21 @@ class PasswordResetController extends Controller
             'otp'   => ['required', 'digits:6'],
         ]);
 
+        $key = 'otp-verify:' . $validated['email'];
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $seconds = RateLimiter::availableIn($key);
+            return response()->json(['message' => "Too many attempts. Try again in {$seconds} seconds."], 429);
+        }
+
         $cacheKey  = $this->cachePrefix . $validated['email'];
         $storedOtp = Cache::get($cacheKey);
 
         if (!$storedOtp || (string) $storedOtp !== (string) $validated['otp']) {
+            RateLimiter::hit($key, 60);
             return response()->json(['message' => 'The verification code is invalid or has expired.'], 422);
         }
 
+        RateLimiter::clear($key);
         return response()->json(['message' => 'Code verified. You can now set a new password.']);
     }
 
@@ -119,16 +127,24 @@ class PasswordResetController extends Controller
         $validated = $request->validate([
             'email'    => ['required', 'email'],
             'otp'      => ['required', 'digits:6'],
-            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
+
+        $key = 'otp-reset:' . $validated['email'];
+        if (RateLimiter::tooManyAttempts($key, 3)) {
+            $seconds = RateLimiter::availableIn($key);
+            return response()->json(['message' => "Too many attempts. Try again in {$seconds} seconds."], 429);
+        }
 
         $cacheKey  = $this->cachePrefix . $validated['email'];
         $storedOtp = Cache::get($cacheKey);
 
         if (!$storedOtp || (string) $storedOtp !== (string) $validated['otp']) {
+            RateLimiter::hit($key, 60);
             return response()->json(['message' => 'The verification code is invalid or has expired.'], 422);
         }
 
+        RateLimiter::clear($key);
         $user = User::where('email', $validated['email'])->first();
         if (!$user) {
             return response()->json(['message' => 'No user found for the provided email address.'], 404);

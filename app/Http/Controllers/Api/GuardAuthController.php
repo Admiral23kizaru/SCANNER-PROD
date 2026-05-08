@@ -7,11 +7,20 @@ use App\Models\School;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 
 class GuardAuthController extends Controller
 {
     public function login(Request $request)
     {
+        $key = 'guard-login:' . $request->ip();
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $seconds = RateLimiter::availableIn($key);
+            return response()->json([
+                'error' => 'Too many login attempts. Try again in ' . $seconds . ' seconds.'
+            ], 429);
+        }
+
         $validated = $request->validate([
             'deped_school_id' => 'required|string',
             'password'        => 'required|string',
@@ -22,10 +31,13 @@ class GuardAuthController extends Controller
         $user = User::where('email', $email)->first();
 
         if (!$user || ! Hash::check($validated['password'], $user->password)) {
+            RateLimiter::hit($key, 60);
             return response()->json([
                 'error' => 'Invalid School ID or password.',
             ], 401);
         }
+
+        RateLimiter::clear($key);
 
         $school = School::where('deped_school_id', $validated['deped_school_id'])->first();
 

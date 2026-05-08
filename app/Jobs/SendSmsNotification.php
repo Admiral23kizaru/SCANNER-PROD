@@ -60,6 +60,16 @@ class SendSmsNotification implements ShouldQueue
      */
     public function handle(): void
     {
+        $cooldownKey = 'sms_cooldown_' . $this->student->id;
+
+        // Check FIRST before sending
+        if (Cache::has($cooldownKey)) {
+            Log::info('SMS skipped - cooldown active', [
+                'student_id' => $this->student->id,
+            ]);
+            return;
+        }
+
         // ── 1. Resolve the contact number ─────────────────────────────────────
         $contact = $this->formattedNumber ?: ($this->student->contact_number ?: $this->student->emergency_contact);
 
@@ -145,7 +155,7 @@ class SendSmsNotification implements ShouldQueue
                 Log::info("SMS Success: ID={$msgId} | Status={$status} | To={$contact} | Student={$this->student->id}");
 
                 // Set rapid-fire cooldown AFTER successful send
-                Cache::put($cooldownKey, true, 60); // 1 minute
+                Cache::put($cooldownKey, true, now()->addMinutes(5));
             } else {
                 Log::error("SMS Failed for student {$this->student->id}. HTTP {$response->status()}: {$response->body()}");
             }

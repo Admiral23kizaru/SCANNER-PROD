@@ -139,8 +139,8 @@ export async function uploadStudentPhoto(id, file) {
  * @returns {string} Fully-formed URL to the PDF endpoint.
  */
 export function getIdPdfUrl(id) {
-    const token = localStorage.getItem('scan_up_token');
-    return `${apiBase}/teacher/students/${encodeURIComponent(id)}/id${token ? '?token=' + encodeURIComponent(token) : ''}`;
+    // Use signed URL generator endpoint; do not pass bearer tokens in the query string.
+    return `${apiBase}/teacher/students/${encodeURIComponent(id)}/id-url`;
 }
 
 /**
@@ -150,7 +150,15 @@ export function getIdPdfUrl(id) {
  * @returns {void}
  */
 export function openIdPdfInBrowser(id) {
-    window.open(getIdPdfUrl(id), '_blank', 'noopener,noreferrer');
+    const token = localStorage.getItem('scan_up_token');
+    const headers = token
+        ? { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+        : { Accept: 'application/json' };
+
+    axios.get(getIdPdfUrl(id), { headers })
+        .then(({ data }) => {
+            if (data?.url) window.open(data.url, '_blank', 'noopener,noreferrer');
+        });
 }
 
 // ─── Bulk Import ──────────────────────────────────────────────────────────────

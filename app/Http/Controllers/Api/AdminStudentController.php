@@ -22,11 +22,9 @@ class AdminStudentController extends Controller
     /* ====================================================================== */
 
     /** Returns the school_id of the current admin. NULL = SuperAdmin (sees all). */
-    private function schoolScope()
+    private function schoolScope(Request $request): ?int
     {
-        /** @var \App\Models\User|null $user */
-        $user = auth()->user();
-        return $user?->school_id;
+        return $request->user()?->school_id;
     }
 
     /* ====================================================================== */
@@ -38,7 +36,7 @@ class AdminStudentController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $schoolId = $this->schoolScope();
+        $schoolId = $this->schoolScope($request);
         $query = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
             ->orderBy('last_name')->orderBy('first_name');
 
@@ -83,6 +81,7 @@ class AdminStudentController extends Controller
     /** Create a new student record. */
     public function store(Request $request): JsonResponse
     {
+        $schoolId = $this->schoolScope($request);
         $validator = Validator::make($request->all(), [
             'first_name'     => ['required', 'string', 'max:255'],
             'last_name'      => ['required', 'string', 'max:255'],
@@ -90,7 +89,7 @@ class AdminStudentController extends Controller
             'middle_name'    => ['nullable', 'string', 'max:255'],
             'student_number' => [
                 'required', 'string', 'max:64',
-                'unique:students,student_number,NULL,id,school_id,' . $this->schoolScope()
+                'unique:students,student_number,NULL,id,school_id,' . $schoolId
             ],
             'grade_section'  => ['nullable', 'string', 'max:64'],
             'grade'          => ['nullable', 'string', 'max:32'],
@@ -133,7 +132,7 @@ class AdminStudentController extends Controller
     /** Update an existing student record by ID. */
     public function update(Request $request, int $id): JsonResponse
     {
-        $schoolId = $this->schoolScope();
+        $schoolId = $this->schoolScope($request);
         $student = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->find($id);
         if (!$student) {
             return response()->json(['message' => 'Student not found.'], 404);
@@ -146,7 +145,7 @@ class AdminStudentController extends Controller
             'middle_name'    => ['nullable', 'string', 'max:255'],
             'student_number' => [
                 'sometimes', 'required', 'string', 'max:64',
-                'unique:students,student_number,' . $id . ',id,school_id,' . $this->schoolScope()
+                'unique:students,student_number,' . $id . ',id,school_id,' . $schoolId
             ],
             'grade_section'  => ['nullable', 'string', 'max:64'],
             'grade'          => ['nullable', 'string', 'max:32'],
@@ -193,9 +192,13 @@ class AdminStudentController extends Controller
     }
 
     /** Permanently delete a student record. */
-    public function destroy(int $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
-        $student = Student::find($id);
+        $schoolId = $this->schoolScope($request);
+        $student = Student::where('id', $id)
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->first();
+
         if (!$student) {
             return response()->json(['message' => 'Student not found.'], 404);
         }
@@ -217,7 +220,10 @@ class AdminStudentController extends Controller
      */
     public function export(Request $request): StreamedResponse
     {
-        $query  = Student::query()->orderBy('last_name')->orderBy('first_name');
+        $schoolId = $this->schoolScope($request);
+        $query  = Student::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->orderBy('last_name')->orderBy('first_name');
         $search = $request->input('search');
 
         if ($search && is_string($search)) {

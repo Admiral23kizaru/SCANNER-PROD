@@ -44,7 +44,8 @@ Route::get('/school/by-deped-id/{depedId}', function ($depedId) {
 Route::get('/school/check/{deped_id}', [SchoolController::class, 'check']);
 
 // 2. Bat file launcher — register a new school, admin user, settings, and school year
-Route::post('/setup/register-school', [SetupController::class, 'registerSchool']);
+Route::post('/setup/register-school', [SetupController::class, 'registerSchool'])
+    ->middleware('setup.secret');
 
 // PUBLIC — BAT file login (no auth)
 Route::post('/guard/login', [GuardAuthController::class, 'login']);

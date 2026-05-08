@@ -19,6 +19,24 @@ use Illuminate\Support\Facades\Validator;
  */
 class SectionController extends Controller
 {
+    private function schoolScope(Request $request): ?int
+    {
+        return $request->user()?->school_id;
+    }
+
+    private function findSectionOrFail(int $id, ?int $schoolId): Section
+    {
+        $section = Section::where('id', $id)
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->first();
+
+        if (!$section) {
+            abort(404, 'Section not found.');
+        }
+
+        return $section;
+    }
+
     /**
      * // Description: index - Returns all sections for the admin's school,
      * //   including the assigned teacher's name and student count.
@@ -79,10 +97,8 @@ class SectionController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $section = Section::find($id);
-        if (!$section) {
-            return response()->json(['message' => 'Section not found.'], 404);
-        }
+        $schoolId = $this->schoolScope($request);
+        $section = $this->findSectionOrFail($id, $schoolId);
 
         $validator = Validator::make($request->all(), [
             'name'        => ['sometimes', 'required', 'string', 'max:100'],
@@ -111,12 +127,10 @@ class SectionController extends Controller
      * // Description: destroy - Deletes a section. Students in this section
      * //   will have their section_id set to NULL (via nullOnDelete FK).
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
-        $section = Section::find($id);
-        if (!$section) {
-            return response()->json(['message' => 'Section not found.'], 404);
-        }
+        $schoolId = $this->schoolScope($request);
+        $section = $this->findSectionOrFail($id, $schoolId);
 
         $section->delete();
 
@@ -129,10 +143,8 @@ class SectionController extends Controller
      */
     public function assignStudents(Request $request, int $id): JsonResponse
     {
-        $section = Section::find($id);
-        if (!$section) {
-            return response()->json(['message' => 'Section not found.'], 404);
-        }
+        $schoolId = $this->schoolScope($request);
+        $section = $this->findSectionOrFail($id, $schoolId);
 
         $validator = Validator::make($request->all(), [
             'student_ids'   => ['required', 'array', 'min:1'],
@@ -143,8 +155,10 @@ class SectionController extends Controller
             return response()->json(['message' => 'Validation failed.', 'errors' => $validator->errors()], 422);
         }
 
-        // Bulk-update selected students to this section
-        Student::whereIn('id', $request->student_ids)->update([
+        // Bulk-update selected students to this section (scoped by school)
+        Student::whereIn('id', $request->student_ids)
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->update([
             'section_id' => $section->id,
             'grade'      => $section->grade_level,
             'section'    => $section->name,
@@ -162,7 +176,9 @@ class SectionController extends Controller
      */
     public function unassignedStudents(Request $request): JsonResponse
     {
-        $students = Student::whereNull('section_id')
+        $schoolId = $this->schoolScope($request);
+        $students = Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->whereNull('section_id')
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->select('id', 'first_name', 'last_name', 'grade', 'section', 'student_number')
@@ -176,15 +192,8 @@ class SectionController extends Controller
      */
     public function students(Request $request, int $id): JsonResponse
     {
-        $schoolId = $request->user()->school_id;
-
-        $section = Section::where('id', $id)
-            ->where('school_id', $schoolId)
-            ->first();
-
-        if (!$section) {
-            return response()->json(['message' => 'Section not found.'], 404);
-        }
+        $schoolId = $this->schoolScope($request);
+        $section = $this->findSectionOrFail($id, $schoolId);
 
         $students = Student::where('section_id', $section->id)
             ->orderBy('last_name')
@@ -201,15 +210,8 @@ class SectionController extends Controller
      */
     public function unassignStudents(Request $request, int $id): JsonResponse
     {
-        $schoolId = $request->user()->school_id;
-
-        $section = Section::where('id', $id)
-            ->where('school_id', $schoolId)
-            ->first();
-
-        if (!$section) {
-            return response()->json(['message' => 'Section not found.'], 404);
-        }
+        $schoolId = $this->schoolScope($request);
+        $section = $this->findSectionOrFail($id, $schoolId);
 
         $validator = Validator::make($request->all(), [
             'student_ids' => ['required', 'array', 'min:1'],
@@ -222,6 +224,7 @@ class SectionController extends Controller
 
         Student::where('section_id', $section->id)
             ->whereIn('id', $request->student_ids)
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->update([
                 'section_id' => null,
                 'grade'      => null,
@@ -241,9 +244,11 @@ class SectionController extends Controller
      */
     public function teachers(Request $request): JsonResponse
     {
+        $schoolId = $this->schoolScope($request);
         $teacherRoleId = \App\Models\Role::where('name', 'Teacher')->value('id');
 
         $teachers = User::where('role_id', $teacherRoleId)
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->select('id', 'name', 'grade_level', 'section')
             ->orderBy('name')
             ->get();

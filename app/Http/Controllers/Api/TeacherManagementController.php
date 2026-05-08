@@ -22,14 +22,22 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class TeacherManagementController extends Controller
 {
+    private function forbiddenIfCrossSchool(?int $schoolId, ?\App\Models\User $linkedUser): ?JsonResponse
+    {
+        if ($schoolId && $linkedUser && $linkedUser->school_id !== $schoolId) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+        return null;
+    }
+
     /* ====================================================================== */
     /*  Read                                                                   */
     /* ====================================================================== */
 
     /** List all teachers for the authenticated admin's school (role Teacher). */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $schoolId = auth()->user()->school_id;
+        $schoolId = $request->user()?->school_id;
 
         $teachers = User::where('role_id', 2)
             ->when($schoolId, function ($q) use ($schoolId) {
@@ -112,9 +120,15 @@ class TeacherManagementController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
+        $schoolId = $request->user()?->school_id;
         $teacher = Teacher::find($id);
         if (!$teacher) {
             return response()->json(['message' => 'Teacher not found.'], 404);
+        }
+
+        $linkedUser = User::where('email', $teacher->email)->first();
+        if ($resp = $this->forbiddenIfCrossSchool($schoolId, $linkedUser)) {
+            return $resp;
         }
 
         $validator = Validator::make($request->all(), [
@@ -165,14 +179,20 @@ class TeacherManagementController extends Controller
      * Guards against deletion when the teacher has created student records
      * to preserve data integrity.
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
+        $schoolId = $request->user()?->school_id;
         $teacher = Teacher::find($id);
         if (!$teacher) {
             return response()->json(['message' => 'Teacher not found.'], 404);
         }
 
         $user = User::where('email', $teacher->email)->first();
+
+        if ($resp = $this->forbiddenIfCrossSchool($schoolId, $user)) {
+            return $resp;
+        }
+
         if ($user && Student::where('created_by', $user->id)->exists()) {
             return response()->json([
                 'message' => 'Cannot delete this teacher because they created student records. Reassign those students first.',
@@ -192,9 +212,15 @@ class TeacherManagementController extends Controller
     /** Upload and store a teacher's profile photo and sync to users table. */
     public function uploadPhoto(Request $request, int $id): JsonResponse
     {
+        $schoolId = $request->user()?->school_id;
         $teacher = Teacher::find($id);
         if (!$teacher) {
             return response()->json(['message' => 'Teacher not found.'], 404);
+        }
+
+        $linkedUser = User::where('email', $teacher->email)->first();
+        if ($resp = $this->forbiddenIfCrossSchool($schoolId, $linkedUser)) {
+            return $resp;
         }
 
         $request->validate([

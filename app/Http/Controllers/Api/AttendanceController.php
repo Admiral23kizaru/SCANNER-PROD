@@ -77,10 +77,9 @@ class AttendanceController extends Controller
 
             $school = \App\Models\School::where('deped_school_id', $depedId)->first();
             if (!$school) {
-                $school = \App\Models\School::create([
-                    'name'            => $schoolName,
-                    'deped_school_id' => $depedId,
-                ]);
+                return response()->json([
+                    'error' => 'School not found.',
+                ], 404);
             }
 
             $schoolId = $school->id;
@@ -321,35 +320,15 @@ class AttendanceController extends Controller
     public function publicStats(Request $request): JsonResponse
     {
         $depedId = $request->query('deped_id');
+        if (!$depedId) {
+            return response()->json([
+                'error' => 'deped_id is required',
+            ], 422);
+        }
 
         $school = null;
         if ($depedId) {
             $school = School::where('deped_school_id', $depedId)->first();
-        }
-
-        // If deped_id is absent, return global stats for landing pages / public dashboards.
-        if (!$depedId) {
-            $query = Attendance::whereDate('scanned_at', today());
-
-            $stats = (clone $query)->selectRaw("
-                COUNT(*) as total_today,
-                SUM(status = 'on_time') as present_count,
-                SUM(status = 'late') as late_count
-            ")->first();
-
-            $enrolled      = Student::count();
-            $morningMarked = Attendance::whereDate('scanned_at', today())
-                ->where('session', 'morning')
-                ->distinct()
-                ->count('student_id');
-            $absent = max(0, $enrolled - $morningMarked);
-
-            return response()->json([
-                'total_today'   => (int) ($stats->total_today ?? 0),
-                'present_count' => (int) ($stats->present_count ?? 0),
-                'late_count'    => (int) ($stats->late_count ?? 0),
-                'absent_count'  => $absent,
-            ]);
         }
 
         if (!$school) {
@@ -426,12 +405,17 @@ class AttendanceController extends Controller
         }
 
         $input   = trim($request->student_number ?? $request->student_id);
-        $student = Student::where('student_number', $input)
-            ->orWhere('id', $input)
+        $schoolId = $request->user()?->school_id;
+        $student = Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where(function ($q) use ($input) {
+                $q->where('student_number', $input)->orWhere('id', $input);
+            })
             ->first();
 
         if (!$student) {
-            return response()->json(['message' => 'Student not found.'], 404);
+            return response()->json([
+                'error' => 'Student not found in your school.'
+            ], 404);
         }
 
         // Prevent rapid double-scan by the same teacher within 2 seconds
@@ -448,7 +432,7 @@ class AttendanceController extends Controller
         $teacher    = $request->user();
         $scannedAt  = now();
         $session    = $scannedAt->hour < 12 ? 'morning' : 'afternoon';
-        $schoolId   = $this->resolveSchoolId($teacher, $student, 'student');
+        $schoolId   = $teacher?->school_id;
         $settings   = SchoolSetting::where('school_id', $schoolId)->first();
         $schoolYear = SchoolYear::where('school_id', $schoolId)->where('is_active', true)->first();
         $status     = $this->resolveStatus($settings, $scannedAt);

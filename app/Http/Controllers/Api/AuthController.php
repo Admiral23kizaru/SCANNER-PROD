@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -24,6 +25,14 @@ class AuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
+        $key = 'login:' . $request->ip();
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $seconds = RateLimiter::availableIn($key);
+            return response()->json([
+                'error' => 'Too many login attempts. Try again in ' . $seconds . ' seconds.'
+            ], 429);
+        }
+
         $request->validate([
             'email'    => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
@@ -32,10 +41,13 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
+            RateLimiter::hit($key, 60);
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
         }
+
+        RateLimiter::clear($key);
 
         // Revoke previous tokens to enforce single active session
         $user->tokens()->delete();
