@@ -1,6 +1,24 @@
 <template>
   <div class="landing">
-    <nav class="navbar">
+    <nav class="navbar" :class="{ 'nav-open': isMobileMenuOpen }">
+      <button
+        class="hamburger-btn"
+        type="button"
+        @click.stop="toggleMobileMenu"
+        :aria-expanded="isMobileMenuOpen ? 'true' : 'false'"
+        aria-label="Toggle navigation menu"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <div
+        v-if="isMobileMenuOpen"
+        class="mobile-nav-backdrop"
+        @click="closeMobileMenu"
+      ></div>
+
       <div class="navbar-left">
         <!-- GOVPH -->
         <a href="https://www.gov.ph" target="_blank" class="nav-govph" rel="noreferrer">GOVPH</a>
@@ -266,7 +284,7 @@
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             referrerpolicy="strict-origin-when-cross-origin"
             allowfullscreen
-            style="display:block; margin-top: 20px;"
+            class="youtube-embed"
           ></iframe>
         </div>
 
@@ -287,7 +305,7 @@
             src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fdepedtayoozamiz&tabs=timeline&width=340&height=500&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true&appId"
             width="100%"
             height="500"
-            style="border:none; overflow:hidden; margin-top:20px; display:block;"
+            class="facebook-embed"
             scrolling="no"
             frameborder="0"
             allowfullscreen="true"
@@ -531,6 +549,7 @@ const scanupImg = assetPath('/images/scanup.png');
 
 const openDropdown = ref(null);
 const searchQuery = ref('');
+const isMobileMenuOpen = ref(false);
 const router = useRouter();
 const pstNow = ref('');
 let tick = null;
@@ -591,6 +610,14 @@ function closeAll() {
   openDropdown.value = null;
 }
 
+function toggleMobileMenu() {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value;
+}
+
+function closeMobileMenu() {
+  isMobileMenuOpen.value = false;
+}
+
 function handleSearch(e) {
   if (e.key === 'Enter' && searchQuery.value.trim()) {
     window.open(
@@ -601,6 +628,9 @@ function handleSearch(e) {
 }
 
 function handleClickOutside(e) {
+  if (!e.target.closest('.navbar')) {
+    closeMobileMenu();
+  }
   if (!e.target.closest('.nav-item') && !e.target.closest('.nav-trigger')) {
     closeAll();
   }
@@ -659,6 +689,8 @@ onUnmounted(() => {
 .landing {
   background: #ffffff;
   color: #1f2937;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 /* Navbar (dropdown, govph style) */
@@ -673,6 +705,34 @@ onUnmounted(() => {
   z-index: 999;
   height: 56px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.hamburger-btn {
+  display: none;
+  width: 40px;
+  height: 40px;
+  margin-right: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  z-index: 1002;
+}
+.hamburger-btn span {
+  width: 18px;
+  height: 2px;
+  background: #1f2937;
+  border-radius: 2px;
+  display: block;
+}
+.mobile-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  z-index: 995;
 }
 .navbar-left {
   display: flex;
@@ -818,7 +878,7 @@ onUnmounted(() => {
 
 .banner-header-img {
   width: 100%;
-  height: 86px;
+  height: clamp(76px, 11vw, 120px);
   display: block;
   object-fit: cover;
   object-position: center center;
@@ -875,13 +935,13 @@ onUnmounted(() => {
 
 .dept {
   font-weight: 800;
-  font-size: 18px;
+  font-size: clamp(13px, 2.3vw, 18px);
   line-height: 1.15;
 }
 
 .motto {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: clamp(10px, 1.6vw, 11px);
   font-weight: 700;
 }
 
@@ -944,7 +1004,7 @@ onUnmounted(() => {
 
 .systems-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 12px;
 }
 
@@ -1022,7 +1082,7 @@ onUnmounted(() => {
 }
 
 .hero-left h1 {
-  font-size: 34px;
+  font-size: clamp(24px, 4.5vw, 34px);
   line-height: 1.15;
   margin: 0;
   color: #1e3a5f;
@@ -1080,8 +1140,8 @@ onUnmounted(() => {
 /* ── Hero CSS Illustration ─────────────────────────────── */
 .hero-illustration {
   position: relative;
-  width: 300px;
-  height: 300px;
+  width: clamp(230px, 42vw, 300px);
+  height: clamp(230px, 42vw, 300px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -1278,7 +1338,7 @@ onUnmounted(() => {
   margin: 0 auto;
   padding: 0 16px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
 }
 
@@ -1301,7 +1361,7 @@ onUnmounted(() => {
 .stat-value {
   margin-top: 8px;
   font-weight: 1000;
-  font-size: 30px;
+  font-size: clamp(22px, 5vw, 30px);
   color: #ea580c;
 }
 
@@ -1326,7 +1386,7 @@ onUnmounted(() => {
 
 .how-steps {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
 }
 
@@ -1391,7 +1451,7 @@ onUnmounted(() => {
 
 .systems-banner {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   width: 100%;
   max-width: 100%;
   overflow: hidden;
@@ -1410,7 +1470,7 @@ onUnmounted(() => {
 
 .seals-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   width: 100%;
   background: #f0f0f0;
   padding: 30px 0;
@@ -1432,9 +1492,9 @@ onUnmounted(() => {
 
 .footer-main {
   background: #e8e8e8;
-  padding: 40px;
+  padding: clamp(20px, 3.5vw, 40px);
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 40px;
 }
 
@@ -1488,9 +1548,9 @@ onUnmounted(() => {
 }
 .content-row {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 24px;
-  padding: 20px;
+  padding: clamp(12px, 2.5vw, 20px);
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -1512,7 +1572,7 @@ onUnmounted(() => {
 .carousel-slides {
   position: relative;
   width: 100%;
-  height: 300px;
+  height: clamp(200px, 34vw, 300px);
 }
 .carousel-slide {
   position: absolute;
@@ -1526,9 +1586,28 @@ onUnmounted(() => {
 }
 .carousel-slide img {
   width: 100%;
-  height: 300px;
+  height: clamp(200px, 34vw, 300px);
   object-fit: cover;
   display: block;
+}
+.youtube-embed {
+  display: block;
+  margin-top: 20px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  min-height: 220px;
+}
+.facebook-embed {
+  border: none;
+  overflow: hidden;
+  margin-top: 20px;
+  display: block;
+  width: 100%;
+  border-radius: 8px;
+  min-height: 420px;
 }
 .carousel-btn {
   position: absolute;
@@ -1573,18 +1652,92 @@ onUnmounted(() => {
 /* Responsiveness */
 @media (max-width: 980px) {
   .navbar {
-    flex-wrap: wrap;
-    height: auto;
-    padding: 0 10px;
+    height: 56px;
+    padding: 0 12px;
+    justify-content: space-between;
+  }
+  .hamburger-btn {
+    display: inline-flex;
   }
   .navbar-left {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    max-height: calc(100vh - 56px);
+    overflow-y: auto;
+    background: #fff;
+    flex-direction: column;
+    align-items: stretch;
+    border-top: 1px solid #e5e7eb;
+    transform: translateY(-120%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    z-index: 1001;
+    height: auto;
+    min-height: 0;
+  }
+  .landing .navbar-left,
+  .landing .navbar-right {
+    visibility: hidden;
+  }
+  .landing .navbar.nav-open .navbar-left,
+  .landing .navbar.nav-open .navbar-right {
+    visibility: visible;
+  }
+  .landing .navbar.nav-open .navbar-left {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .nav-govph {
     width: 100%;
-    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    justify-content: flex-start;
+    padding: 0 16px;
+    height: 48px;
+    min-height: 48px;
+  }
+  .nav-item {
+    width: 100%;
+    height: auto;
+    min-height: 48px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .nav-trigger {
+    width: 100%;
+    justify-content: space-between;
+    padding: 12px 16px;
+    height: auto;
+    min-height: 48px;
   }
   .navbar-right {
-    width: 100%;
-    justify-content: flex-end;
-    padding: 6px 0 10px;
+    position: static;
+    width: auto;
+    margin-left: auto;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+  .navbar-right .search-bar {
+    display: none;
+  }
+  .navbar-right :deep(.a11y-toolbar),
+  .navbar-right :deep(.accessibility-toolbar) {
+    display: none;
+  }
+  .login-btn {
+    padding: 6px 10px;
+    font-size: 13px;
   }
   .banner-header-img {
     height: 120px;
@@ -1607,15 +1760,9 @@ onUnmounted(() => {
     font-size: 13px;
   }
   .systems-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
   .hero-inner {
-    grid-template-columns: 1fr;
-  }
-  .stats-inner {
-    grid-template-columns: 1fr;
-  }
-  .how-steps {
     grid-template-columns: 1fr;
   }
   .seals-row {
@@ -1624,16 +1771,62 @@ onUnmounted(() => {
   .footer-main {
     grid-template-columns: 1fr;
   }
-  .search-input {
-    width: 150px;
+  .dropdown-menu {
+    position: static;
+    width: 100%;
+    min-width: 0;
+    border-top: none;
+    box-shadow: none;
+    border-left: 3px solid #f97316;
   }
 }
 @media (max-width: 768px) {
   .content-row {
     grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 14px;
   }
   .content-right {
-    display: none;
+    display: block;
+  }
+  .seals-row {
+    padding: 20px 0;
+  }
+  .seals-row img {
+    width: 88px;
+    height: 88px;
+  }
+  .footer-main {
+    padding: 24px 16px;
+    gap: 20px;
+  }
+}
+@media (max-width: 520px) {
+  .contact-inner {
+    gap: 10px;
+  }
+  .contact-item {
+    width: 100%;
+    font-size: 13px;
+  }
+  .banner-overlay {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .banner-time {
+    display: block;
+    text-align: left;
+  }
+  .step,
+  .stat-card,
+  .sys-card {
+    padding: 14px;
+  }
+  .youtube-embed {
+    min-height: 180px;
+  }
+  .facebook-embed {
+    min-height: 360px;
   }
 }
 </style>

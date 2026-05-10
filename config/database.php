@@ -63,6 +63,33 @@ return [
             ]) : [],
         ],
 
+        /**
+         * EHRIS Database Connection
+         *
+         * PURPOSE: Allows ScanUp to read EHRIS teacher
+         * credentials for authentication. Read-only.
+         *
+         * TABLES READ:
+         * - tbl_user: verify email + password
+         * - tbl_reporting_manager: identify RMs
+         * - tbl_depart: school mapping (optional)
+         *
+         * NEVER WRITE to this connection.
+         */
+        'ehris' => [
+            'driver'    => 'mysql',
+            'host'      => env('EHRIS_DB_HOST', '127.0.0.1'),
+            'port'      => env('EHRIS_DB_PORT', '3306'),
+            'database'  => env('EHRIS_DB_DATABASE', 'ehris2'),
+            'username'  => env('EHRIS_DB_USERNAME', 'root'),
+            'password'  => env('EHRIS_DB_PASSWORD', ''),
+            'charset'   => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix'    => '',
+            'strict'    => false,
+            'engine'    => null,
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),

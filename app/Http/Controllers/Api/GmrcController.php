@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Exports\GmrcTemplateExport;
-use App\Http\Controllers\Controller;
 use App\Models\GmrcScore;
 use App\Models\Student;
 use Illuminate\Http\JsonResponse;
@@ -11,19 +10,29 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Facades\Excel;
 
-class GmrcController extends Controller
+class GmrcController extends BaseController
 {
-    private function schoolScope(): ?int
+    /**
+     * PURPOSE: Return the authenticated school_id for GMRC operations.
+     * FIX: Uses getAuthSchoolId() to block null-school wildcard access.
+     * LIMITATION: Requires authenticated user to be assigned to a school.
+     */
+    private function schoolScope(): int
     {
-        return auth()->user()->school_id;
+        return $this->getAuthSchoolId();
     }
 
+    /**
+     * PURPOSE: Build a student query constrained to the authenticated school and teacher visibility rules.
+     * FIX: Enforces mandatory school scope using getAuthSchoolId() through schoolScope().
+     * LIMITATION: Teacher visibility still depends on grade/section or ownership fallback.
+     */
     private function studentScopeQuery(Request $request)
     {
         $user = $request->user();
         $schoolId = $this->schoolScope();
 
-        $query = Student::query()->when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
+        $query = Student::query()->where('school_id', $schoolId);
 
         // Mirror StudentController visibility rules for teachers.
         if ($user->role?->name === 'Teacher') {
@@ -62,6 +71,11 @@ class GmrcController extends Controller
         return $items;
     }
 
+    /**
+     * PURPOSE: Return GMRC filter metadata (grades/sections) scoped to the authenticated school.
+     * FIX: Uses school-scoped studentScopeQuery() with mandatory non-null school context.
+     * LIMITATION: Metadata depends on existing student records in scope.
+     */
     public function meta(Request $request): JsonResponse
     {
         $query = $this->studentScopeQuery($request);
@@ -77,6 +91,11 @@ class GmrcController extends Controller
         ]);
     }
 
+    /**
+     * PURPOSE: Return GMRC student selector data scoped to authenticated school and role visibility.
+     * FIX: Keeps all filters on top of strict school-scoped base query.
+     * LIMITATION: Search/filters are limited to first 200 matching records.
+     */
     public function students(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -115,6 +134,11 @@ class GmrcController extends Controller
         return response()->json(['data' => $students]);
     }
 
+    /**
+     * PURPOSE: Return recent GMRC entries for students within the authenticated school scope.
+     * FIX: Entry retrieval is constrained by scoped student IDs only.
+     * LIMITATION: Returns latest 10 entries for the scoped dataset.
+     */
     public function recent(Request $request): JsonResponse
     {
         $studentIds = $this->studentScopeQuery($request)->pluck('id');
@@ -141,6 +165,11 @@ class GmrcController extends Controller
         return response()->json(['data' => $entries]);
     }
 
+    /**
+     * PURPOSE: Store a GMRC score for a student that is accessible within the authenticated school scope.
+     * FIX: Student resolution now always inherits mandatory school scope from studentScopeQuery().
+     * LIMITATION: Subject-level separation is not implemented in this phase.
+     */
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -194,6 +223,11 @@ class GmrcController extends Controller
         ], 201);
     }
 
+    /**
+     * PURPOSE: Export GMRC template rows for students within the authenticated school scope.
+     * FIX: Export query inherits strict school scope via studentScopeQuery().
+     * LIMITATION: Export remains grade/section filtered without subject partitioning.
+     */
     public function export(Request $request)
     {
         $validator = Validator::make($request->all(), [

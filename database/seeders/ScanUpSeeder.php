@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +21,10 @@ class ScanUpSeeder extends Seeder
             ['id' => 2, 'name' => 'Teacher', 'created_at' => now(), 'updated_at' => now()],
             ['id' => 3, 'name' => 'Guard', 'created_at' => now(), 'updated_at' => now()],
         ]);
+
+        Role::firstOrCreate(['name' => 'Reporting Manager']);
+        Role::firstOrCreate(['name' => 'Adviser']);
+        Role::firstOrCreate(['name' => 'Subject Teacher']);
 
         $this->seedUserIfSet(1, env('SEED_ADMIN_EMAIL'), env('SEED_ADMIN_PASSWORD'), 'System Admin');
         $this->seedUserIfSet(2, env('SEED_TEACHER_EMAIL'), env('SEED_TEACHER_PASSWORD'), 'Jane Teacher');

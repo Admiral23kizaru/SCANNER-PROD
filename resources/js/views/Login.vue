@@ -434,6 +434,12 @@ async function submit() {
     } else if (roleName === 'Guard') {
       await router.replace({ name: 'Scanner' });
       return;
+    } else if (roleName === 'Reporting Manager') {
+      await router.replace('/reporting-manager');
+    } else if (roleName === 'Adviser') {
+      await router.replace('/adviser');
+    } else if (roleName === 'Subject Teacher') {
+      await router.replace('/subject-teacher');
     } else {
       await router.replace('/login');
     }

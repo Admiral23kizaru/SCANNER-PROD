@@ -35,15 +35,9 @@ class AttendanceController extends Controller
     /* ====================================================================== */
 
     /**
-     * Target Role: Attendance Guard / Scanner UI.
-     * Source: QR Scan Event.
-     * Destination: Attendance Table & Notification API.
-     * Function: High-speed attendance logging with background notification routing.
-     *
-     * Action: Bypassing duplicate SMS check for testing; Formatting number to 63 prefix.
-     * Source: AttendanceController@scan
-     *
-     * Note: Priority is Scanner Speed. SMS delivery is secondary to logging.
+     * PURPOSE: Record a guard-terminal scan and write attendance for the correct school context.
+     * FIX: School is now resolved from authenticated token school_id first; deped_id request param is fallback only for backward compatibility.
+     * LIMITATION: deped_id fallback remains temporarily for unauthenticated terminals and should be removed once all terminals use token auth.
      *
      * @param \Illuminate\Http\Request $request
      *        - student_number: The ID (LRN) of the student from the QR scanner.
@@ -72,14 +66,16 @@ class AttendanceController extends Controller
                 ], 422);
             }
 
-            $depedId = $request->input('deped_id');
             $schoolName = $request->input('school_name', 'Unknown School');
-
-            $school = \App\Models\School::where('deped_school_id', $depedId)->first();
+            $tokenUser = $request->user('sanctum');
+            $school = $tokenUser && $tokenUser->school_id
+                ? School::find($tokenUser->school_id)
+                // Backward compatibility fallback for public terminals that have no bearer token yet.
+                : School::where('deped_school_id', (string) $request->input('deped_id'))->first();
             if (!$school) {
                 return response()->json([
-                    'error' => 'School not found.',
-                ], 404);
+                    'message' => 'Invalid school context.'
+                ], 403);
             }
 
             $schoolId = $school->id;
@@ -291,18 +287,23 @@ class AttendanceController extends Controller
         }
     }
 
-    /** Return the 100 most recent attendance records for today (public facing terminal). */
+    /**
+     * PURPOSE: Return today's recent attendance feed for the guard terminal.
+     * FIX: Resolves school context from token first; deped_id query is fallback only for backward compatibility.
+     * LIMITATION: Unauthenticated callers must still provide deped_id until fallback is removed.
+     */
     public function publicRecent(Request $request): JsonResponse
     {
-        $depedId = $request->query('deped_id');
-
-        $school = null;
-        if ($depedId) {
-            $school = School::where('deped_school_id', $depedId)->first();
-        }
+        $tokenUser = $request->user('sanctum');
+        $school = $tokenUser && $tokenUser->school_id
+            ? School::find($tokenUser->school_id)
+            // Backward compatibility fallback for public terminals that have no bearer token yet.
+            : School::where('deped_school_id', (string) $request->query('deped_id'))->first();
 
         if (!$school) {
-            return response()->json(['data' => []]);
+            return response()->json([
+                'message' => 'School context could not be determined.'
+            ], 403);
         }
 
         $items = Attendance::with('student')
@@ -316,28 +317,23 @@ class AttendanceController extends Controller
         return response()->json(['data' => $items]);
     }
 
-    /** Return today's attendance stats for the public Guard Terminal (no auth required). */
+    /**
+     * PURPOSE: Return guard-terminal attendance stats for the caller's resolved school context.
+     * FIX: Resolves school from token first and removes random-school fallback behavior.
+     * LIMITATION: deped_id query fallback remains temporary for unauthenticated legacy terminals.
+     */
     public function publicStats(Request $request): JsonResponse
     {
-        $depedId = $request->query('deped_id');
-        if (!$depedId) {
-            return response()->json([
-                'error' => 'deped_id is required',
-            ], 422);
-        }
-
-        $school = null;
-        if ($depedId) {
-            $school = School::where('deped_school_id', $depedId)->first();
-        }
+        $tokenUser = $request->user('sanctum');
+        $school = $tokenUser && $tokenUser->school_id
+            ? School::find($tokenUser->school_id)
+            // Backward compatibility fallback for public terminals that have no bearer token yet.
+            : School::where('deped_school_id', (string) $request->query('deped_id'))->first();
 
         if (!$school) {
             return response()->json([
-                'total_today'   => 0,
-                'present_count' => 0,
-                'late_count'    => 0,
-                'absent_count'  => 0,
-            ]);
+                'message' => 'School context could not be determined.'
+            ], 403);
         }
 
         $query = Attendance::whereDate('scanned_at', today())
@@ -536,11 +532,20 @@ class AttendanceController extends Controller
     /*  Stats                                                                  */
     /* ====================================================================== */
 
-    /** Return live attendance stats scoped to the requesting user's school. */
+    /**
+     * PURPOSE: Return live attendance stats for the authenticated user's school context.
+     * FIX: Returns 403 when school context cannot be resolved instead of silently using fallback school.
+     * LIMITATION: Requires valid school association on authenticated user record.
+     */
     public function getStats(Request $request): JsonResponse
     {
         $user     = $request->user('sanctum');
         $schoolId = $this->resolveSchoolId($user, null, 'student');
+        if (!$schoolId) {
+            return response()->json([
+                'message' => 'School context could not be determined.'
+            ], 403);
+        }
 
         return response()->json($this->calculateStats($schoolId));
     }
@@ -550,7 +555,9 @@ class AttendanceController extends Controller
     /* ====================================================================== */
 
     /**
-     * Resolve school_id from the guard user, then from the student, then fallback.
+     * PURPOSE: Resolve school_id from authenticated context without cross-school fallback.
+     * FIX: Removed School::first() fallback to prevent random-school leakage when context is missing.
+     * LIMITATION: Returns null when school context cannot be determined; caller must handle with 403.
      */
     private function resolveSchoolId(?User $guardUser, mixed $person, string $personType): ?int
     {
@@ -570,7 +577,7 @@ class AttendanceController extends Controller
             return $person->school_id;
         }
 
-        return School::first()?->id;
+        return null;
     }
 
     /**

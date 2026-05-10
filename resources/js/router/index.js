@@ -85,6 +85,18 @@ async function loginRedirectGuard(to, from, next) {
         const roleName = user.role?.name || user.role_name;
         if (roleName === 'Admin') next({ path: '/admin' });
         else if (roleName === 'Teacher') next({ path: '/teacher' });
+        else if (roleName === 'Reporting Manager') {
+            next({ path: '/reporting-manager' });
+            return;
+        }
+        else if (roleName === 'Adviser') {
+            next({ path: '/adviser' });
+            return;
+        }
+        else if (roleName === 'Subject Teacher') {
+            next({ path: '/subject-teacher' });
+            return;
+        }
         else next({ path: '/scanner' }); // Guard → scanner home
     } catch {
         next();
@@ -120,6 +132,81 @@ const routes = [
         name: 'Admin',
         component: AdminLayout,
         beforeEnter: roleGuard('Admin'),
+    },
+    {
+        path: '/reporting-manager',
+        name: 'ReportingManager',
+        component: {
+            template: `
+      <div style="
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        height:100vh;
+        font-family:sans-serif;
+        background:#f8f9fa;
+      ">
+        <h2 style="color:#333;margin-bottom:8px">
+          Reporting Manager Dashboard
+        </h2>
+        <p style="color:#888;font-size:14px">
+          Being prepared — coming soon
+        </p>
+      </div>
+    `
+        },
+        beforeEnter: roleGuard('Reporting Manager'),
+    },
+    {
+        path: '/adviser',
+        name: 'Adviser',
+        component: {
+            template: `
+      <div style="
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        height:100vh;
+        font-family:sans-serif;
+        background:#f8f9fa;
+      ">
+        <h2 style="color:#333;margin-bottom:8px">
+          Adviser Dashboard
+        </h2>
+        <p style="color:#888;font-size:14px">
+          Being prepared — coming soon
+        </p>
+      </div>
+    `
+        },
+        beforeEnter: roleGuard('Adviser'),
+    },
+    {
+        path: '/subject-teacher',
+        name: 'SubjectTeacher',
+        component: {
+            template: `
+      <div style="
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        height:100vh;
+        font-family:sans-serif;
+        background:#f8f9fa;
+      ">
+        <h2 style="color:#333;margin-bottom:8px">
+          Subject Teacher Dashboard
+        </h2>
+        <p style="color:#888;font-size:14px">
+          Being prepared — coming soon
+        </p>
+      </div>
+    `
+        },
+        beforeEnter: roleGuard('Subject Teacher'),
     },
     {
         path: '/admin/schools/create',

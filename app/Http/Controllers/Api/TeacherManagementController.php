@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\Student;
 use App\Models\Teacher;
@@ -20,21 +19,23 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Maintains synchronisation between the `teachers` table (profile data)
  * and the `users` table (login credentials).
  */
-class TeacherManagementController extends Controller
+class TeacherManagementController extends BaseController
 {
     /* ====================================================================== */
     /*  Read                                                                   */
     /* ====================================================================== */
 
-    /** List all teachers for the authenticated admin's school (role Teacher). */
+    /**
+     * PURPOSE: List teacher accounts scoped to the authenticated admin's school.
+     * FIX: Uses getAuthSchoolId() to prevent null-school wildcard listing across all schools.
+     * LIMITATION: Requires a valid school assignment on the authenticated account.
+     */
     public function index(Request $request): JsonResponse
     {
-        $schoolId = $request->user()?->school_id;
+        $schoolId = $this->getAuthSchoolId();
 
         $teachers = User::where('role_id', 2)
-            ->when($schoolId, function ($q) use ($schoolId) {
-                $q->where('school_id', $schoolId);
-            })
+            ->where('school_id', $schoolId)
             ->orderBy('name')
             ->get();
 
@@ -46,13 +47,14 @@ class TeacherManagementController extends Controller
     /* ====================================================================== */
 
     /**
-     * Create a new teacher account.
-     *
-     * Creates both a `teachers` record (profile) and a `users` record (login),
-     * using a deterministic @deped.local placeholder email for internal accounts.
+     * PURPOSE: Create a teacher account and linked user within the authenticated admin's school.
+     * FIX: Enforces school scope with getAuthSchoolId() so creation can never occur without a school context.
+     * LIMITATION: Placeholder email scheme remains unchanged and may still require downstream governance.
      */
     public function store(Request $request): JsonResponse
     {
+        $schoolId = $this->getAuthSchoolId();
+
         $validator = Validator::make($request->all(), [
             'name'        => ['required', 'string', 'max:255'],
             'employee_id' => ['required', 'string', 'max:255', 'unique:teachers,employee_id'],
@@ -78,7 +80,6 @@ class TeacherManagementController extends Controller
         
         // Auto-detect school name fallback from the authenticated admin user
         $schoolName = $request->input('school_name') ?: $request->user()->school_name;
-        $schoolId = $request->user()?->school_id;
 
         $teacher = Teacher::create([
             'first_name'  => $firstName,
@@ -111,25 +112,25 @@ class TeacherManagementController extends Controller
     }
 
     /**
-     * Update an existing teacher's profile and sync to the users table.
+     * PURPOSE: Update a teacher profile only when the target belongs to the authenticated admin's school.
+     * FIX: Uses getAuthSchoolId() for strict ownership checks before updates.
+     * LIMITATION: Ownership is verified via linked user email mapping as currently implemented.
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $schoolId = $request->user()?->school_id;
+        $schoolId = $this->getAuthSchoolId();
         $teacher = Teacher::find($id);
         if (!$teacher) {
             return response()->json(['message' => 'Teacher not found.'], 404);
         }
 
-        if ($schoolId) {
-            $linkedUser = \App\Models\User::where(
-                'email', $teacher->email
-            )->first();
-            if (!$linkedUser || $linkedUser->school_id !== $schoolId) {
-                return response()->json([
-                    'message' => 'Forbidden.'
-                ], 403);
-            }
+        $linkedUser = \App\Models\User::where(
+            'email', $teacher->email
+        )->first();
+        if (!$linkedUser || $linkedUser->school_id !== $schoolId) {
+            return response()->json([
+                'message' => 'Forbidden.'
+            ], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -175,28 +176,25 @@ class TeacherManagementController extends Controller
     }
 
     /**
-     * Delete a teacher account.
-     *
-     * Guards against deletion when the teacher has created student records
-     * to preserve data integrity.
+     * PURPOSE: Delete a teacher account scoped to the authenticated admin's school.
+     * FIX: Uses getAuthSchoolId() to block null-school wildcard deletes.
+     * LIMITATION: Still prevents deletion when linked user has created student records.
      */
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $schoolId = $request->user()?->school_id;
+        $schoolId = $this->getAuthSchoolId();
         $teacher = Teacher::find($id);
         if (!$teacher) {
             return response()->json(['message' => 'Teacher not found.'], 404);
         }
 
-        if ($schoolId) {
-            $linkedUser = \App\Models\User::where(
-                'email', $teacher->email
-            )->first();
-            if (!$linkedUser || $linkedUser->school_id !== $schoolId) {
-                return response()->json([
-                    'message' => 'Forbidden.'
-                ], 403);
-            }
+        $linkedUser = \App\Models\User::where(
+            'email', $teacher->email
+        )->first();
+        if (!$linkedUser || $linkedUser->school_id !== $schoolId) {
+            return response()->json([
+                'message' => 'Forbidden.'
+            ], 403);
         }
 
         $user = User::where('email', $teacher->email)->first();
@@ -217,24 +215,26 @@ class TeacherManagementController extends Controller
     /*  Photo upload                                                            */
     /* ====================================================================== */
 
-    /** Upload and store a teacher's profile photo and sync to users table. */
+    /**
+     * PURPOSE: Upload a teacher profile photo only for teachers owned by the authenticated admin's school.
+     * FIX: Uses getAuthSchoolId() for strict school ownership enforcement.
+     * LIMITATION: Uses linked user email to validate school ownership as in existing design.
+     */
     public function uploadPhoto(Request $request, int $id): JsonResponse
     {
-        $schoolId = $request->user()?->school_id;
+        $schoolId = $this->getAuthSchoolId();
         $teacher = Teacher::find($id);
         if (!$teacher) {
             return response()->json(['message' => 'Teacher not found.'], 404);
         }
 
-        if ($schoolId) {
-            $linkedUser = \App\Models\User::where(
-                'email', $teacher->email
-            )->first();
-            if (!$linkedUser || $linkedUser->school_id !== $schoolId) {
-                return response()->json([
-                    'message' => 'Forbidden.'
-                ], 403);
-            }
+        $linkedUser = \App\Models\User::where(
+            'email', $teacher->email
+        )->first();
+        if (!$linkedUser || $linkedUser->school_id !== $schoolId) {
+            return response()->json([
+                'message' => 'Forbidden.'
+            ], 403);
         }
 
         $request->validate([
@@ -259,13 +259,13 @@ class TeacherManagementController extends Controller
     /* ====================================================================== */
 
     /**
-     * Stream all teachers as a UTF-8 CSV download.
-     *
-     * Uses chunked processing to support large datasets without exhausting memory.
+     * PURPOSE: Export teachers as UTF-8 CSV scoped to the authenticated admin's school.
+     * FIX: Uses getAuthSchoolId() to remove null-school wildcard export behavior.
+     * LIMITATION: Export scope remains limited to teacher role and current school context.
      */
     public function export(Request $request): StreamedResponse
     {
-        $schoolId = $request->user()?->school_id;
+        $schoolId = $this->getAuthSchoolId();
         $teacherRole = Role::where('name', 'Teacher')->firstOrFail();
 
         $response = new StreamedResponse(function () use ($teacherRole, $schoolId) {
@@ -279,9 +279,7 @@ class TeacherManagementController extends Controller
             fputcsv($handle, ['ID', 'Name', 'Employee ID', 'Job Title', 'School Name', 'Created At']);
 
             User::where('role_id', $teacherRole->id)
-                ->when($schoolId, function ($q) use ($schoolId) {
-                    $q->where('school_id', $schoolId);
-                })
+                ->where('school_id', $schoolId)
                 ->orderBy('name')
                 ->chunk(100, function ($users) use ($handle) {
                     foreach ($users as $user) {
