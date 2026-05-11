@@ -22,6 +22,7 @@ return new class extends Migration
         if (! Schema::hasColumn('schools', 'deped_school_id')) {
             Schema::table('schools', function (Blueprint $table) {
                 $table->string('deped_school_id', 50)->nullable()->after('name');
+                $table->index('deped_school_id');
             });
         }
     }

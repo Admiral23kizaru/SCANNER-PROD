@@ -78,11 +78,13 @@ return [
          */
         'ehris' => [
             'driver'    => 'mysql',
-            'host'      => env('EHRIS_DB_HOST'),
-            'port'      => env('EHRIS_DB_PORT'),
-            'database'  => env('EHRIS_DB_DATABASE'),
-            'username'  => env('EHRIS_DB_USERNAME'),
-            'password'  => env('EHRIS_DB_PASSWORD'),
+            // Fall back to primary DB settings if EHRIS env isn't set yet
+            // (prevents "Database hosts array is empty" when config is cached before .env is filled).
+            'host'      => env('EHRIS_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port'      => env('EHRIS_DB_PORT', env('DB_PORT', '3306')),
+            'database'  => env('EHRIS_DB_DATABASE', env('DB_DATABASE')),
+            'username'  => env('EHRIS_DB_USERNAME', env('DB_USERNAME', 'root')),
+            'password'  => env('EHRIS_DB_PASSWORD', env('DB_PASSWORD', '')),
             'charset'   => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
             'prefix'    => '',
