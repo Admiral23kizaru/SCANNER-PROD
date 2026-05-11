@@ -78,11 +78,11 @@ return [
          */
         'ehris' => [
             'driver'    => 'mysql',
-            'host'      => env('EHRIS_DB_HOST', '127.0.0.1'),
-            'port'      => env('EHRIS_DB_PORT', '3306'),
-            'database'  => env('EHRIS_DB_DATABASE', 'ehris2'),
-            'username'  => env('EHRIS_DB_USERNAME', 'root'),
-            'password'  => env('EHRIS_DB_PASSWORD', ''),
+            'host'      => env('EHRIS_DB_HOST'),
+            'port'      => env('EHRIS_DB_PORT'),
+            'database'  => env('EHRIS_DB_DATABASE'),
+            'username'  => env('EHRIS_DB_USERNAME'),
+            'password'  => env('EHRIS_DB_PASSWORD'),
             'charset'   => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
             'prefix'    => '',

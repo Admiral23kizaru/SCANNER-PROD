@@ -98,7 +98,7 @@ Route::middleware('auth:sanctum')->group(function () {
     /*  Admin panel                                                        */
     /* ------------------------------------------------------------------ */
 
-    Route::middleware('role:Admin')->prefix('admin')->group(function () {
+    Route::middleware('role:Admin,Reporting Manager')->prefix('admin')->group(function () {
 
         Route::controller(AdminController::class)->group(function () {
             Route::get('/dashboard', 'dashboard');
@@ -117,6 +117,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::controller(TeacherManagementController::class)->prefix('teachers')->group(function () {
             Route::get('/export', 'export');
+            Route::get('/ehris', 'ehris');
+            Route::post('/sync-ehris', 'syncEhris');
             Route::get('/', 'index');
             Route::post('/', 'store');
             Route::put('/{id}', 'update');

@@ -120,6 +120,34 @@ export async function fetchTeachers() {
 }
 
 /**
+ * Preview EHRIS teachers for the current admin school scope.
+ *
+ * @param {string} [search=''] Optional search term for name, email, employee id.
+ * @returns {Promise<{ message: string, deped_school_id: string, data: Array<object> }>}
+ */
+export async function fetchEhrisTeachers(search = '') {
+    const params = search ? { search } : {};
+    const { data } = await axios.get(base + '/teachers/ehris', {
+        params,
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data;
+}
+
+/**
+ * Sync active EHRIS teachers into local teachers/users for the current school.
+ *
+ * @param {{ employee_ids?: string[] }} [payload={}] Optional targeted subset; empty means sync all.
+ * @returns {Promise<{ message: string, synced_count: number, created_count: number, updated_count: number, skipped_count?: number, users_created_count?: number, users_updated_count?: number }>}
+ */
+export async function syncEhrisTeachers(payload = {}) {
+    const { data } = await axios.post(base + '/teachers/sync-ehris', payload, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json', Accept: 'application/json' },
+    });
+    return data;
+}
+
+/**
  * Create a new teacher account.
  *
  * Also creates a corresponding user record so the teacher can log in.

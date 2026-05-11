@@ -534,7 +534,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import axios from 'axios';
 import AccessibilityToolbar from '../components/AccessibilityToolbar.vue';
-import { assetPath } from '../composables/useAsset';
+import { assetPath, getAssetRoot } from '../composables/useAsset';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faPhone, faEnvelope, faMagnifyingGlass, faQrcode } from '@fortawesome/free-solid-svg-icons';
 import { faFacebook } from '@fortawesome/free-brands-svg-icons';
@@ -581,7 +581,11 @@ function stopCarousel() {
 }
 
 const primaryImageTempBase = '/image_temp/';
-const secondaryImageTempBase = '/SCANNER_PROD1/SCANNER-PROD/public/image_temp/';
+const secondaryImageTempBase = (() => {
+  const root = getAssetRoot();
+  if (!root) return '/image_temp/';
+  return root.replace(/\/+$/, '') + '/image_temp/';
+})();
 
 function imageTempSrc(filename) {
   // Keep slashes, encode spaces/special chars in filename.
@@ -1830,4 +1834,3 @@ onUnmounted(() => {
   }
 }
 </style>
-

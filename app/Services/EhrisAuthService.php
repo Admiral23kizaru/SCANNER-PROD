@@ -183,6 +183,11 @@ class EhrisAuthService
 
         $role = Role::where('name', $roleName)->first();
 
+        // Backward compatibility: older databases may not have the RM role row yet.
+        if (!$role && $roleName === 'Reporting Manager') {
+            $role = Role::firstOrCreate(['name' => 'Reporting Manager']);
+        }
+
         if (!$role) {
             throw new \RuntimeException(
                 "Role '{$roleName}' does not exist " .

@@ -31,7 +31,9 @@ async function fetchCurrentUser() {
     }
 }
 
-function roleGuard(allowedRole) {
+function roleGuard(allowedRoles) {
+    const allowed = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+
     return async (to, from, next) => {
         const user = await fetchCurrentUser();
         if (!user) {
@@ -40,7 +42,7 @@ function roleGuard(allowedRole) {
             return;
         }
         const roleName = user.role?.name || user.role_name;
-        if (roleName !== allowedRole) {
+        if (!allowed.includes(roleName)) {
             next({ path: '/login' });
             return;
         }
@@ -86,7 +88,7 @@ async function loginRedirectGuard(to, from, next) {
         if (roleName === 'Admin') next({ path: '/admin' });
         else if (roleName === 'Teacher') next({ path: '/teacher' });
         else if (roleName === 'Reporting Manager') {
-            next({ path: '/reporting-manager' });
+            next({ path: '/admin' });
             return;
         }
         else if (roleName === 'Adviser') {
@@ -131,7 +133,7 @@ const routes = [
         path: '/admin',
         name: 'Admin',
         component: AdminLayout,
-        beforeEnter: roleGuard('Admin'),
+        beforeEnter: roleGuard(['Admin', 'Reporting Manager']),
     },
     {
         path: '/reporting-manager',
@@ -156,7 +158,7 @@ const routes = [
       </div>
     `
         },
-        beforeEnter: roleGuard('Reporting Manager'),
+        beforeEnter: () => ({ path: '/admin' }),
     },
     {
         path: '/adviser',
@@ -227,7 +229,7 @@ const routes = [
 ];
 
 const router = createRouter({
-    history: createWebHistory('/SCANNER_PROD1/SCANNER-PROD/public/'),
+    history: createWebHistory(import.meta.env.BASE_URL || '/'),
     routes,
 });
 
