@@ -278,6 +278,29 @@ export async function exportAdminStudents(params = {}) {
     return res.data;
 }
 
+// ─── Subjects (Admin) ─────────────────────────────────────────────────────────
+
+export async function fetchAdminSubjects() {
+    const { data } = await axios.get(base + '/subjects', {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data;
+}
+
+export async function fetchAdminStudentSubjects(studentId) {
+    const { data } = await axios.get(base + '/students/' + studentId + '/subjects', {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data;
+}
+
+export async function syncAdminStudentSubjects(studentId, subjectIds) {
+    const { data } = await axios.put(base + '/students/' + studentId + '/subjects', { subject_ids: subjectIds }, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json', Accept: 'application/json' },
+    });
+    return data;
+}
+
 // ─── ID Card URL Generators ───────────────────────────────────────────────────
 
 /**

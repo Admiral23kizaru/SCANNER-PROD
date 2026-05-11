@@ -285,6 +285,27 @@
               </select>
               <p class="mt-1 text-xs text-stone-400">Email is always sent on every scan regardless of this setting.</p>
             </div>
+
+            <div class="rounded-lg border border-stone-200 bg-stone-50/60 p-4">
+              <div class="text-sm font-semibold text-stone-800 mb-2">Subject Enrollment</div>
+              <p class="text-xs text-stone-500 mb-3">Select the subjects this student is enrolled in.</p>
+              <div v-if="availableSubjects.length === 0" class="text-sm text-stone-500">No subjects available. Add subjects in “Manage Subjects”.</div>
+              <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label
+                  v-for="sub in availableSubjects"
+                  :key="'sub-' + sub.id"
+                  class="flex items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    class="rounded border-stone-300 text-blue-700 focus:ring-blue-600"
+                    :value="sub.id"
+                    v-model="selectedSubjectIds"
+                  />
+                  <span class="truncate">{{ sub.name }}</span>
+                </label>
+              </div>
+            </div>
           </div>
           <div v-if="formError" class="mt-2 text-sm text-red-600">{{ formError }}</div>
           <div class="mt-4 flex justify-end gap-2">
@@ -329,7 +350,7 @@
 import { assetPath } from '../../composables/useAsset';
 import { ref, onMounted, computed } from 'vue';
 import { Search, PencilLine, Trash2, IdCard, Plus, Download, Filter, ChevronLeft, ChevronRight } from 'lucide-vue-next';
-import { fetchAdminStudents, createAdminStudent, updateAdminStudent, deleteStudent, getAdminStudentIdUrl, exportAdminStudents } from '../../services/adminService';
+import { fetchAdminStudents, createAdminStudent, updateAdminStudent, deleteStudent, getAdminStudentIdUrl, exportAdminStudents, fetchAdminSubjects, fetchAdminStudentSubjects, syncAdminStudentSubjects } from '../../services/adminService';
 import axios from 'axios';
 
 const students = ref([]);
@@ -398,6 +419,9 @@ const form = ref({
   notification_preference: 0,
 });
 const formError = ref('');
+
+const availableSubjects = ref([]);
+const selectedSubjectIds = ref([]);
 
 let debounceTimer = null;
 
@@ -501,10 +525,11 @@ function openCreateModal() {
     notification_preference: 0,
   };
   formError.value = '';
+  selectedSubjectIds.value = [];
   showFormModal.value = true;
 }
 
-function openEditModal(row) {
+async function openEditModal(row) {
   editingId.value = row.id;
   form.value = {
     first_name: row.first_name ?? '',
@@ -521,6 +546,12 @@ function openEditModal(row) {
     notification_preference: row.notification_preference ?? 0,
   };
   formError.value = '';
+  try {
+    const res = await fetchAdminStudentSubjects(editingId.value);
+    selectedSubjectIds.value = (res.data || []).map((s) => s.id);
+  } catch (_) {
+    selectedSubjectIds.value = [];
+  }
   showFormModal.value = true;
 }
 
@@ -563,8 +594,13 @@ async function submitForm() {
   try {
     if (editingId.value) {
       await updateAdminStudent(editingId.value, payload);
+      await syncAdminStudentSubjects(editingId.value, selectedSubjectIds.value);
     } else {
-      await createAdminStudent(payload);
+      const res = await createAdminStudent(payload);
+      const newId = res?.student?.id;
+      if (newId) {
+        await syncAdminStudentSubjects(newId, selectedSubjectIds.value);
+      }
     }
     closeForm();
     await load();
@@ -572,6 +608,15 @@ async function submitForm() {
     const msg = err.response?.data?.message || 'Request failed.';
     const errors = err.response?.data?.errors;
     formError.value = errors ? Object.values(errors).flat().join(' ') : msg;
+  }
+}
+
+async function loadSubjects() {
+  try {
+    const res = await fetchAdminSubjects();
+    availableSubjects.value = res.data || [];
+  } catch (_) {
+    availableSubjects.value = [];
   }
 }
 
@@ -602,7 +647,8 @@ async function downloadId(id) {
 onMounted(async () => {
   await Promise.all([
     load(),
-    loadFilterOptions()
+    loadFilterOptions(),
+    loadSubjects(),
   ]);
   const flag = sessionStorage.getItem('admin_open_create_student');
   if (flag) {

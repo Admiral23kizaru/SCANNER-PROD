@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AdminProfileController;
 use App\Http\Controllers\Api\AdminStudentController;
+use App\Http\Controllers\Api\AdminStudentSubjectController;
+use App\Http\Controllers\Api\AdminSubjectController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\GmrcController;
@@ -131,6 +133,20 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/{id}', 'destroy');
         });
 
+        // Subjects management
+        Route::controller(AdminSubjectController::class)->prefix('subjects')->group(function () {
+            Route::get('/', 'index');
+            Route::post('/', 'store');
+            Route::put('/{id}', 'update');
+            Route::delete('/{id}', 'destroy');
+        });
+
+        // Student subject enrollment
+        Route::controller(AdminStudentSubjectController::class)->prefix('students')->group(function () {
+            Route::get('/{id}/subjects', 'show');
+            Route::put('/{id}/subjects', 'sync');
+        });
+
         Route::controller(AdminProfileController::class)->group(function () {
             Route::get('/profile', 'show');
             Route::put('/update-profile', 'update');
@@ -189,15 +205,17 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
         /* ------------------------------------------------------------------ */
-        /*  GMRC Quick Entry + Export                                          */
+        /*  Learning Assessment (scores + Excel export)                        */
         /* ------------------------------------------------------------------ */
 
-        Route::controller(GmrcController::class)->prefix('gmrc')->group(function () {
+        Route::controller(GmrcController::class)->prefix('learning-assessment')->group(function () {
             Route::get('/meta', 'meta');
             Route::get('/students', 'students');
             Route::get('/recent', 'recent');
             Route::post('/scores', 'store');
             Route::get('/export', 'export');
+            Route::post('/import-analyze/export', 'importAnalyzeExport');
+            Route::post('/import-analyze', 'importAnalyze');
         });
     });
 

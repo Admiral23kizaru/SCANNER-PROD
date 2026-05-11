@@ -184,9 +184,9 @@
         </div>
       </div>
     </div>
-    <!-- ═══ GMRC Entry Tab ═══ -->
-    <div v-show="currentTab === 'gmrc'" class="w-full">
-      <GmrcEntry />
+    <!-- ═══ Learning Assessment Tab ═══ -->
+    <div v-show="currentTab === 'learningAssessment'" class="w-full">
+      <LearningAssessment />
     </div>
     <!-- 
       Header Comment: Action: Implementing static backdrop to prevent accidental data loss during student editing.
@@ -427,7 +427,7 @@ import { fetchStudents, createStudent, createStudentWithFormData, updateStudent,
 import TeacherProfileModal from './TeacherProfileModal.vue';
 import AttendanceMonitor from '../AttendanceMonitor.vue';
 import TeacherLayout from '../layouts/TeacherLayout.vue';
-import GmrcEntry from './GmrcEntry.vue';
+import LearningAssessment from './LearningAssessment.vue';
 
 const attendanceMonitorRef = ref(null);
 
@@ -472,13 +472,13 @@ function onProfileUpdated(updatedProfile) {
 
 const pageTitle = computed(() => {
   if (currentTab.value === 'monitor') return 'ATTENDANCE MONITOR';
-  if (currentTab.value === 'gmrc') return 'GMRC ENTRY';
+  if (currentTab.value === 'learningAssessment') return 'LEARNING ASSESSMENT';
   return 'LEARNERS';
 });
 
 const pageSubtitle = computed(() => {
   if (currentTab.value === 'monitor') return 'Real-time attendance tracking';
-  if (currentTab.value === 'gmrc') return 'GMRC Quick Entry and Excel export';
+  if (currentTab.value === 'learningAssessment') return 'Quick entry and Excel template export';
   return 'Manage student records';
 });
 

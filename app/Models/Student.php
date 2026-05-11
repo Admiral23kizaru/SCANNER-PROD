@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * Student model — represents enrolled learners in the QR-ID system.
@@ -67,5 +68,11 @@ class Student extends Model
     public function attendance(): HasMany
     {
         return $this->hasMany(Attendance::class);
+    }
+
+    public function subjects(): BelongsToMany
+    {
+        return $this->belongsToMany(Subject::class, 'student_subject')
+            ->withTimestamps();
     }
 }

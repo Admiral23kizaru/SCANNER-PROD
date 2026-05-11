@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Exports\GmrcTemplateExport;
+use App\Exports\LearningAssessmentAnalyzedExport;
 use App\Http\Controllers\Controller;
 use App\Models\GmrcScore;
 use App\Models\Student;
+use App\Models\Subject;
+use App\Services\LearningAssessmentExcelAnalyzer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use InvalidArgumentException;
 use Maatwebsite\Excel\Facades\Excel;
 
 class GmrcController extends Controller
@@ -67,11 +71,22 @@ class GmrcController extends Controller
         $query = $this->studentScopeQuery($request);
 
         $grades = (clone $query)->whereNotNull('grade')->distinct()->orderBy('grade')->pluck('grade')->values();
-        $sections = (clone $query)->whereNotNull('section')->distinct()->orderBy('section')->pluck('section')->values();
+
+        $sectionQuery = (clone $query)->whereNotNull('section');
+        if ($request->filled('grade_level')) {
+            $sectionQuery->where('grade', $request->input('grade_level'));
+        }
+        $sections = $sectionQuery->distinct()->orderBy('section')->pluck('section')->values();
+        $schoolId = $this->schoolScope();
+        $subjects = Subject::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         return response()->json([
             'grades' => $grades,
             'sections' => $sections,
+            'subjects' => $subjects,
             'default_grade_level' => $request->user()->grade_level,
             'default_section' => $request->user()->section,
         ]);
@@ -82,6 +97,7 @@ class GmrcController extends Controller
         $validator = Validator::make($request->all(), [
             'grade_level' => ['nullable', 'string', 'max:50'],
             'section' => ['nullable', 'string', 'max:100'],
+            'subject_id' => ['nullable', 'integer'],
             'search' => ['nullable', 'string', 'max:255'],
         ]);
         if ($validator->fails()) {
@@ -89,8 +105,14 @@ class GmrcController extends Controller
         }
 
         $q = $this->studentScopeQuery($request);
-        if ($request->filled('grade_level')) $q->where('grade', $request->input('grade_level'));
-        if ($request->filled('section')) $q->where('section', $request->input('section'));
+        if ($request->filled('grade_level')) {
+            $q->where('grade', $request->input('grade_level'));
+        }
+        if ($request->filled('section')) {
+            $q->where('section', $request->input('section'));
+        }
+        // Roster is by grade/section only — do not require student_subject enrollment
+        // (many classes are not linked to a subject in the pivot, which hid everyone).
         if ($request->filled('search')) {
             $term = '%' . trim((string) $request->input('search')) . '%';
             $q->where(function ($sub) use ($term) {
@@ -100,7 +122,7 @@ class GmrcController extends Controller
             });
         }
 
-        $students = $q->orderBy('last_name')->orderBy('first_name')->limit(200)->get([
+        $students = $q->orderBy('grade')->orderBy('section')->orderBy('last_name')->orderBy('first_name')->limit(200)->get([
             'id', 'first_name', 'last_name', 'middle_name', 'student_number', 'grade', 'section',
         ])->map(function (Student $s) {
             return [
@@ -118,18 +140,20 @@ class GmrcController extends Controller
     public function recent(Request $request): JsonResponse
     {
         $studentIds = $this->studentScopeQuery($request)->pluck('id');
-        $entries = GmrcScore::with('student:id,first_name,last_name,grade,section')
+        $entries = GmrcScore::with('student:id,first_name,last_name,grade,section', 'subject:id,name')
             ->whereIn('student_id', $studentIds)
             ->latest()
             ->limit(10)
             ->get()
             ->map(function (GmrcScore $e) {
                 $s = $e->student;
+                $sub = $e->subject;
                 $studentName = $s ? trim(($s->last_name ?? '') . ', ' . ($s->first_name ?? '')) : 'Student';
                 return [
                     'id' => $e->id,
                     'section' => $e->section,
                     'grade_level' => $e->grade_level,
+                    'subject' => $sub?->name,
                     'student' => $studentName,
                     'wrong_items' => $e->wrong_items ?? [],
                     'score' => $e->score,
@@ -145,6 +169,7 @@ class GmrcController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'student_id' => ['required', 'integer'],
+            'subject_id' => ['required', 'integer'],
             'wrong_items' => ['nullable', 'string', 'max:500'],
             'total_items' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);
@@ -160,6 +185,15 @@ class GmrcController extends Controller
             return response()->json(['message' => 'Student not found or not accessible.'], 404);
         }
 
+        $schoolId = $this->schoolScope();
+        $subject = Subject::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->find((int) $request->input('subject_id'));
+
+        if (!$subject) {
+            return response()->json(['message' => 'Subject not found.'], 404);
+        }
+
         try {
             $wrongItemsArr = $this->parseWrongItems((string) ($request->input('wrong_items') ?? ''), $totalItems);
         } catch (\InvalidArgumentException $e) {
@@ -170,6 +204,7 @@ class GmrcController extends Controller
 
         $entry = GmrcScore::create([
             'student_id' => $student->id,
+            'subject_id' => $subject->id,
             'section' => (string) ($student->section ?? ''),
             'grade_level' => (string) ($student->grade ?? ''),
             'wrong_items' => $wrongItemsArr,
@@ -184,6 +219,7 @@ class GmrcController extends Controller
             'entry' => [
                 'id' => $entry->id,
                 'student' => $studentName,
+                'subject' => $subject->name,
                 'section' => $entry->section,
                 'grade_level' => $entry->grade_level,
                 'wrong_items' => $entry->wrong_items ?? [],
@@ -199,6 +235,7 @@ class GmrcController extends Controller
         $validator = Validator::make($request->all(), [
             'grade_level' => ['nullable', 'string', 'max:50'],
             'section' => ['nullable', 'string', 'max:100'],
+            'subject_id' => ['nullable', 'integer'],
             'total_items' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);
         if ($validator->fails()) {
@@ -206,17 +243,111 @@ class GmrcController extends Controller
         }
 
         $q = $this->studentScopeQuery($request);
-        if ($request->filled('grade_level')) $q->where('grade', $request->input('grade_level'));
-        if ($request->filled('section')) $q->where('section', $request->input('section'));
+        if ($request->filled('grade_level')) {
+            $q->where('grade', $request->input('grade_level'));
+        }
+        if ($request->filled('section')) {
+            $q->where('section', $request->input('section'));
+        }
+        // Excel roster matches class list: grade + section only (subject is for score entry metadata).
 
-        $students = $q->orderBy('last_name')->orderBy('first_name')->get();
+        $students = $q->orderBy('grade')->orderBy('section')->orderBy('last_name')->orderBy('first_name')->get();
         $totalItems = (int) ($request->input('total_items') ?? 50);
+
+        $schoolId = $this->schoolScope();
+        $sheetTitle = 'Learning Assessment';
+        if ($request->filled('subject_id')) {
+            $subject = Subject::query()
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+                ->find((int) $request->input('subject_id'));
+            if ($subject && trim((string) $subject->name) !== '') {
+                $sheetTitle = $subject->name;
+            }
+        }
 
         $gradeLabel = $request->input('grade_level') ? ('G' . preg_replace('/\D+/', '', (string) $request->input('grade_level'))) : 'AllGrades';
         $sectionLabel = $request->input('section') ? preg_replace('/\s+/', '', (string) $request->input('section')) : 'AllSections';
-        $filename = "GMRC_Template_{$gradeLabel}_{$sectionLabel}.xlsx";
+        $filename = "Learning_Assessment_Template_{$gradeLabel}_{$sectionLabel}.xlsx";
 
-        return Excel::download(new GmrcTemplateExport($students, $totalItems), $filename);
+        return Excel::download(new GmrcTemplateExport($students, $totalItems, $sheetTitle), $filename);
+    }
+
+    public function importAnalyze(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls', 'max:15360'],
+        ]);
+
+        $path = $request->file('file')?->getRealPath();
+        if (! $path || ! is_readable($path)) {
+            return response()->json(['message' => 'Could not read the uploaded file.'], 422);
+        }
+
+        try {
+            $data = app(LearningAssessmentExcelAnalyzer::class)->analyze($path);
+
+            return response()->json($data);
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Could not analyze that Excel file. Use the roster template: row 1 headers, row 2 answer key, students from row 3.',
+            ], 422);
+        }
+    }
+
+    public function importAnalyzeExport(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'sheet_title' => ['nullable', 'string', 'max:100'],
+            'item_numbers' => ['required', 'array', 'min:1', 'max:200'],
+            'item_numbers.*' => ['integer', 'min:1', 'max:500'],
+            'answer_key' => ['required', 'array'],
+            'students' => ['required', 'array', 'min:1', 'max:600'],
+            'students.*.name' => ['required', 'string', 'max:500'],
+            'students.*.answers' => ['required', 'array'],
+            'students.*.score' => ['required', 'integer', 'min:0'],
+            'students.*.percentage' => ['required', 'numeric'],
+            'item_stats' => ['required', 'array'],
+            'item_stats.*.item' => ['required', 'integer'],
+            'item_stats.*.total_correct' => ['required', 'integer', 'min:0'],
+            'item_stats.*.examinees' => ['required', 'integer', 'min:0'],
+            'item_stats.*.p_value' => ['nullable', 'numeric'],
+            'item_stats.*.difficulty_pct' => ['nullable', 'numeric'],
+            'item_stats.*.difficulty_level' => ['required', 'string', 'max:100'],
+            'item_stats.*.interpretation' => ['required', 'string', 'max:500'],
+            'item_stats.*.what_it_means' => ['nullable', 'string', 'max:500'],
+            'item_stats.*.recommended_action' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => 'Validation failed.', 'errors' => $validator->errors()], 422);
+        }
+
+        $validated = $validator->validated();
+        $sheetTitle = (string) ($validated['sheet_title'] ?? 'Learning Assessment');
+        unset($validated['sheet_title']);
+
+        $n = count($validated['item_numbers']);
+        if (count($validated['answer_key']) !== $n) {
+            return response()->json(['message' => 'answer_key must have the same length as item_numbers.'], 422);
+        }
+        if (count($validated['item_stats']) !== $n) {
+            return response()->json(['message' => 'item_stats must have the same length as item_numbers.'], 422);
+        }
+        foreach ($validated['students'] as $i => $stu) {
+            if (count($stu['answers']) !== $n) {
+                return response()->json([
+                    'message' => 'Each student answers array must match item_numbers length (index ' . $i . ').',
+                ], 422);
+            }
+        }
+
+        $filename = 'Learning_Assessment_Analyzed_' . now()->format('Y-m-d_His') . '.xlsx';
+
+        return Excel::download(new LearningAssessmentAnalyzedExport($validated, $sheetTitle), $filename);
     }
 }
 

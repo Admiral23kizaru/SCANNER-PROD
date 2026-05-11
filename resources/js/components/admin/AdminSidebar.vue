@@ -64,6 +64,21 @@
         <span>Students</span>
       </button>
 
+      <!-- Manage Subjects sidebar item (before sections) -->
+      <button
+        type="button"
+        class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent cursor-pointer"
+        :class="
+          currentPage === 'subjects'
+            ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm border-l-blue-600'
+            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+        "
+        @click="updatePage('subjects')"
+      >
+        <BookOpen class="h-4 w-4" />
+        <span>Manage Subjects</span>
+      </button>
+
       <!-- Manage Sections sidebar item -->
       <button
         type="button"
@@ -101,7 +116,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { LayoutDashboard, Users, GraduationCap, FolderPlus, Building2 } from 'lucide-vue-next';
+import { LayoutDashboard, Users, GraduationCap, FolderPlus, Building2, BookOpen } from 'lucide-vue-next';
 
 const props = defineProps({
   currentPage: {

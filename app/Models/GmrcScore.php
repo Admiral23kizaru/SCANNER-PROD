@@ -11,6 +11,7 @@ class GmrcScore extends Model
 
     protected $fillable = [
         'student_id',
+        'subject_id',
         'section',
         'grade_level',
         'wrong_items',
@@ -27,6 +28,11 @@ class GmrcScore extends Model
     public function student(): BelongsTo
     {
         return $this->belongsTo(Student::class);
+    }
+
+    public function subject(): BelongsTo
+    {
+        return $this->belongsTo(Subject::class);
     }
 }
 
