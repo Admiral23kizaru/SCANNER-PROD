@@ -31,7 +31,9 @@ async function fetchCurrentUser() {
     }
 }
 
-function roleGuard(allowedRole) {
+function roleGuard(allowedRoles) {
+    const allowed = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+
     return async (to, from, next) => {
         const user = await fetchCurrentUser();
         if (!user) {
@@ -40,7 +42,7 @@ function roleGuard(allowedRole) {
             return;
         }
         const roleName = user.role?.name || user.role_name;
-        if (roleName !== allowedRole) {
+        if (!allowed.includes(roleName)) {
             next({ path: '/login' });
             return;
         }
@@ -85,6 +87,18 @@ async function loginRedirectGuard(to, from, next) {
         const roleName = user.role?.name || user.role_name;
         if (roleName === 'Admin') next({ path: '/admin' });
         else if (roleName === 'Teacher') next({ path: '/teacher' });
+        else if (roleName === 'Reporting Manager') {
+            next({ path: '/admin' });
+            return;
+        }
+        else if (roleName === 'Adviser') {
+            next({ path: '/adviser' });
+            return;
+        }
+        else if (roleName === 'Subject Teacher') {
+            next({ path: '/subject-teacher' });
+            return;
+        }
         else next({ path: '/scanner' }); // Guard → scanner home
     } catch {
         next();
@@ -119,7 +133,82 @@ const routes = [
         path: '/admin',
         name: 'Admin',
         component: AdminLayout,
-        beforeEnter: roleGuard('Admin'),
+        beforeEnter: roleGuard(['Admin', 'Reporting Manager']),
+    },
+    {
+        path: '/reporting-manager',
+        name: 'ReportingManager',
+        component: {
+            template: `
+      <div style="
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        height:100vh;
+        font-family:sans-serif;
+        background:#f8f9fa;
+      ">
+        <h2 style="color:#333;margin-bottom:8px">
+          Reporting Manager Dashboard
+        </h2>
+        <p style="color:#888;font-size:14px">
+          Being prepared — coming soon
+        </p>
+      </div>
+    `
+        },
+        beforeEnter: () => ({ path: '/admin' }),
+    },
+    {
+        path: '/adviser',
+        name: 'Adviser',
+        component: {
+            template: `
+      <div style="
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        height:100vh;
+        font-family:sans-serif;
+        background:#f8f9fa;
+      ">
+        <h2 style="color:#333;margin-bottom:8px">
+          Adviser Dashboard
+        </h2>
+        <p style="color:#888;font-size:14px">
+          Being prepared — coming soon
+        </p>
+      </div>
+    `
+        },
+        beforeEnter: roleGuard('Adviser'),
+    },
+    {
+        path: '/subject-teacher',
+        name: 'SubjectTeacher',
+        component: {
+            template: `
+      <div style="
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        height:100vh;
+        font-family:sans-serif;
+        background:#f8f9fa;
+      ">
+        <h2 style="color:#333;margin-bottom:8px">
+          Subject Teacher Dashboard
+        </h2>
+        <p style="color:#888;font-size:14px">
+          Being prepared — coming soon
+        </p>
+      </div>
+    `
+        },
+        beforeEnter: roleGuard('Subject Teacher'),
     },
     {
         path: '/admin/schools/create',
@@ -140,7 +229,7 @@ const routes = [
 ];
 
 const router = createRouter({
-    history: createWebHistory('/SCANNER_PROD1/SCANNER-PROD/public/'),
+    history: createWebHistory(import.meta.env.BASE_URL || '/'),
     routes,
 });
 

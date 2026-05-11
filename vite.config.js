@@ -3,8 +3,19 @@ import laravel from 'laravel-vite-plugin';
 import vue from '@vitejs/plugin-vue';
 import tailwindcss from '@tailwindcss/vite';
 
+function resolveBasePath() {
+    const raw =
+        process.env.VITE_ASSET_PREFIX && !process.env.VITE_ASSET_PREFIX.includes('${')
+            ? process.env.VITE_ASSET_PREFIX
+            : process.env.ASSET_URL || '/';
+
+    const trimmed = String(raw || '/').trim();
+    const withLeadingSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    return withLeadingSlash.endsWith('/') ? withLeadingSlash : `${withLeadingSlash}/`;
+}
+
 export default defineConfig({
-    base: '/SCANNER_PROD1/SCANNER-PROD/public/',
+    base: resolveBasePath(),
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.js'],

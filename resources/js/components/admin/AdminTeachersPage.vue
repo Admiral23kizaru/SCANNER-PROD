@@ -15,6 +15,16 @@
 
           <button
             type="button"
+            class="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-800 hover:bg-indigo-100 transition inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="openEhrisModal"
+            :disabled="ehrisModalLoading"
+          >
+            <Users class="h-4 w-4" />
+            Fetch from EHRIS
+          </button>
+
+          <button
+            type="button"
             class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             @click="handleExport"
             :disabled="exporting"
@@ -91,6 +101,29 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <div
+        v-if="lastSyncSummary"
+        class="mx-4 mb-0 mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+      >
+        <span class="font-semibold">Last EHRIS sync:</span>
+        {{ lastSyncSummary.synced_count }} synced
+        ({{ lastSyncSummary.created_count }} teachers created,
+        {{ lastSyncSummary.updated_count }} teachers updated
+        <template v-if="lastSyncSummary.skipped_count">
+          , {{ lastSyncSummary.skipped_count }} skipped
+        </template>
+        · Users: {{ lastSyncSummary.users_created_count }} created,
+        {{ lastSyncSummary.users_updated_count }} updated)
+        <span class="text-emerald-700/80">· {{ lastSyncSummary.at }}</span>
+        <button
+          type="button"
+          class="ml-2 text-xs font-medium text-emerald-800 underline underline-offset-2 hover:text-emerald-950"
+          @click="lastSyncSummary = null"
+        >
+          Dismiss
+        </button>
       </div>
 
       <div class="overflow-x-auto">
@@ -391,6 +424,150 @@
       </div>
     </div>
 
+    <!-- EHRIS preview + selective sync (read-only source; writes only to ScanUp teachers/users) -->
+    <div
+      v-if="showEhrisModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      @click.self="closeEhrisModal"
+    >
+      <div
+        class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col border border-slate-200"
+        @click.stop
+      >
+        <div class="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-slate-200">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900">EHRIS teachers (preview)</h2>
+            <p class="text-xs text-slate-500 mt-1">
+              Active EHRIS accounts with role Teacher for DepEd ID
+              <span class="font-mono font-medium text-slate-700">{{ ehrisDepedSchoolId || '—' }}</span>
+              · Read-only from EHRIS; sync updates ScanUp only.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+            aria-label="Close"
+            @click="closeEhrisModal"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center">
+          <div class="relative flex-1">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <input
+              v-model="ehrisSearchInput"
+              type="search"
+              placeholder="Search name, email, employee ID…"
+              class="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2.5 text-sm"
+              @keyup.enter="loadEhrisPreview"
+            />
+          </div>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            :disabled="ehrisModalLoading"
+            @click="loadEhrisPreview"
+          >
+            <RefreshCw class="h-4 w-4" :class="ehrisModalLoading ? 'animate-spin' : ''" />
+            Refresh preview
+          </button>
+        </div>
+
+        <div v-if="ehrisModalError" class="mx-4 sm:mx-5 mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          {{ ehrisModalError }}
+        </div>
+
+        <div class="flex-1 overflow-auto min-h-[200px] p-4 sm:p-5">
+          <div v-if="ehrisModalLoading && !ehrisRows.length" class="py-16 text-center text-slate-500 text-sm">
+            Loading EHRIS roster…
+          </div>
+          <div v-else-if="!ehrisRows.length && !ehrisModalLoading" class="py-16 text-center text-slate-500 text-sm">
+            No EHRIS teachers found for this school. Check DepEd School ID on the school record or try another search.
+          </div>
+          <table v-else class="w-full text-sm text-left border-separate border-spacing-0">
+            <thead class="bg-slate-50 text-slate-600 text-xs font-medium">
+              <tr>
+                <th class="py-2 px-3 border-b border-slate-200 w-10">
+                  <input
+                    type="checkbox"
+                    class="rounded border-slate-300"
+                    :checked="ehrisAllSelected"
+                    @change="toggleSelectAllEhris($event.target.checked)"
+                  />
+                </th>
+                <th class="py-2 px-3 border-b border-slate-200">Name</th>
+                <th class="py-2 px-3 border-b border-slate-200">Email</th>
+                <th class="py-2 px-3 border-b border-slate-200">Employee ID</th>
+                <th class="py-2 px-3 border-b border-slate-200">In ScanUp</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="row in ehrisRows"
+                :key="row.ehris_user_id + '-' + row.employee_id"
+                class="border-b border-slate-100 hover:bg-slate-50/80"
+              >
+                <td class="py-2 px-3 align-middle">
+                  <input
+                    type="checkbox"
+                    class="rounded border-slate-300"
+                    :checked="ehrisSelectedIds.includes(row.employee_id)"
+                    @change="toggleEhrisRow(row.employee_id, $event.target.checked)"
+                  />
+                </td>
+                <td class="py-2 px-3 font-medium text-slate-900">{{ row.name }}</td>
+                <td class="py-2 px-3 text-slate-600 truncate max-w-[180px]" :title="row.email">{{ row.email }}</td>
+                <td class="py-2 px-3 text-slate-700 font-mono text-xs">{{ row.employee_id }}</td>
+                <td class="py-2 px-3">
+                  <span
+                    v-if="row.is_synced"
+                    class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
+                  >Yes</span>
+                  <span
+                    v-else
+                    class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900"
+                  >No</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="p-4 sm:p-5 border-t border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p class="text-xs text-slate-600">
+            {{ ehrisRows.length }} row(s) in preview · {{ ehrisSelectedIds.length }} selected
+          </p>
+          <div class="flex flex-wrap gap-2 justify-end">
+            <button
+              type="button"
+              class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              @click="closeEhrisModal"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              :disabled="syncingEhris || !ehrisRows.length"
+              @click="runEhrisSyncSelected"
+            >
+              {{ syncingEhris ? 'Syncing…' : 'Sync selected' }}
+            </button>
+            <button
+              type="button"
+              class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              :disabled="syncingEhris || !ehrisRows.length"
+              @click="runEhrisSyncAll"
+            >
+              {{ syncingEhris ? 'Syncing…' : 'Sync all in preview' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div
       v-if="showDeleteModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -451,8 +628,8 @@
 import { assetPath } from '../../composables/useAsset';
 import { ref, computed, onMounted, watch } from 'vue';
 import axios from 'axios';
-import { PencilLine, Trash2, Plus, Download, Search, Filter } from 'lucide-vue-next';
-import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, exportAdminTeachers } from '../../services/adminService';
+import { PencilLine, Trash2, Plus, Download, Search, Filter, RefreshCw, Users } from 'lucide-vue-next';
+import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, exportAdminTeachers, fetchEhrisTeachers, syncEhrisTeachers } from '../../services/adminService';
 
 const teachers = ref([]);
 const searchQuery = ref('');
@@ -470,6 +647,26 @@ const filterSection = ref('');
 /** Sections from `/api/admin/sections` (authoritative names + grade levels for this school). */
 const schoolSections = ref([]);
 const exporting = ref(false);
+const syncingEhris = ref(false);
+const showEhrisModal = ref(false);
+const ehrisModalLoading = ref(false);
+const ehrisModalError = ref('');
+const ehrisRows = ref([]);
+const ehrisDepedSchoolId = ref('');
+const ehrisSearchInput = ref('');
+const ehrisSelectedIds = ref([]);
+const lastSyncSummary = ref(null);
+
+/**
+ * ehrisAllSelected
+ * PURPOSE: True when every preview row’s employee_id is selected.
+ * WHY: Drives the header checkbox for bulk select in the EHRIS modal.
+ */
+const ehrisAllSelected = computed(() => {
+  if (!ehrisRows.value.length) return false;
+  const ids = ehrisRows.value.map((r) => r.employee_id);
+  return ids.every((id) => ehrisSelectedIds.value.includes(id));
+});
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const showDeleteModal = ref(false);
@@ -689,6 +886,12 @@ const studentModalLoading = ref(false);
  * @param {Object} teacher - The teacher object from the list (must have .id and .name)
  */
 async function viewTeacherStudents(teacher) {
+  const userId = teacher.user_id;
+  if (!userId) {
+    alert('This teacher has no linked ScanUp login user yet. Sync from EHRIS or create the account, then try again.');
+    return;
+  }
+
   // 1. Show the modal immediately with a loading spinner
   isStudentModalOpen.value = true;
   studentModalTitle.value = `Students for ${teacher.name}`;
@@ -696,8 +899,11 @@ async function viewTeacherStudents(teacher) {
   studentModalList.value = [];
 
   try {
-    // 2. Ask the backend for students matching this teacher's grade & section
-    const response = await axios.get(`/api/admin/dashboard/analytics?type=teacher_students&teacher_id=${teacher.id}`);
+    // 2. Ask the backend for students matching this teacher's grade & section (users.id)
+    const response = await axios.get(
+      `/api/admin/dashboard/analytics?type=teacher_students&teacher_id=${userId}`,
+      { headers: getAuthHeaders() },
+    );
     studentModalList.value = response.data.data;
   } catch (err) {
     console.error('Failed to load students for teacher', err);
@@ -796,6 +1002,157 @@ async function handleExport() {
     alert('Failed to export teachers.');
   } finally {
     exporting.value = false;
+  }
+}
+
+/**
+ * openEhrisModal
+ * PURPOSE: Opens the EHRIS preview modal and loads the roster for the admin’s school.
+ * WHY: Lets admins review EHRIS rows before syncing to ScanUp.
+ */
+function openEhrisModal() {
+  ehrisModalError.value = '';
+  ehrisSearchInput.value = '';
+  ehrisSelectedIds.value = [];
+  showEhrisModal.value = true;
+  loadEhrisPreview();
+}
+
+/**
+ * closeEhrisModal
+ * PURPOSE: Closes the EHRIS modal and clears transient errors.
+ * WHY: Avoids stale error text when reopening the preview.
+ */
+function closeEhrisModal() {
+  showEhrisModal.value = false;
+  ehrisModalError.value = '';
+}
+
+/**
+ * loadEhrisPreview
+ * PURPOSE: Calls GET /api/admin/teachers/ehris to list active EHRIS teachers for this school.
+ * WHY: Read-only preview with optional search before POST sync.
+ */
+async function loadEhrisPreview() {
+  ehrisModalLoading.value = true;
+  ehrisModalError.value = '';
+  try {
+    const res = await fetchEhrisTeachers(ehrisSearchInput.value.trim());
+    ehrisDepedSchoolId.value = res.deped_school_id || '';
+    ehrisRows.value = Array.isArray(res.data) ? res.data : [];
+    ehrisSelectedIds.value = ehrisSelectedIds.value.filter((id) =>
+      ehrisRows.value.some((r) => r.employee_id === id),
+    );
+  } catch (err) {
+    ehrisRows.value = [];
+    ehrisModalError.value =
+      err.response?.data?.message || err.response?.data?.error || 'Failed to load EHRIS teachers.';
+  } finally {
+    ehrisModalLoading.value = false;
+  }
+}
+
+/**
+ * toggleSelectAllEhris
+ * PURPOSE: Selects or clears all visible EHRIS preview rows.
+ * WHY: Faster bulk selection before “Sync selected”.
+ *
+ * @param {boolean} checked - Header checkbox state.
+ */
+function toggleSelectAllEhris(checked) {
+  if (checked) {
+    ehrisSelectedIds.value = ehrisRows.value.map((r) => r.employee_id);
+  } else {
+    ehrisSelectedIds.value = [];
+  }
+}
+
+/**
+ * toggleEhrisRow
+ * PURPOSE: Toggles one EHRIS row in the sync selection set.
+ * WHY: POST sync-ehris accepts a subset via employee_ids.
+ *
+ * @param {string} employeeId - Resolved EHRIS employee key (hrId or userId).
+ * @param {boolean} checked - Row checkbox state.
+ */
+function toggleEhrisRow(employeeId, checked) {
+  const set = new Set(ehrisSelectedIds.value);
+  if (checked) {
+    set.add(employeeId);
+  } else {
+    set.delete(employeeId);
+  }
+  ehrisSelectedIds.value = [...set];
+}
+
+/**
+ * applyEhrisSyncResult
+ * PURPOSE: Stores counts from POST sync-ehris for the banner under the toolbar.
+ * WHY: Trainers and admins need visible created/updated/synced totals without alerts only.
+ *
+ * @param {object} res - JSON body from sync-ehris.
+ */
+function applyEhrisSyncResult(res) {
+  lastSyncSummary.value = {
+    synced_count: res.synced_count ?? 0,
+    created_count: res.created_count ?? 0,
+    updated_count: res.updated_count ?? 0,
+    skipped_count: res.skipped_count ?? 0,
+    users_created_count: res.users_created_count ?? 0,
+    users_updated_count: res.users_updated_count ?? 0,
+    at: new Date().toLocaleString(),
+  };
+}
+
+/**
+ * runEhrisSyncAll
+ * PURPOSE: POST sync-ehris with no employee_ids (all EHRIS teachers for the school).
+ * WHY: One-click import after preview.
+ */
+async function runEhrisSyncAll() {
+  if (syncingEhris.value || !ehrisRows.value.length) return;
+  const ok = window.confirm(
+    'Sync all active EHRIS teachers for this school into ScanUp (teachers + login users)?',
+  );
+  if (!ok) return;
+
+  syncingEhris.value = true;
+  ehrisModalError.value = '';
+  try {
+    const res = await syncEhrisTeachers({});
+    applyEhrisSyncResult(res);
+    await load();
+    closeEhrisModal();
+  } catch (err) {
+    ehrisModalError.value = err.response?.data?.message || 'EHRIS sync failed.';
+  } finally {
+    syncingEhris.value = false;
+  }
+}
+
+/**
+ * runEhrisSyncSelected
+ * PURPOSE: POST sync-ehris with employee_ids for only checked preview rows.
+ * WHY: Admins can onboard a subset without importing the whole roster.
+ */
+async function runEhrisSyncSelected() {
+  if (syncingEhris.value) return;
+  if (!ehrisSelectedIds.value.length) {
+    alert('Select at least one teacher, or use “Sync all in preview”.');
+    return;
+  }
+
+  syncingEhris.value = true;
+  ehrisModalError.value = '';
+  try {
+    const res = await syncEhrisTeachers({ employee_ids: [...ehrisSelectedIds.value] });
+    applyEhrisSyncResult(res);
+    await load();
+    await loadEhrisPreview();
+  } catch (err) {
+    ehrisModalError.value = err.response?.data?.message || 'EHRIS sync failed.';
+  } finally {
+    syncingEhris.value = false;
   }
 }
 

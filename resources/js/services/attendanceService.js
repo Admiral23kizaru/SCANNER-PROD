@@ -22,6 +22,21 @@ function getAuthHeaders() {
     return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+/**
+ * getStoredDepedId
+ *
+ * PURPOSE: Reads the DepEd school ID from localStorage instead of the URL.
+ *
+ * WHY localStorage NOT window.location.search:
+ * GuardScanner.vue calls history.replaceState() on mount to clean the URL
+ * after storing query params, so reading from window.location.search returns null.
+ *
+ * @returns {string|null} deped_id or null
+ */
+function getStoredDepedId() {
+    return localStorage.getItem('scan_up_deped_id') || null;
+}
+
 /** JSON content-type header, shared by all POST/PUT requests. */
 const jsonHeaders = { 'Content-Type': 'application/json', Accept: 'application/json' };
 
@@ -78,8 +93,7 @@ export async function scanAttendancePublic(data) {
  * }> }>}
  */
 export async function fetchRecentAttendancePublic() {
-    const params = new URLSearchParams(window.location.search);
-    const depedId = params.get('deped_id');
+    const depedId = getStoredDepedId();
 
     const { data } = await axios.get(`${API_BASE}/api/attendance/public/recent`, {
         params: { deped_id: depedId },
@@ -100,8 +114,7 @@ export async function fetchRecentAttendancePublic() {
  * }>}
  */
 export async function fetchGuardStatsPublic() {
-    const params = new URLSearchParams(window.location.search);
-    const depedId = params.get('deped_id');
+    const depedId = getStoredDepedId();
 
     const { data } = await axios.get(`${API_BASE}/api/attendance/public/stats`, {
         params: { deped_id: depedId },

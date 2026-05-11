@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\Student;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,31 +14,21 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Unlike StudentController (teacher-scoped), this controller exposes
  * all students to the admin user without ownership filters.
  */
-class AdminStudentController extends Controller
+class AdminStudentController extends BaseController
 {
-    /* ====================================================================== */
-    /*  Helpers                                                                */
-    /* ====================================================================== */
-
-    /** Returns the school_id of the current admin. NULL = SuperAdmin (sees all). */
-    private function schoolScope()
-    {
-        /** @var \App\Models\User|null $user */
-        $user = auth()->user();
-        return $user?->school_id;
-    }
-
     /* ====================================================================== */
     /*  Read                                                                   */
     /* ====================================================================== */
 
     /**
-     * Return a paginated list of students, optionally filtered by search term.
+     * PURPOSE: Return a paginated list of students for the authenticated admin's school.
+     * FIX: Uses getAuthSchoolId() to enforce mandatory school scope and prevent wildcard cross-school reads.
+     * LIMITATION: Depends on correctly assigned user.school_id; misconfigured accounts receive 403.
      */
     public function index(Request $request): JsonResponse
     {
-        $schoolId = $this->schoolScope();
-        $query = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+        $schoolId = $this->getAuthSchoolId();
+        $query = Student::where('school_id', $schoolId)
             ->orderBy('last_name')->orderBy('first_name');
 
         $search = $request->input('search');
@@ -80,9 +69,14 @@ class AdminStudentController extends Controller
     /*  Write                                                                  */
     /* ====================================================================== */
 
-    /** Create a new student record. */
+    /**
+     * PURPOSE: Create a new student record within the authenticated admin's school.
+     * FIX: Enforces school assignment via getAuthSchoolId() before validation/write to block null-school wildcard behavior.
+     * LIMITATION: Request-provided school_id remains ignored for persistence; server uses auth school only.
+     */
     public function store(Request $request): JsonResponse
     {
+        $schoolId = $this->getAuthSchoolId();
         $validator = Validator::make($request->all(), [
             'first_name'     => ['required', 'string', 'max:255'],
             'last_name'      => ['required', 'string', 'max:255'],
@@ -90,7 +84,7 @@ class AdminStudentController extends Controller
             'middle_name'    => ['nullable', 'string', 'max:255'],
             'student_number' => [
                 'required', 'string', 'max:64',
-                'unique:students,student_number,NULL,id,school_id,' . $this->schoolScope()
+                'unique:students,student_number,NULL,id,school_id,' . $schoolId
             ],
             'grade_section'  => ['nullable', 'string', 'max:64'],
             'grade'          => ['nullable', 'string', 'max:32'],
@@ -123,18 +117,22 @@ class AdminStudentController extends Controller
             'guardian_email' => $request->guardian_email ?: null,
             'contact_number' => $request->contact_number ?: null,
             'notification_preference' => (int) ($request->notification_preference ?? 0),
-            'school_id'      => $request->user()->school_id,
+            'school_id'      => $schoolId,
             'created_by'     => $request->user()->id,
         ]);
 
         return response()->json(['message' => 'Student created.', 'student' => $this->studentToArray($student)], 201);
     }
 
-    /** Update an existing student record by ID. */
+    /**
+     * PURPOSE: Update a student record owned by the authenticated admin's school.
+     * FIX: Replaces nullable school scoping with strict getAuthSchoolId() filtering.
+     * LIMITATION: Returns 404 for out-of-scope student IDs to avoid data disclosure.
+     */
     public function update(Request $request, int $id): JsonResponse
     {
-        $schoolId = $this->schoolScope();
-        $student = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->find($id);
+        $schoolId = $this->getAuthSchoolId();
+        $student = Student::where('school_id', $schoolId)->find($id);
         if (!$student) {
             return response()->json(['message' => 'Student not found.'], 404);
         }
@@ -146,7 +144,7 @@ class AdminStudentController extends Controller
             'middle_name'    => ['nullable', 'string', 'max:255'],
             'student_number' => [
                 'sometimes', 'required', 'string', 'max:64',
-                'unique:students,student_number,' . $id . ',id,school_id,' . $this->schoolScope()
+                'unique:students,student_number,' . $id . ',id,school_id,' . $schoolId
             ],
             'grade_section'  => ['nullable', 'string', 'max:64'],
             'grade'          => ['nullable', 'string', 'max:32'],
@@ -192,10 +190,18 @@ class AdminStudentController extends Controller
         return response()->json(['message' => 'Student updated.', 'student' => $this->studentToArray($student)]);
     }
 
-    /** Permanently delete a student record. */
-    public function destroy(int $id): JsonResponse
+    /**
+     * PURPOSE: Permanently delete a student record belonging to the authenticated admin's school.
+     * FIX: Enforces strict school scope via getAuthSchoolId() to prevent cross-school deletes by guessed ID.
+     * LIMITATION: Out-of-scope deletes return 404.
+     */
+    public function destroy(Request $request, int $id): JsonResponse
     {
-        $student = Student::find($id);
+        $schoolId = $this->getAuthSchoolId();
+        $student = Student::where('id', $id)
+            ->where('school_id', $schoolId)
+            ->first();
+
         if (!$student) {
             return response()->json(['message' => 'Student not found.'], 404);
         }
@@ -210,14 +216,16 @@ class AdminStudentController extends Controller
     /* ====================================================================== */
 
     /**
-     * Stream students as a UTF-8 CSV download.
-     *
-     * Respects any active search filter so admins can export filtered subsets.
-     * Uses chunked processing to prevent memory exhaustion on large datasets.
+     * PURPOSE: Stream a UTF-8 CSV export of students in the authenticated admin's school.
+     * FIX: Replaces nullable school filtering with mandatory getAuthSchoolId() scope.
+     * LIMITATION: Export remains constrained to current school and selected filters only.
      */
     public function export(Request $request): StreamedResponse
     {
-        $query  = Student::query()->orderBy('last_name')->orderBy('first_name');
+        $schoolId = $this->getAuthSchoolId();
+        $query  = Student::query()
+            ->where('school_id', $schoolId)
+            ->orderBy('last_name')->orderBy('first_name');
         $search = $request->input('search');
 
         if ($search && is_string($search)) {

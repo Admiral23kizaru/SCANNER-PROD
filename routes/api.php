@@ -46,7 +46,8 @@ Route::get('/school/by-deped-id/{depedId}', function ($depedId) {
 Route::get('/school/check/{deped_id}', [SchoolController::class, 'check']);
 
 // 2. Bat file launcher — register a new school, admin user, settings, and school year
-Route::post('/setup/register-school', [SetupController::class, 'registerSchool']);
+Route::post('/setup/register-school', [SetupController::class, 'registerSchool'])
+    ->middleware('setup.secret');
 
 // PUBLIC — BAT file login (no auth)
 Route::post('/guard/login', [GuardAuthController::class, 'login']);
@@ -99,7 +100,7 @@ Route::middleware('auth:sanctum')->group(function () {
     /*  Admin panel                                                        */
     /* ------------------------------------------------------------------ */
 
-    Route::middleware('role:Admin')->prefix('admin')->group(function () {
+    Route::middleware('role:Admin,Reporting Manager')->prefix('admin')->group(function () {
 
         Route::controller(AdminController::class)->group(function () {
             Route::get('/dashboard', 'dashboard');
@@ -118,6 +119,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::controller(TeacherManagementController::class)->prefix('teachers')->group(function () {
             Route::get('/export', 'export');
+            Route::get('/ehris', 'ehris');
+            Route::post('/sync-ehris', 'syncEhris');
             Route::get('/', 'index');
             Route::post('/', 'store');
             Route::put('/{id}', 'update');

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\Section;
 use App\Models\Student;
 use App\Models\User;
@@ -17,21 +16,38 @@ use Illuminate\Support\Facades\Validator;
  * //   scoped to the admin's school.
  * // Author: Antigravity System Agent
  */
-class SectionController extends Controller
+class SectionController extends BaseController
 {
     /**
-     * // Description: index - Returns all sections for the admin's school,
-     * //   including the assigned teacher's name and student count.
+     * PURPOSE: Resolve a section only within the authenticated school scope.
+     * FIX: Requires explicit school_id and removes nullable wildcard section lookups.
+     * LIMITATION: Returns 404 for out-of-scope IDs to avoid disclosing existence.
+     */
+    private function findSectionOrFail(int $id, int $schoolId): Section
+    {
+        $section = Section::where('id', $id)
+            ->where('school_id', $schoolId)
+            ->first();
+
+        if (!$section) {
+            abort(404, 'Section not found.');
+        }
+
+        return $section;
+    }
+
+    /**
+     * PURPOSE: Return all sections for the authenticated admin's school, with teacher and student count.
+     * FIX: Uses getAuthSchoolId() for strict school scoping (no null wildcard behavior).
+     * LIMITATION: Requires valid school assignment on authenticated account.
      */
     public function index(Request $request): JsonResponse
     {
-        $schoolId = $request->user()->school_id;
+        $schoolId = $this->getAuthSchoolId();
 
         $sections = Section::with('teacher:id,name')
             ->withCount('students')
-            ->when($schoolId, function ($q) use ($schoolId) {
-                $q->where('school_id', $schoolId);
-            })
+            ->where('school_id', $schoolId)
             ->orderBy('grade_level')
             ->orderBy('name')
             ->get();
@@ -40,11 +56,14 @@ class SectionController extends Controller
     }
 
     /**
-     * // Description: store - Creates a new section and optionally assigns a teacher.
-     * //   The school_id is auto-set from the authenticated admin's profile.
+     * PURPOSE: Create a section for the authenticated admin's school and optionally assign a teacher.
+     * FIX: Enforces school ownership with getAuthSchoolId() before teacher validation and section creation.
+     * LIMITATION: Teacher assignment still depends on user record school_id integrity.
      */
     public function store(Request $request): JsonResponse
     {
+        $schoolId = $this->getAuthSchoolId();
+
         $validator = Validator::make($request->all(), [
             'name'        => ['required', 'string', 'max:100'],
             'grade_level' => ['required', 'string', 'max:50'],
@@ -55,11 +74,23 @@ class SectionController extends Controller
             return response()->json(['message' => 'Validation failed.', 'errors' => $validator->errors()], 422);
         }
 
+        if ($request->filled('teacher_id')) {
+            $teacherUser = \App\Models\User::where(
+                'id', $request->teacher_id
+            )->first();
+            if (!$teacherUser ||
+                $teacherUser->school_id !== $schoolId) {
+                return response()->json([
+                    'message' => 'Selected teacher does not belong to your school.'
+                ], 422);
+            }
+        }
+
         $section = Section::create([
             'name'        => $request->name,
             'grade_level' => $request->grade_level,
             'teacher_id'  => $request->teacher_id,
-            'school_id'   => $request->user()->school_id,
+            'school_id'   => $schoolId,
         ]);
 
         // If a teacher is assigned, sync their grade_level and section on the users table
@@ -75,14 +106,14 @@ class SectionController extends Controller
     }
 
     /**
-     * // Description: update - Updates an existing section's name, grade, or teacher.
+     * PURPOSE: Update a section within the authenticated admin's school.
+     * FIX: Uses getAuthSchoolId() and strict section ownership checks.
+     * LIMITATION: Returns 404 for out-of-scope section IDs.
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $section = Section::find($id);
-        if (!$section) {
-            return response()->json(['message' => 'Section not found.'], 404);
-        }
+        $schoolId = $this->getAuthSchoolId();
+        $section = $this->findSectionOrFail($id, $schoolId);
 
         $validator = Validator::make($request->all(), [
             'name'        => ['sometimes', 'required', 'string', 'max:100'],
@@ -92,6 +123,18 @@ class SectionController extends Controller
 
         if ($validator->fails()) {
             return response()->json(['message' => 'Validation failed.', 'errors' => $validator->errors()], 422);
+        }
+
+        if ($request->filled('teacher_id')) {
+            $teacherUser = \App\Models\User::where(
+                'id', $request->teacher_id
+            )->first();
+            if (!$teacherUser ||
+                $teacherUser->school_id !== $schoolId) {
+                return response()->json([
+                    'message' => 'Selected teacher does not belong to your school.'
+                ], 422);
+            }
         }
 
         $section->update($request->only(['name', 'grade_level', 'teacher_id']));
@@ -108,15 +151,14 @@ class SectionController extends Controller
     }
 
     /**
-     * // Description: destroy - Deletes a section. Students in this section
-     * //   will have their section_id set to NULL (via nullOnDelete FK).
+     * PURPOSE: Delete a section within the authenticated admin's school scope.
+     * FIX: Uses getAuthSchoolId() for strict school ownership enforcement.
+     * LIMITATION: Student unassignment behavior remains delegated to FK nullOnDelete.
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
-        $section = Section::find($id);
-        if (!$section) {
-            return response()->json(['message' => 'Section not found.'], 404);
-        }
+        $schoolId = $this->getAuthSchoolId();
+        $section = $this->findSectionOrFail($id, $schoolId);
 
         $section->delete();
 
@@ -124,15 +166,14 @@ class SectionController extends Controller
     }
 
     /**
-     * // Description: assignStudents - Bulk-assigns unassigned students to a section.
-     * //   Updates both section_id, grade, and section text fields on each student.
+     * PURPOSE: Bulk-assign students to a section within the authenticated admin's school.
+     * FIX: Adds strict pre-check that ALL submitted student IDs belong to the same school before update.
+     * LIMITATION: Entire request is rejected when any student ID is out-of-scope.
      */
     public function assignStudents(Request $request, int $id): JsonResponse
     {
-        $section = Section::find($id);
-        if (!$section) {
-            return response()->json(['message' => 'Section not found.'], 404);
-        }
+        $schoolId = $this->getAuthSchoolId();
+        $section = $this->findSectionOrFail($id, $schoolId);
 
         $validator = Validator::make($request->all(), [
             'student_ids'   => ['required', 'array', 'min:1'],
@@ -143,26 +184,42 @@ class SectionController extends Controller
             return response()->json(['message' => 'Validation failed.', 'errors' => $validator->errors()], 422);
         }
 
-        // Bulk-update selected students to this section
-        Student::whereIn('id', $request->student_ids)->update([
+        $studentIds = $request->student_ids;
+        $validCount = Student::whereIn('id', $studentIds)
+            ->where('school_id', $schoolId)
+            ->count();
+
+        if ($validCount !== count($studentIds)) {
+            return response()->json([
+                'message' => 'One or more students do not belong to this school.'
+            ], 422);
+        }
+
+        // Bulk-update selected students to this section (scoped by school)
+        Student::whereIn('id', $studentIds)
+            ->where('school_id', $schoolId)
+            ->update([
             'section_id' => $section->id,
             'grade'      => $section->grade_level,
             'section'    => $section->name,
         ]);
 
         return response()->json([
-            'message' => count($request->student_ids) . ' student(s) assigned.',
+            'message' => count($studentIds) . ' student(s) assigned.',
             'data'    => $section->load('teacher:id,name')->loadCount('students'),
         ]);
     }
 
     /**
-     * // Description: unassignedStudents - Returns students that don't have a
-     * //   section_id yet, for use in the bulk-assign multi-select.
+     * PURPOSE: Return students without section assignment in the authenticated admin's school.
+     * FIX: Uses getAuthSchoolId() to enforce non-null school scoping.
+     * LIMITATION: Only unassigned students (`section_id` null) are returned.
      */
     public function unassignedStudents(Request $request): JsonResponse
     {
-        $students = Student::whereNull('section_id')
+        $schoolId = $this->getAuthSchoolId();
+        $students = Student::where('school_id', $schoolId)
+            ->whereNull('section_id')
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->select('id', 'first_name', 'last_name', 'grade', 'section', 'student_number')
@@ -172,19 +229,14 @@ class SectionController extends Controller
     }
 
     /**
-     * // Description: students - Returns students currently assigned to a section.
+     * PURPOSE: Return students currently assigned to a section within the authenticated admin's school.
+     * FIX: Uses getAuthSchoolId() and section ownership check for strict scope.
+     * LIMITATION: Out-of-scope sections return 404.
      */
     public function students(Request $request, int $id): JsonResponse
     {
-        $schoolId = $request->user()->school_id;
-
-        $section = Section::where('id', $id)
-            ->where('school_id', $schoolId)
-            ->first();
-
-        if (!$section) {
-            return response()->json(['message' => 'Section not found.'], 404);
-        }
+        $schoolId = $this->getAuthSchoolId();
+        $section = $this->findSectionOrFail($id, $schoolId);
 
         $students = Student::where('section_id', $section->id)
             ->orderBy('last_name')
@@ -196,20 +248,14 @@ class SectionController extends Controller
     }
 
     /**
-     * // Description: unassignStudents - Bulk-unassigns selected students from a section.
-     * //   Clears `section_id`, `grade`, and `section` so they become "unassigned".
+     * PURPOSE: Bulk-unassign selected students from a section within the authenticated admin's school.
+     * FIX: Uses getAuthSchoolId() to enforce strict school-scoped updates.
+     * LIMITATION: Only students currently mapped to the section are updated.
      */
     public function unassignStudents(Request $request, int $id): JsonResponse
     {
-        $schoolId = $request->user()->school_id;
-
-        $section = Section::where('id', $id)
-            ->where('school_id', $schoolId)
-            ->first();
-
-        if (!$section) {
-            return response()->json(['message' => 'Section not found.'], 404);
-        }
+        $schoolId = $this->getAuthSchoolId();
+        $section = $this->findSectionOrFail($id, $schoolId);
 
         $validator = Validator::make($request->all(), [
             'student_ids' => ['required', 'array', 'min:1'],
@@ -222,6 +268,7 @@ class SectionController extends Controller
 
         Student::where('section_id', $section->id)
             ->whereIn('id', $request->student_ids)
+            ->where('school_id', $schoolId)
             ->update([
                 'section_id' => null,
                 'grade'      => null,
@@ -237,13 +284,17 @@ class SectionController extends Controller
     }
 
     /**
-     * // Description: teachers - Returns all teacher-role users for the dropdown.
+     * PURPOSE: Return teacher-role users for section assignment dropdown in the authenticated admin's school.
+     * FIX: Uses getAuthSchoolId() and strict where('school_id', ...) filtering.
+     * LIMITATION: Depends on role table naming for Teacher.
      */
     public function teachers(Request $request): JsonResponse
     {
+        $schoolId = $this->getAuthSchoolId();
         $teacherRoleId = \App\Models\Role::where('name', 'Teacher')->value('id');
 
         $teachers = User::where('role_id', $teacherRoleId)
+            ->where('school_id', $schoolId)
             ->select('id', 'name', 'grade_level', 'section')
             ->orderBy('name')
             ->get();

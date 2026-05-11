@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Services\IdCardImageService;
 use App\Models\Student;
 use App\Models\User;
@@ -14,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\URL;
 
-class IdCardController extends Controller
+class IdCardController extends BaseController
 {
     private function formatNameWithMiddleInitial(?string $name): string
     {
@@ -104,10 +103,25 @@ class IdCardController extends Controller
         abort(500, 'Teacher ID template view not found. Expected app/Services/eodb-id-bb.blade.php or resources/views/id-cards/eodb-id-bb.blade.php');
     }
 
+    /**
+     * PURPOSE: Generate a signed student ID URL for records in the authenticated user's school.
+     * FIX: Uses getAuthSchoolId() to enforce non-null school scoping and remove wildcard access.
+     * LIMITATION: Teacher role still has additional ownership checks on top of school scope.
+     */
     public function getSignedUrl(Request $request, int $id): JsonResponse
     {
         $student = Student::findOrFail($id);
         $user = $request->user();
+        $schoolId = $this->getAuthSchoolId();
+
+        $student = \App\Models\Student::where('id', $id)
+            ->where('school_id', $schoolId)
+            ->first();
+        if (!$student) {
+            return response()->json([
+                'message' => 'Student not found.'
+            ], 404);
+        }
 
         // Admin can access any student; Teacher restricted to own students
         if ($user?->role?->name === 'Teacher') {
@@ -130,11 +144,23 @@ class IdCardController extends Controller
     }
 
     /**
-     * Admin-only: generate a signed URL for inline Teacher ID PDF preview.
+     * PURPOSE: Generate a signed teacher ID URL scoped to the authenticated user's school.
+     * FIX: Uses getAuthSchoolId() to enforce strict same-school teacher resolution.
+     * LIMITATION: Still requires target role to be Teacher and job_title to be set.
      */
     public function getTeacherSignedUrl(Request $request, int $id): JsonResponse
     {
         $teacher = User::findOrFail($id);
+        $schoolId = $this->getAuthSchoolId();
+
+        $teacher = \App\Models\User::where('id', $id)
+            ->where('school_id', $schoolId)
+            ->first();
+        if (!$teacher) {
+            return response()->json([
+                'message' => 'Teacher not found.'
+            ], 404);
+        }
 
         // Ensure target is a Teacher account
         if (!$teacher->role || strcasecmp((string) $teacher->role->name, 'Teacher') !== 0) {

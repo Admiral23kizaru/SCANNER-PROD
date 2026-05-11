@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\Role;
 use App\Models\Student;
@@ -20,16 +19,20 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * Dashboard stats are cached for 3 minutes (180 seconds) to reduce DB load.
  */
-class StatsController extends Controller
+class StatsController extends BaseController
 {
     /* ====================================================================== */
     /*  Summary stats                                                          */
     /* ====================================================================== */
 
-    /** Return high-level counts: total students, teachers, and today's scan count. */
+    /**
+     * PURPOSE: Return high-level student/teacher/attendance counts for the authenticated admin's school.
+     * FIX: Uses getAuthSchoolId() so stats are always school-scoped and never wildcard across schools.
+     * LIMITATION: Requires valid school assignment for the authenticated account.
+     */
     public function index(): JsonResponse
     {
-        $schoolId = $this->resolvedAuthUser()?->school_id;
+        $schoolId = $this->getAuthSchoolId();
         $teacherRoleId = Role::where('name', 'Teacher')->value('id');
         if ($teacherRoleId === null) {
             return response()->json([
@@ -40,26 +43,25 @@ class StatsController extends Controller
         }
 
         return response()->json([
-            'total_students'    => Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->count(),
-            'total_teachers'    => User::where('role_id', 2)->when($schoolId, fn($q) => $q->where('school_id', $schoolId))->count(),
-            'todays_attendance' => Attendance::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            'total_students'    => Student::where('school_id', $schoolId)->count(),
+            'total_teachers'    => User::where('role_id', 2)->where('school_id', $schoolId)->count(),
+            'todays_attendance' => Attendance::where('school_id', $schoolId)
                 ->whereDate('scanned_at', now()->toDateString())->count(),
         ]);
     }
 
     /**
-     * Return dashboard stats combined with a recent-activity feed.
-     *
-     * Merges recent attendance check-ins with recently created user accounts,
-     * sorted by time and limited to the 6 most recent events.
+     * PURPOSE: Return dashboard summary plus recent activity scoped to the authenticated admin's school.
+     * FIX: Uses getAuthSchoolId() and strict school filters for attendance and user activity.
+     * LIMITATION: Activity feed remains limited to latest six combined records.
      */
     public function overview(): JsonResponse
     {
         $base     = $this->index()->getData(true);
-        $schoolId = $this->resolvedAuthUser()?->school_id;
+        $schoolId = $this->getAuthSchoolId();
 
         $recentAttendance = Attendance::with('student')
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->where('school_id', $schoolId)
             ->orderByDesc('scanned_at')
             ->limit(6)
             ->get()
@@ -72,7 +74,7 @@ class StatsController extends Controller
                 'time'     => $a->scanned_at?->toIso8601String(),
             ]);
 
-        $recentUsers = User::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+        $recentUsers = User::where('school_id', $schoolId)
             ->orderByDesc('created_at')
             ->limit(6)
             ->get()
@@ -98,28 +100,25 @@ class StatsController extends Controller
     /* ====================================================================== */
 
     /**
-     * Return school-wide dashboard statistics (cached for 3 minutes).
-     *
-     * Includes:
-     *   - Total student and teacher counts
-     *   - Today's attendance count vs. historical average
-     *   - Attendance breakdown by grade level
+     * PURPOSE: Return cached dashboard statistics for the authenticated admin's school.
+     * FIX: Uses mandatory getAuthSchoolId() and school-specific cache key (no global/null fallback key).
+     * LIMITATION: Cache TTL remains 180 seconds.
      */
     public function dashboardStats(): JsonResponse
     {
-        $schoolId = $this->resolvedAuthUser()?->school_id;
-        $cacheKey = 'admin_dashboard_stats_' . ($schoolId ?? 'super');
+        $schoolId = $this->getAuthSchoolId();
+        $cacheKey = 'admin_dashboard_stats_' . $schoolId;
 
         $data = Cache::remember($cacheKey, 180, function () use ($schoolId) {
-            $totalStudents    = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->count();
-            $totalTeachers    = User::where('role_id', 2)->when($schoolId, fn($q) => $q->where('school_id', $schoolId))->count();
-            $todaysAttendance = Attendance::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            $totalStudents    = Student::where('school_id', $schoolId)->count();
+            $totalTeachers    = User::where('role_id', 2)->where('school_id', $schoolId)->count();
+            $todaysAttendance = Attendance::where('school_id', $schoolId)
                 ->whereDate('scanned_at', now()->toDateString())->count();
 
-            $maleToday   = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->where('gender', 'Male')->count();
-            $femaleToday = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->where('gender', 'Female')->count();
+            $maleToday   = Student::where('school_id', $schoolId)->where('gender', 'Male')->count();
+            $femaleToday = Student::where('school_id', $schoolId)->where('gender', 'Female')->count();
 
-            $presentCount = Attendance::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            $presentCount = Attendance::where('school_id', $schoolId)
                 ->whereDate('scanned_at', now()->toDateString())
                 ->distinct('student_id')
                 ->count('student_id');
@@ -128,14 +127,12 @@ class StatsController extends Controller
             $attendanceQuery = DB::table('attendance')
                 ->join('students', 'attendance.student_id', '=', 'students.id')
                 ->whereDate('attendance.scanned_at', now()->toDateString())
+                ->where('attendance.school_id', $schoolId)
                 ->select('students.grade', DB::raw('count(*) as count'))
                 ->groupBy('students.grade');
-            if ($schoolId) {
-                $attendanceQuery->where('attendance.school_id', $schoolId);
-            }
             $attendancePerGrade = $attendanceQuery->get()->toArray();
 
-            $historicalAverage = Attendance::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            $historicalAverage = Attendance::where('school_id', $schoolId)
                 ->whereDate('scanned_at', '<', now()->toDateString())
                 ->select(DB::raw('DATE(scanned_at) as date'), DB::raw('count(*) as count'))
                 ->groupBy('date')
@@ -161,21 +158,20 @@ class StatsController extends Controller
     }
 
     /**
-     * Return attendance trend data for line/bar chart rendering.
-     *
-     * Supports grouping by: day (last 30 days), week (last 12 weeks), month (last 12 months).
-     * Optionally filterable by grade or section.
+     * PURPOSE: Return attendance trend data for charts scoped to the authenticated admin's school.
+     * FIX: Uses getAuthSchoolId() and hard school filter in the base attendance query.
+     * LIMITATION: Optional grade/section filters remain client-driven but still school-constrained.
      */
     public function attendanceTrends(Request $request): JsonResponse
     {
         $groupBy  = $request->input('group_by', 'day');
         $grade    = $request->input('grade');
         $section  = $request->input('section');
-        $schoolId = $this->resolvedAuthUser()?->school_id;
+        $schoolId = $this->getAuthSchoolId();
 
         $query = Attendance::query()
             ->join('students', 'attendance.student_id', '=', 'students.id')
-            ->when($schoolId, fn($q) => $q->where('attendance.school_id', $schoolId));
+            ->where('attendance.school_id', $schoolId);
 
         if ($grade)   { $query->where('students.grade', $grade); }
         if ($section) { $query->where('students.section', $section); }
@@ -202,9 +198,9 @@ class StatsController extends Controller
     /* ====================================================================== */
 
     /**
-     * Generate and stream a TCPDF summary report for today's attendance.
-     *
-     * Requires the `tecnickcom/tcpdf` package. Returns a 500 JSON error if not installed.
+     * PURPOSE: Generate and stream a same-school daily attendance summary PDF for the authenticated admin.
+     * FIX: Uses getAuthSchoolId() and strict school filters to prevent cross-school report aggregation.
+     * LIMITATION: Requires TCPDF package availability.
      */
     public function summaryReportPdf(): Response
     {
@@ -212,8 +208,10 @@ class StatsController extends Controller
             return response()->json(['message' => 'TCPDF is not installed.'], 500);
         }
 
+        $schoolId = $this->getAuthSchoolId();
         $stats  = $this->index()->getData(true);
         $recent = Attendance::with('student')
+            ->where('school_id', $schoolId)
             ->whereDate('scanned_at', now()->toDateString())
             ->orderByDesc('scanned_at')
             ->limit(20)
@@ -277,15 +275,16 @@ class StatsController extends Controller
     }
 
     /**
-     * // Description: getPopulationDetails - Handles fetching of students classified by specific population analytics arrays. (Male, Female, Absent, Teacher Specific).
-     * // Author: Antigravity System Agent
+     * PURPOSE: Return population detail subsets (male/female/absent/teacher_students) for the authenticated admin's school.
+     * FIX: Uses getAuthSchoolId() as mandatory scope and removes nullable wildcard behavior.
+     * LIMITATION: teacher_students filter still relies on teacher grade/section metadata quality.
      */
     public function getPopulationDetails(Request $request): \Illuminate\Http\JsonResponse
     {
         $type     = $request->query('type');
-        $schoolId = $this->resolvedAuthUser()?->school_id;
+        $schoolId = $this->getAuthSchoolId();
         $query    = \App\Models\Student::query()
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->where('school_id', $schoolId)
             ->orderBy('last_name')->orderBy('first_name');
 
         switch ($type) {
@@ -316,13 +315,5 @@ class StatsController extends Controller
         }
 
         return response()->json(['data' => $query->get()]);
-    }
-
-    /** Sanctum user narrowed to App\Models\User for typed school_id access. */
-    private function resolvedAuthUser(): ?User
-    {
-        $user = Auth::user();
-
-        return $user instanceof User ? $user : null;
     }
 }
