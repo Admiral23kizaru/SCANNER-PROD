@@ -478,7 +478,7 @@ const pageTitle = computed(() => {
 
 const pageSubtitle = computed(() => {
   if (currentTab.value === 'monitor') return 'Real-time attendance tracking';
-  if (currentTab.value === 'learningAssessment') return 'Quick entry and Excel template export';
+  if (currentTab.value === 'learningAssessment') return 'Roster export and Excel import / analysis';
   return 'Manage student records';
 });
 

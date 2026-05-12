@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -36,7 +37,13 @@ class TeacherManagementController extends BaseController
     {
         $schoolId = $this->getAuthSchoolId();
 
-        $teachers = Teacher::where('school_id', $schoolId)
+        $school = School::find($schoolId);
+
+        if (!$school) {
+            return response()->json(['message' => 'School not found.'], 404);
+        }
+
+        $teachers = $this->schoolScopedTeacherQuery($school)
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get()
@@ -87,10 +94,13 @@ class TeacherManagementController extends BaseController
 
         $employeeIds = array_values(array_unique(array_filter($employeeIds)));
 
-        $existing = Teacher::where('school_id', $school->id)
-            ->whereIn('employee_id', $employeeIds)
-            ->pluck('employee_id')
-            ->all();
+        $existing = [];
+        if (!empty($employeeIds)) {
+            $existing = $this->schoolScopedTeacherQuery($school)
+                ->whereIn('employee_id', $employeeIds)
+                ->pluck('employee_id')
+                ->all();
+        }
 
         $existingMap = array_fill_keys($existing, true);
 
@@ -174,12 +184,12 @@ class TeacherManagementController extends BaseController
             [$firstName, $lastName] = $this->resolveEhrisNameParts($ehrisUser);
             $displayName = trim($firstName . ' ' . $lastName);
 
-            $teacher = Teacher::where('school_id', $school->id)
+            $teacher = $this->schoolScopedTeacherQuery($school)
                 ->where('employee_id', $employeeId)
                 ->first();
 
             if (!$teacher) {
-                $teacher = Teacher::where('school_id', $school->id)
+                $teacher = $this->schoolScopedTeacherQuery($school)
                     ->where('email', $email)
                     ->first();
             }
@@ -189,23 +199,26 @@ class TeacherManagementController extends BaseController
                 $teacher->last_name = $lastName;
                 $teacher->email = $email;
                 $teacher->employee_id = $employeeId;
-                $teacher->school_name = $school->name;
+                if ($this->teacherTableHasColumn('school_name')) {
+                    $teacher->school_name = $school->name;
+                }
+                if ($this->teacherTableHasColumn('school_id')) {
+                    $teacher->school_id = $school->id;
+                }
                 $teacher->job_title = $ehrisUser->job_title ?? null;
                 $teacher->designation = 'Teacher';
                 $teacher->save();
                 $updated++;
             } else {
-                Teacher::create([
-                    'school_id' => $school->id,
+                Teacher::create(array_merge([
                     'first_name' => $firstName,
                     'last_name' => $lastName,
                     'email' => $email,
                     'password' => Str::random(64),
                     'designation' => 'Teacher',
                     'employee_id' => $employeeId,
-                    'school_name' => $school->name,
                     'job_title' => $ehrisUser->job_title ?? null,
-                ]);
+                ], $this->teacherSchoolAttributes($school)));
                 $created++;
             }
 
@@ -295,16 +308,24 @@ class TeacherManagementController extends BaseController
         // Auto-detect school name fallback from the authenticated admin user
         $schoolName = $request->input('school_name') ?: $request->user()->school_name;
 
-        $teacher = Teacher::create([
+        $teacherPayload = [
             'first_name'  => $firstName,
             'last_name'   => $lastName,
             'email'       => $email,
             'password'    => $request->password,
             'employee_id' => $request->employee_id,
-            'school_name' => $schoolName,
-            'school_id'   => $schoolId,
             'job_title'   => $request->input('job_title'),
-        ]);
+        ];
+
+        if ($this->teacherTableHasColumn('school_name')) {
+            $teacherPayload['school_name'] = $schoolName;
+        }
+
+        if ($this->teacherTableHasColumn('school_id')) {
+            $teacherPayload['school_id'] = $schoolId;
+        }
+
+        $teacher = Teacher::create($teacherPayload);
 
         // Sync with the users table so the teacher can log in
         $teacherRole = Role::where('name', 'Teacher')->first();
@@ -546,6 +567,47 @@ class TeacherManagementController extends BaseController
         }
 
         return $query;
+    }
+
+    /**
+     * Build a local teachers query scoped to the authenticated school.
+     *
+     * Some installed databases predate the `teachers.school_id` column and only
+     * have `school_name`, so EHRIS preview/sync must support both shapes.
+     */
+    private function schoolScopedTeacherQuery(School $school)
+    {
+        $query = Teacher::query();
+
+        if ($this->teacherTableHasColumn('school_id')) {
+            return $query->where('school_id', $school->id);
+        }
+
+        if ($this->teacherTableHasColumn('school_name')) {
+            return $query->where('school_name', $school->name);
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
+
+    private function teacherSchoolAttributes(School $school): array
+    {
+        $attributes = [];
+
+        if ($this->teacherTableHasColumn('school_id')) {
+            $attributes['school_id'] = $school->id;
+        }
+
+        if ($this->teacherTableHasColumn('school_name')) {
+            $attributes['school_name'] = $school->name;
+        }
+
+        return $attributes;
+    }
+
+    private function teacherTableHasColumn(string $column): bool
+    {
+        return Schema::hasColumn((new Teacher())->getTable(), $column);
     }
 
     private function resolveEhrisEmployeeId(EhrisUser $ehrisUser): string

@@ -3,11 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Exports\GmrcTemplateExport;
-<<<<<<< HEAD
 use App\Exports\LearningAssessmentAnalyzedExport;
-use App\Http\Controllers\Controller;
-=======
->>>>>>> 8720d6745c35f180c902733b59a25c3d141fe8fa
 use App\Models\GmrcScore;
 use App\Models\Student;
 use App\Models\Subject;
@@ -388,4 +384,3 @@ class GmrcController extends BaseController
         return Excel::download(new LearningAssessmentAnalyzedExport($validated, $sheetTitle), $filename);
     }
 }
-
