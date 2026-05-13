@@ -16,7 +16,7 @@ class ScanUpSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::table('roles')->insertOrIgnore([
+        DB::table('tbl_scanup_roles')->insertOrIgnore([
             ['id' => 1, 'name' => 'Admin', 'created_at' => now(), 'updated_at' => now()],
             ['id' => 2, 'name' => 'Teacher', 'created_at' => now(), 'updated_at' => now()],
             ['id' => 3, 'name' => 'Guard', 'created_at' => now(), 'updated_at' => now()],

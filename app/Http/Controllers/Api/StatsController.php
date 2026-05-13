@@ -44,7 +44,7 @@ class StatsController extends BaseController
 
         return response()->json([
             'total_students'    => Student::where('school_id', $schoolId)->count(),
-            'total_teachers'    => User::where('role_id', 2)->where('school_id', $schoolId)->count(),
+            'total_teachers'    => User::where('role_id', $teacherRoleId)->where('school_id', $schoolId)->count(),
             'todays_attendance' => Attendance::where('school_id', $schoolId)
                 ->whereDate('scanned_at', now()->toDateString())->count(),
         ]);
@@ -109,9 +109,13 @@ class StatsController extends BaseController
         $schoolId = $this->getAuthSchoolId();
         $cacheKey = 'admin_dashboard_stats_' . $schoolId;
 
-        $data = Cache::remember($cacheKey, 180, function () use ($schoolId) {
+        $teacherRoleId = Role::where('name', 'Teacher')->value('id');
+
+        $data = Cache::remember($cacheKey, 180, function () use ($schoolId, $teacherRoleId) {
             $totalStudents    = Student::where('school_id', $schoolId)->count();
-            $totalTeachers    = User::where('role_id', 2)->where('school_id', $schoolId)->count();
+            $totalTeachers    = $teacherRoleId === null
+                ? 0
+                : User::where('role_id', $teacherRoleId)->where('school_id', $schoolId)->count();
             $todaysAttendance = Attendance::where('school_id', $schoolId)
                 ->whereDate('scanned_at', now()->toDateString())->count();
 
@@ -124,8 +128,8 @@ class StatsController extends BaseController
                 ->count('student_id');
             $absentToday = max(0, $totalStudents - $presentCount);
 
-            $attendanceQuery = DB::table('attendance')
-                ->join('students', 'attendance.student_id', '=', 'students.id')
+            $attendanceQuery = DB::table('tbl_scanup_attendance as attendance')
+                ->join('tbl_scanup_students as students', 'attendance.student_id', '=', 'students.id')
                 ->whereDate('attendance.scanned_at', now()->toDateString())
                 ->where('attendance.school_id', $schoolId)
                 ->select('students.grade', DB::raw('count(*) as count'))
@@ -170,7 +174,8 @@ class StatsController extends BaseController
         $schoolId = $this->getAuthSchoolId();
 
         $query = Attendance::query()
-            ->join('students', 'attendance.student_id', '=', 'students.id')
+            ->from('tbl_scanup_attendance', 'attendance')
+            ->join('tbl_scanup_students as students', 'attendance.student_id', '=', 'students.id')
             ->where('attendance.school_id', $schoolId);
 
         if ($grade)   { $query->where('students.grade', $grade); }

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class GmrcScore extends Model
 {
-    protected $table = 'gmrc_scores';
+    protected $table = 'tbl_scanup_gmrc_scores';
 
     protected $fillable = [
         'student_id',

@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class SchoolYear extends Model
 {
+    protected $table = 'tbl_scanup_school_years';
+
     protected $fillable = [
         'school_id',
         'name',

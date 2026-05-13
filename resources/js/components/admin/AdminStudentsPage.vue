@@ -150,10 +150,10 @@
                   <button
                     type="button"
                     class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
-                    title="Generate ID Card"
-                    @click="downloadId(row.id)"
+                    title="Generate QR Code (LRN)"
+                    @click="openQrModal(row)"
                   >
-                    <IdCard class="h-4 w-4" />
+                    <QrCode class="h-4 w-4" />
                   </button>
                   <button
                     type="button"
@@ -175,10 +175,10 @@
               </td>
             </tr>
             <tr v-if="loading && students.length === 0">
-              <td colspan="5" class="py-12 text-center text-slate-500">Loading…</td>
+              <td colspan="7" class="py-12 text-center text-slate-500">Loading…</td>
             </tr>
             <tr v-if="!loading && students.length === 0">
-              <td colspan="5" class="py-12 text-center text-slate-500">No students found.</td>
+              <td colspan="7" class="py-12 text-center text-slate-500">No students found.</td>
             </tr>
           </tbody>
         </table>
@@ -318,6 +318,44 @@
       </div>
     </div>
 
+    <!-- QR Code (LRN) — payload verified via school-scoped API -->
+    <div
+      v-if="showQrModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      @click.self="closeQrModal"
+    >
+      <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 border border-slate-200" @click.stop>
+        <h2 class="text-lg font-semibold text-slate-900 mb-1">Student QR Code</h2>
+        <p class="text-xs text-slate-500 mb-4">Encodes LRN only (for scanner compatibility).</p>
+        <div v-if="qrLoading" class="py-12 text-center text-slate-500 text-sm">Loading…</div>
+        <div v-else-if="qrError" class="text-sm text-red-600 mb-4">{{ qrError }}</div>
+        <template v-else>
+          <p class="text-sm font-medium text-slate-800 text-center mb-1">{{ qrFullName }}</p>
+          <p class="text-xs text-slate-500 text-center font-mono mb-4">LRN: {{ qrLrn }}</p>
+          <div class="flex justify-center mb-4 bg-white p-3 rounded-lg border border-slate-100">
+            <img v-if="qrDataUrl" :src="qrDataUrl" alt="QR code" class="w-56 h-56 object-contain" />
+          </div>
+          <div class="flex justify-end gap-2">
+            <button
+              type="button"
+              class="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              @click="closeQrModal"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              :disabled="!qrDataUrl"
+              @click="downloadQrPng"
+            >
+              Download PNG
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+
     <!-- Delete Modal -->
     <div
       v-if="showDeleteModal"
@@ -349,8 +387,19 @@
 <script setup>
 import { assetPath } from '../../composables/useAsset';
 import { ref, onMounted, computed } from 'vue';
-import { Search, PencilLine, Trash2, IdCard, Plus, Download, Filter, ChevronLeft, ChevronRight } from 'lucide-vue-next';
-import { fetchAdminStudents, createAdminStudent, updateAdminStudent, deleteStudent, getAdminStudentIdUrl, exportAdminStudents, fetchAdminSubjects, fetchAdminStudentSubjects, syncAdminStudentSubjects } from '../../services/adminService';
+import { Search, PencilLine, Trash2, QrCode, Plus, Download, Filter, ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import QRCode from 'qrcode';
+import {
+  fetchAdminStudents,
+  createAdminStudent,
+  updateAdminStudent,
+  deleteStudent,
+  exportAdminStudents,
+  fetchAdminSubjects,
+  fetchAdminStudentSubjects,
+  syncAdminStudentSubjects,
+  fetchStudentQrContext,
+} from '../../services/adminService';
 import axios from 'axios';
 
 const students = ref([]);
@@ -366,6 +415,13 @@ const showDeleteModal = ref(false);
 const deleteTarget = ref(null);
 const deleting = ref(false);
 const photoLoadError = ref({});
+
+const showQrModal = ref(false);
+const qrLoading = ref(false);
+const qrError = ref('');
+const qrLrn = ref('');
+const qrFullName = ref('');
+const qrDataUrl = ref('');
 
 // Filters state
 const showFilterDropdown = ref(false);
@@ -635,13 +691,66 @@ async function executeDelete() {
   }
 }
 
-async function downloadId(id) {
+/**
+ * closeQrModal
+ * PURPOSE: Resets QR modal state after viewing or downloading.
+ * WHY: Avoids flashing stale QR when reopening for another student.
+ */
+function closeQrModal() {
+  showQrModal.value = false;
+  qrLoading.value = false;
+  qrError.value = '';
+  qrLrn.value = '';
+  qrFullName.value = '';
+  qrDataUrl.value = '';
+}
+
+/**
+ * openQrModal
+ * PURPOSE: Loads school-scoped LRN from the API and renders a QR encoding that value only.
+ * WHY: Server validates the student belongs to the admin’s school before exposing LRN to the client generator.
+ *
+ * @param {object} row Student row from the paginated list.
+ */
+async function openQrModal(row) {
+  showQrModal.value = true;
+  qrLoading.value = true;
+  qrError.value = '';
+  qrDataUrl.value = '';
+  qrLrn.value = '';
+  qrFullName.value = '';
   try {
-    const res = await getAdminStudentIdUrl(id);
-    if (res?.url) window.open(res.url, '_blank', 'noopener,noreferrer');
-  } catch {
-    alert('Failed to generate secure ID link.');
+    const ctx = await fetchStudentQrContext(row.id);
+    const lrn = String(ctx.student_number || '').trim();
+    if (!lrn) {
+      qrError.value = 'This student has no LRN (student_number) on file.';
+      return;
+    }
+    qrLrn.value = lrn;
+    qrFullName.value = ctx.full_name || row.full_name || '';
+    qrDataUrl.value = await QRCode.toDataURL(lrn, {
+      width: 280,
+      margin: 2,
+      errorCorrectionLevel: 'M',
+    });
+  } catch (err) {
+    qrError.value = err.response?.data?.message || 'Could not load student for QR.';
+  } finally {
+    qrLoading.value = false;
   }
+}
+
+/**
+ * downloadQrPng
+ * PURPOSE: Downloads the current QR as a PNG file named from the LRN.
+ * WHY: Lets staff print or share the code outside the browser.
+ */
+function downloadQrPng() {
+  if (!qrDataUrl.value || !qrLrn.value) return;
+  const a = document.createElement('a');
+  a.href = qrDataUrl.value;
+  a.download = `student-lrn-${qrLrn.value}.png`;
+  a.click();
 }
 
 onMounted(async () => {

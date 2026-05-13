@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Role extends Model
 {
-    protected $table = 'roles';
+    protected $table = 'tbl_scanup_roles';
 
     protected $fillable = ['name'];
 

@@ -7,6 +7,7 @@ use App\Models\Student;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -45,14 +46,18 @@ class SectionController extends BaseController
     {
         $schoolId = $this->getAuthSchoolId();
 
-        $sections = Section::with('teacher:id,name')
-            ->withCount('students')
-            ->where('school_id', $schoolId)
-            ->orderBy('grade_level')
-            ->orderBy('name')
-            ->get();
+        $cacheKey = 'admin.sections.index.school.' . $schoolId;
+        $data = Cache::remember($cacheKey, 120, function () use ($schoolId) {
+            return Section::with('teacher:id,name')
+                ->withCount('students')
+                ->where('school_id', $schoolId)
+                ->orderBy('grade_level')
+                ->orderBy('name')
+                ->get()
+                ->toArray();
+        });
 
-        return response()->json(['data' => $sections]);
+        return response()->json(['data' => $data]);
     }
 
     /**
@@ -67,7 +72,7 @@ class SectionController extends BaseController
         $validator = Validator::make($request->all(), [
             'name'        => ['required', 'string', 'max:100'],
             'grade_level' => ['required', 'string', 'max:50'],
-            'teacher_id'  => ['nullable', 'integer', 'exists:users,id'],
+            'teacher_id'  => ['nullable', 'integer', 'exists:tbl_scanup_users,id'],
         ]);
 
         if ($validator->fails()) {
@@ -99,6 +104,8 @@ class SectionController extends BaseController
             $this->syncTeacherAssignment($request->teacher_id, $section);
         }
 
+        Cache::forget('admin.sections.index.school.' . $schoolId);
+
         return response()->json([
             'message' => 'Section created successfully.',
             'data'    => $section->load('teacher:id,name')->loadCount('students'),
@@ -118,7 +125,7 @@ class SectionController extends BaseController
         $validator = Validator::make($request->all(), [
             'name'        => ['sometimes', 'required', 'string', 'max:100'],
             'grade_level' => ['sometimes', 'required', 'string', 'max:50'],
-            'teacher_id'  => ['nullable', 'integer', 'exists:users,id'],
+            'teacher_id'  => ['nullable', 'integer', 'exists:tbl_scanup_users,id'],
         ]);
 
         if ($validator->fails()) {
@@ -144,6 +151,8 @@ class SectionController extends BaseController
             $this->syncTeacherAssignment($request->teacher_id, $section);
         }
 
+        Cache::forget('admin.sections.index.school.' . $schoolId);
+
         return response()->json([
             'message' => 'Section updated.',
             'data'    => $section->load('teacher:id,name')->loadCount('students'),
@@ -162,6 +171,8 @@ class SectionController extends BaseController
 
         $section->delete();
 
+        Cache::forget('admin.sections.index.school.' . $schoolId);
+
         return response()->json(['message' => 'Section deleted.']);
     }
 
@@ -177,7 +188,7 @@ class SectionController extends BaseController
 
         $validator = Validator::make($request->all(), [
             'student_ids'   => ['required', 'array', 'min:1'],
-            'student_ids.*' => ['integer', 'exists:students,id'],
+            'student_ids.*' => ['integer', 'exists:tbl_scanup_students,id'],
         ]);
 
         if ($validator->fails()) {
@@ -203,6 +214,8 @@ class SectionController extends BaseController
             'grade'      => $section->grade_level,
             'section'    => $section->name,
         ]);
+
+        Cache::forget('admin.sections.index.school.' . $schoolId);
 
         return response()->json([
             'message' => count($studentIds) . ' student(s) assigned.',
@@ -259,7 +272,7 @@ class SectionController extends BaseController
 
         $validator = Validator::make($request->all(), [
             'student_ids' => ['required', 'array', 'min:1'],
-            'student_ids.*' => ['integer', 'exists:students,id'],
+            'student_ids.*' => ['integer', 'exists:tbl_scanup_students,id'],
         ]);
 
         if ($validator->fails()) {
@@ -274,6 +287,8 @@ class SectionController extends BaseController
                 'grade'      => null,
                 'section'    => null,
             ]);
+
+        Cache::forget('admin.sections.index.school.' . $schoolId);
 
         return response()->json([
             'message' => 'Students unassigned.',

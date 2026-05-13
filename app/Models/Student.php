@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  */
 class Student extends Model
 {
-    protected $table = 'students';
+    protected $table = 'tbl_scanup_students';
 
     /* ------------------------------------------------------------------ */
     /*  Mass-Assignment                                                    */
@@ -72,7 +72,7 @@ class Student extends Model
 
     public function subjects(): BelongsToMany
     {
-        return $this->belongsToMany(Subject::class, 'student_subject')
+        return $this->belongsToMany(Subject::class, 'tbl_scanup_student_subject')
             ->withTimestamps();
     }
 }

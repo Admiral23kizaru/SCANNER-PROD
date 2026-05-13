@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Section extends Model
 {
+    protected $table = 'tbl_scanup_sections';
+
     protected $fillable = [
         'name',
         'grade_level',

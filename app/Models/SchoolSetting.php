@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class SchoolSetting extends Model
 {
+    protected $table = 'tbl_scanup_school_settings';
+
     protected $fillable = [
         'school_id',
         'logo_path',

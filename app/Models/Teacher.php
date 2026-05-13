@@ -17,7 +17,7 @@ class Teacher extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    protected $table = 'teachers';
+    protected $table = 'tbl_scanup_teachers';
 
     /* ------------------------------------------------------------------ */
     /*  Mass-Assignment                                                    */

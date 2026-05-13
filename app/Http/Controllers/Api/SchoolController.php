@@ -92,9 +92,9 @@ class SchoolController extends Controller
         }
 
         $request->validate([
-            'deped_school_id' => 'required|string|max:50|unique:schools,deped_school_id',
+            'deped_school_id' => 'required|string|max:50|unique:tbl_scanup_schools,deped_school_id',
             'name'            => 'required|string|max:255',
-            'email'           => 'required|email|unique:users,email',
+            'email'           => 'required|email|unique:tbl_scanup_users,email',
             'password'        => 'required|min:8|confirmed',
         ]);
 

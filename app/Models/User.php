@@ -20,6 +20,8 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
+    protected $table = 'tbl_scanup_users';
+
     /* ------------------------------------------------------------------ */
     /*  Mass-Assignment                                                    */
     /* ------------------------------------------------------------------ */

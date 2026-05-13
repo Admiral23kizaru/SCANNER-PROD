@@ -28,7 +28,26 @@ class AdminStudentController extends BaseController
     public function index(Request $request): JsonResponse
     {
         $schoolId = $this->getAuthSchoolId();
-        $query = Student::where('school_id', $schoolId)
+        $query = Student::query()
+            ->where('school_id', $schoolId)
+            ->select([
+                'id',
+                'student_number',
+                'first_name',
+                'last_name',
+                'gender',
+                'middle_name',
+                'grade_section',
+                'grade',
+                'section',
+                'guardian',
+                'guardian_email',
+                'contact_number',
+                'notification_preference',
+                'photo_path',
+                'school_id',
+                'created_at',
+            ])
             ->orderBy('last_name')->orderBy('first_name');
 
         $search = $request->input('search');
@@ -65,6 +84,33 @@ class AdminStudentController extends BaseController
         ]);
     }
 
+    /**
+     * qrContext
+     * PURPOSE: Return school-scoped LRN and display name for generating a student QR code in the admin UI.
+     * WHY: Validates ownership server-side so the client never trusts raw list data alone for sensitive payloads.
+     *
+     * @param Request $request Authenticated admin request.
+     * @param int $id Student primary key.
+     * @return JsonResponse
+     */
+    public function qrContext(Request $request, int $id): JsonResponse
+    {
+        $schoolId = $this->getAuthSchoolId();
+        $student = Student::where('school_id', $schoolId)
+            ->where('id', $id)
+            ->select(['id', 'student_number', 'first_name', 'last_name'])
+            ->first();
+
+        if (! $student) {
+            return response()->json(['message' => 'Student not found.'], 404);
+        }
+
+        return response()->json([
+            'student_number' => (string) $student->student_number,
+            'full_name' => trim($student->first_name . ' ' . $student->last_name),
+        ]);
+    }
+
     /* ====================================================================== */
     /*  Write                                                                  */
     /* ====================================================================== */
@@ -84,7 +130,7 @@ class AdminStudentController extends BaseController
             'middle_name'    => ['nullable', 'string', 'max:255'],
             'student_number' => [
                 'required', 'string', 'max:64',
-                'unique:students,student_number,NULL,id,school_id,' . $schoolId
+                'unique:tbl_scanup_students,student_number,NULL,id,school_id,' . $schoolId
             ],
             'grade_section'  => ['nullable', 'string', 'max:64'],
             'grade'          => ['nullable', 'string', 'max:32'],
@@ -93,7 +139,7 @@ class AdminStudentController extends BaseController
             'guardian_email' => ['nullable', 'string', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
             'notification_preference' => ['nullable', 'integer', 'in:0,1,2'],
-            'school_id'      => ['nullable', 'exists:schools,id'],
+            'school_id'      => ['nullable', 'exists:tbl_scanup_schools,id'],
         ], [
             'student_number.unique' => 'LRN already exists.',
         ]);
@@ -144,7 +190,7 @@ class AdminStudentController extends BaseController
             'middle_name'    => ['nullable', 'string', 'max:255'],
             'student_number' => [
                 'sometimes', 'required', 'string', 'max:64',
-                'unique:students,student_number,' . $id . ',id,school_id,' . $schoolId
+                'unique:tbl_scanup_students,student_number,' . $id . ',id,school_id,' . $schoolId
             ],
             'grade_section'  => ['nullable', 'string', 'max:64'],
             'grade'          => ['nullable', 'string', 'max:32'],

@@ -91,7 +91,7 @@ class StudentController extends Controller
             'middle_name'    => ['nullable', 'string', 'max:255'],
             'student_number' => [
                 'required', 'string', 'size:12', 'regex:/^\d{12}$/',
-                'unique:students,student_number,NULL,id,school_id,' . $this->schoolScope()
+                'unique:tbl_scanup_students,student_number,NULL,id,school_id,' . $this->schoolScope()
             ],
             'grade_section'  => ['nullable', 'string', 'max:64'],
             'grade'          => ['nullable', 'string', 'max:32'],
@@ -100,7 +100,7 @@ class StudentController extends Controller
             'guardian_email' => ['nullable', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
             'photo'          => ['nullable', 'file', 'mimes:png', 'max:5120'],
-            'school_id'      => ['nullable', 'exists:schools,id'],
+            'school_id'      => ['nullable', 'exists:tbl_scanup_schools,id'],
             'notification_preference' => ['nullable', 'integer', 'in:0,1,2'],
         ], [
             'student_number.unique' => 'LRN already exists.',
@@ -162,7 +162,7 @@ class StudentController extends Controller
             'middle_name'    => ['nullable', 'string', 'max:255'],
             'student_number' => [
                 'sometimes', 'required', 'string', 'size:12', 'regex:/^\d{12}$/',
-                'unique:students,student_number,' . $id . ',id,school_id,' . $this->schoolScope()
+                'unique:tbl_scanup_students,student_number,' . $id . ',id,school_id,' . $this->schoolScope()
             ],
             'grade_section'  => ['nullable', 'string', 'max:64'],
             'grade'          => ['nullable', 'string', 'max:32'],

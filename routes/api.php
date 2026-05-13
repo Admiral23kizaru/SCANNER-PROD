@@ -50,10 +50,12 @@ Route::post('/setup/register-school', [SetupController::class, 'registerSchool']
     ->middleware('setup.secret');
 
 // PUBLIC — BAT file login (no auth)
-Route::post('/guard/login', [GuardAuthController::class, 'login']);
+Route::post('/guard/login', [GuardAuthController::class, 'login'])
+    ->middleware('throttle:30,1');
 
 // PUBLIC — scanner attendance (Guard Terminal kiosk; Bearer optional after bat login)
-Route::post('/attendance/scan', [AttendanceController::class, 'scanPublic']);
+Route::post('/attendance/scan', [AttendanceController::class, 'scanPublic'])
+    ->middleware('throttle:240,1');
 
 Route::controller(PasswordResetController::class)->prefix('password')->group(function () {
     Route::post('/request-otp', 'requestOtp');
@@ -62,8 +64,8 @@ Route::controller(PasswordResetController::class)->prefix('password')->group(fun
 });
 
 Route::controller(AttendanceController::class)->group(function () {
-    Route::get('/attendance/public/recent', 'publicRecent');
-    Route::get('/attendance/public/stats', 'publicStats');  // public stats for Guard Terminal
+    Route::get('/attendance/public/recent', 'publicRecent')->middleware('throttle:120,1');
+    Route::get('/attendance/public/stats', 'publicStats')->middleware('throttle:120,1');  // public stats for Guard Terminal
 });
 
 /* ====================================================================== */
@@ -131,6 +133,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::controller(AdminStudentController::class)->prefix('students')->group(function () {
             Route::get('/export', 'export');
             Route::get('/', 'index');
+            Route::get('/{id}/qr-context', 'qrContext');
             Route::post('/', 'store');
             Route::put('/{id}', 'update');
             Route::delete('/{id}', 'destroy');

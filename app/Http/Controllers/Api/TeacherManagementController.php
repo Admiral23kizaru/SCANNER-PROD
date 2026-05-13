@@ -43,14 +43,36 @@ class TeacherManagementController extends BaseController
             return response()->json(['message' => 'School not found.'], 404);
         }
 
-        $teachers = $this->schoolScopedTeacherQuery($school)
+        $query = $this->schoolScopedTeacherQuery($school)
             ->orderBy('last_name')
-            ->orderBy('first_name')
-            ->get()
+            ->orderBy('first_name');
+
+        $search = trim((string) $request->input('search', ''));
+        if ($search !== '') {
+            $term = '%' . $search . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('first_name', 'like', $term)
+                    ->orWhere('last_name', 'like', $term)
+                    ->orWhere('email', 'like', $term)
+                    ->orWhere('employee_id', 'like', $term);
+            });
+        }
+
+        $perPage = max(5, min(100, (int) $request->input('per_page', 50)));
+        $page = max(1, (int) $request->input('page', 1));
+
+        $paginated = $query->paginate($perPage, ['*'], 'page', $page);
+        $items = $paginated->getCollection()
             ->map(fn (Teacher $teacher) => $this->teacherToArray($teacher))
             ->values();
 
-        return response()->json($teachers);
+        return response()->json([
+            'data' => $items,
+            'current_page' => $paginated->currentPage(),
+            'last_page' => $paginated->lastPage(),
+            'per_page' => $paginated->perPage(),
+            'total' => $paginated->total(),
+        ]);
     }
 
     /**
@@ -284,7 +306,7 @@ class TeacherManagementController extends BaseController
 
         $validator = Validator::make($request->all(), [
             'name'        => ['required', 'string', 'max:255'],
-            'employee_id' => ['required', 'string', 'max:255', 'unique:teachers,employee_id'],
+            'employee_id' => ['required', 'string', 'max:255', 'unique:tbl_scanup_teachers,employee_id'],
             'password'    => ['required', 'string', 'min:8', 'confirmed'],
             'school_name' => ['nullable', 'string', 'max:255'],
             'job_title'   => ['nullable', 'string', 'max:50'],
@@ -370,7 +392,7 @@ class TeacherManagementController extends BaseController
 
         $validator = Validator::make($request->all(), [
             'name'        => ['sometimes', 'required', 'string', 'max:255'],
-            'employee_id' => ['sometimes', 'required', 'string', 'max:255', 'unique:teachers,employee_id,' . $teacher->id],
+            'employee_id' => ['sometimes', 'required', 'string', 'max:255', 'unique:tbl_scanup_teachers,employee_id,' . $teacher->id],
             'password'    => ['nullable', 'string', 'min:8', 'confirmed'],
             'school_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'job_title'   => ['sometimes', 'nullable', 'string', 'max:50'],

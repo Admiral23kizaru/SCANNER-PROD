@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Subject extends Model
 {
-    protected $table = 'subjects';
+    protected $table = 'tbl_scanup_subjects';
 
     protected $fillable = [
         'name',
@@ -16,7 +16,7 @@ class Subject extends Model
 
     public function students(): BelongsToMany
     {
-        return $this->belongsToMany(Student::class, 'student_subject')
+        return $this->belongsToMany(Student::class, 'tbl_scanup_student_subject')
             ->withTimestamps();
     }
 }

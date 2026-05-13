@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Attendance extends Model
 {
-    protected $table = 'attendance';
+    protected $table = 'tbl_scanup_attendance';
 
     /* ------------------------------------------------------------------ */
     /*  Mass-Assignment                                                    */

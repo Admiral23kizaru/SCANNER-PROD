@@ -46,7 +46,7 @@ class SetupController extends Controller
             $request->validate([
                 'school_name'     => 'required|string|max:255',
                 'deped_school_id' => 'required|string|max:50',
-                'email'           => 'required|email|unique:users,email',
+                'email'           => 'required|email|unique:tbl_scanup_users,email',
                 'password'        => 'required|string|min:6',
             ]);
         } catch (ValidationException $e) {

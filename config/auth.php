@@ -97,7 +97,7 @@ return [
     'passwords' => [
         'users' => [
             'provider' => 'users',
-            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_resets'),
+            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'tbl_scanup_password_resets'),
             'expire' => 60,
             'throttle' => 60,
         ],

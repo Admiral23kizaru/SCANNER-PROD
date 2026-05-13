@@ -13,6 +13,8 @@ class School extends Model
 {
     use HasFactory;
 
+    protected $table = 'tbl_scanup_schools';
+
     protected $fillable = [
         'name',
         'address',

@@ -108,12 +108,14 @@ export async function fetchSummaryReportPdfBlob() {
 // ─── Teacher Management ───────────────────────────────────────────────────────
 
 /**
- * Fetch all teacher accounts ordered by first name.
+ * Fetch teacher accounts with optional server-side pagination and search.
  *
- * @returns {Promise<{ data: Array<{ id: number, name: string, employee_id: string, school_name: string, job_title: string, profile_photo: string|null }> }>}
+ * @param {{ page?: number, per_page?: number, search?: string }} [params={}]
+ * @returns {Promise<Array<object> | { data: Array<object>, current_page: number, last_page: number, per_page: number, total: number }>}
  */
-export async function fetchTeachers() {
+export async function fetchTeachers(params = {}) {
     const { data } = await axios.get(base + '/teachers', {
+        params,
         headers: { ...getAuthHeaders(), Accept: 'application/json' },
     });
     return data;
@@ -148,6 +150,19 @@ export async function syncEhrisTeachers(payload = {}) {
 }
 
 /**
+ * Fetch school-scoped LRN + name for QR generation (validates student belongs to admin school).
+ *
+ * @param {number} id Student id.
+ * @returns {Promise<{ student_number: string, full_name: string }>}
+ */
+export async function fetchStudentQrContext(id) {
+    const { data } = await axios.get(base + '/students/' + id + '/qr-context', {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data;
+}
+
+/**
  * Create a new teacher account.
  *
  * Also creates a corresponding user record so the teacher can log in.
@@ -164,7 +179,7 @@ export async function createTeacher(payload) {
 }
 
 /**
- * Update an existing teacher's profile and sync changes to the users table.
+ * Update an existing teacher's profile and sync changes to `tbl_scanup_users`.
  *
  * @param {number} id - Teacher's database ID.
  * @param {Partial<{ name: string, employee_id: string, password: string, school_name: string, job_title: string }>} payload
@@ -178,7 +193,7 @@ export async function updateTeacher(id, payload) {
 }
 
 /**
- * Delete a teacher account (and the linked users row).
+ * Delete a teacher account (and the linked `tbl_scanup_users` row).
  *
  * Will return 422 Unprocessable if the teacher has created student records.
  *

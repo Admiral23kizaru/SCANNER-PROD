@@ -50,7 +50,7 @@ class StudentSeeder extends Seeder
             ];
         }
 
-        DB::table('students')->insert($dummyStudents);
+        DB::table('tbl_scanup_students')->insert($dummyStudents);
         $this->command->info("Inserted 10 dummy students layout into the students table!");
     }
 }

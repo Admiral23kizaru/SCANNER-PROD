@@ -36,22 +36,22 @@ class AttendanceController extends Controller
 
     /**
      * PURPOSE: Record a guard-terminal scan and write attendance for the correct school context.
-     * FIX: School is now resolved from authenticated token school_id first; deped_id request param is fallback only for backward compatibility.
-     * LIMITATION: deped_id fallback remains temporarily for unauthenticated terminals and should be removed once all terminals use token auth.
+     * WHY: deped_id is authoritative for which school is scanned; the Bearer token must match that school when present.
+     * LIMITATION: school_name from the client is ignored for resolution (display-only elsewhere).
      *
      * @param \Illuminate\Http\Request $request
      *        - student_number: The ID (LRN) of the student from the QR scanner.
-     *        - session: (morning, lunch_out, etc.). 
+     *        - session: (morning, lunch_out, etc.).
      * @return \Illuminate\Http\JsonResponse
      */
     public function scanPublic(Request $request): JsonResponse
     {
         try {
             $validator = Validator::make($request->all(), [
-                'student_id'  => ['required', 'string'],
-                'deped_id'    => ['required', 'string'],
-                'school_name' => ['nullable', 'string'],
-                'session'     => ['required', 'string'],
+                'student_id'  => ['required', 'string', 'max:128', 'regex:/^[A-Za-z0-9\-]+$/'],
+                'deped_id'    => ['required', 'string', 'max:50', 'regex:/^[A-Za-z0-9\-]+$/'],
+                'school_name' => ['nullable', 'string', 'max:255'],
+                'session'     => ['required', 'string', 'max:64'],
             ], [
                 'student_id.required' => 'Invalid QR code.',
                 'deped_id.required'   => 'School missing from terminal config.',
@@ -66,15 +66,10 @@ class AttendanceController extends Controller
                 ], 422);
             }
 
-            $schoolName = $request->input('school_name', 'Unknown School');
-            $tokenUser = $request->user('sanctum');
-            $school = $tokenUser && $tokenUser->school_id
-                ? School::find($tokenUser->school_id)
-                // Backward compatibility fallback for public terminals that have no bearer token yet.
-                : School::where('deped_school_id', (string) $request->input('deped_id'))->first();
+            $school = $this->resolveScannerSchoolContext($request, true);
             if (!$school) {
                 return response()->json([
-                    'message' => 'Invalid school context.'
+                    'message' => 'Invalid school context or DepEd ID does not match this terminal session.',
                 ], 403);
             }
 
@@ -289,16 +284,12 @@ class AttendanceController extends Controller
 
     /**
      * PURPOSE: Return today's recent attendance feed for the guard terminal.
-     * FIX: Resolves school context from token first; deped_id query is fallback only for backward compatibility.
-     * LIMITATION: Unauthenticated callers must still provide deped_id until fallback is removed.
+     * WHY: When deped_id is supplied it defines the school; authenticated tokens must match that school.
+     * LIMITATION: Unauthenticated callers must pass a valid deped_id query param.
      */
     public function publicRecent(Request $request): JsonResponse
     {
-        $tokenUser = $request->user('sanctum');
-        $school = $tokenUser && $tokenUser->school_id
-            ? School::find($tokenUser->school_id)
-            // Backward compatibility fallback for public terminals that have no bearer token yet.
-            : School::where('deped_school_id', (string) $request->query('deped_id'))->first();
+        $school = $this->resolveScannerSchoolContext($request, false);
 
         if (!$school) {
             return response()->json([
@@ -319,16 +310,12 @@ class AttendanceController extends Controller
 
     /**
      * PURPOSE: Return guard-terminal attendance stats for the caller's resolved school context.
-     * FIX: Resolves school from token first and removes random-school fallback behavior.
-     * LIMITATION: deped_id query fallback remains temporary for unauthenticated legacy terminals.
+     * WHY: Same deped_id + token binding rules as publicRecent for consistent isolation.
+     * LIMITATION: Requires valid deped_id or an authenticated user with school_id.
      */
     public function publicStats(Request $request): JsonResponse
     {
-        $tokenUser = $request->user('sanctum');
-        $school = $tokenUser && $tokenUser->school_id
-            ? School::find($tokenUser->school_id)
-            // Backward compatibility fallback for public terminals that have no bearer token yet.
-            : School::where('deped_school_id', (string) $request->query('deped_id'))->first();
+        $school = $this->resolveScannerSchoolContext($request, false);
 
         if (!$school) {
             return response()->json([
@@ -400,9 +387,15 @@ class AttendanceController extends Controller
             ], 422);
         }
 
-        $input   = trim($request->student_number ?? $request->student_id);
+        $input = trim((string) ($request->student_number ?? $request->student_id));
         $schoolId = $request->user()?->school_id;
-        $student = Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+        if (!$schoolId) {
+            return response()->json([
+                'error' => 'Teacher is not assigned to a school.',
+            ], 403);
+        }
+
+        $student = Student::where('school_id', $schoolId)
             ->where(function ($q) use ($input) {
                 $q->where('student_number', $input)->orWhere('id', $input);
             })
@@ -754,6 +747,52 @@ class AttendanceController extends Controller
             'late'          => $late,
             'absent'        => $absent,
         ];
+    }
+
+    /**
+     * resolveScannerSchoolContext
+     * PURPOSE: Resolve the ScanUp school from deped_id and align it with the Sanctum user’s school when a token is present.
+     * WHY: Prevents a valid token for School A from scanning or reading stats while claiming deped_id for School B.
+     *
+     * @param Request $request Incoming HTTP request (body or query may carry deped_id).
+     * @param bool $requireDeped When true, missing deped_id yields null (public scan POST).
+     * @return School|null Resolved school or null when context is invalid.
+     */
+    private function resolveScannerSchoolContext(Request $request, bool $requireDeped = false): ?School
+    {
+        $depedRaw = $request->input('deped_id') ?? $request->query('deped_id');
+        $depedId = is_string($depedRaw)
+            ? trim($depedRaw)
+            : (is_numeric($depedRaw) ? trim((string) $depedRaw) : '');
+
+        if ($requireDeped && $depedId === '') {
+            return null;
+        }
+
+        $tokenUser = $request->user('sanctum');
+
+        if ($depedId !== '') {
+            if (strlen($depedId) > 50 || ! preg_match('/^[A-Za-z0-9\-]+$/', $depedId)) {
+                return null;
+            }
+
+            $school = School::where('deped_school_id', $depedId)->first();
+            if (! $school) {
+                return null;
+            }
+
+            if ($tokenUser && $tokenUser->school_id && (int) $tokenUser->school_id !== (int) $school->id) {
+                return null;
+            }
+
+            return $school;
+        }
+
+        if ($tokenUser && $tokenUser->school_id) {
+            return School::find($tokenUser->school_id);
+        }
+
+        return null;
     }
 
     /** Find the fallback guard account when no authenticated user is available. */

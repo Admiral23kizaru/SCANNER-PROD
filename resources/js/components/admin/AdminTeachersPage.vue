@@ -42,6 +42,7 @@
               type="search"
               placeholder="Search teachers..."
               class="w-full md:w-64 rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+              @input="debouncedTeacherSearch"
             />
           </div>
           <div class="relative shrink-0">
@@ -212,8 +213,29 @@
       </div>
       <div class="p-4 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3 bg-slate-50/60">
         <span class="text-sm text-slate-600">
-          Showing {{ filteredTeachers.length }} of {{ teachers.length }} entries
+          Showing {{ filteredTeachers.length }} on this page · {{ teacherTotal }} total
         </span>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            :disabled="teacherListPage <= 1"
+            @click="goTeacherPage(teacherListPage - 1)"
+            title="Previous page"
+          >
+            <ChevronLeft class="h-4 w-4" />
+          </button>
+          <span class="text-sm text-slate-600 px-1">{{ teacherListPage }} / {{ teacherLastPage || 1 }}</span>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            :disabled="teacherListPage >= teacherLastPage"
+            @click="goTeacherPage(teacherListPage + 1)"
+            title="Next page"
+          >
+            <ChevronRight class="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </div>
 
@@ -628,13 +650,18 @@
 import { assetPath } from '../../composables/useAsset';
 import { ref, computed, onMounted, watch } from 'vue';
 import axios from 'axios';
-import { PencilLine, Trash2, Plus, Download, Search, Filter, RefreshCw, Users } from 'lucide-vue-next';
+import { PencilLine, Trash2, Plus, Download, Search, Filter, RefreshCw, Users, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, exportAdminTeachers, fetchEhrisTeachers, syncEhrisTeachers } from '../../services/adminService';
 
 const teachers = ref([]);
 const searchQuery = ref('');
 const loading = ref(false);
 const loadError = ref('');
+const teacherListPage = ref(1);
+const teacherLastPage = ref(1);
+const teacherTotal = ref(0);
+const teacherPerPage = ref(50);
+let teacherSearchTimer = null;
 
 function getAuthHeaders() {
   const token = localStorage.getItem('scan_up_token');
@@ -740,37 +767,25 @@ watch(showFilterPanel, (open) => {
 });
 
 const filteredTeachers = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase();
   const fg = filterGrade.value;
   const fs = filterSection.value;
 
   return teachers.value.filter((t) => {
     if (fg && (t.grade_level || '') !== fg) return false;
     if (fs && (t.section || '') !== fs) return false;
-
-    if (!q) return true;
-
-    const gradeSection = formatTeacherGradeSection(t).toLowerCase();
-    return (
-      (t.name || '').toLowerCase().includes(q) ||
-      (t.employee_id || '').toLowerCase().includes(q) ||
-      (t.job_title || '').toLowerCase().includes(q) ||
-      (t.grade_level || '').toLowerCase().includes(q) ||
-      (t.section || '').toLowerCase().includes(q) ||
-      gradeSection.includes(q)
-    );
+    return true;
   });
 });
 
 const emptyTeachersMessage = computed(() => {
-  if (!teachers.value.length) {
+  if (!teachers.value.length && !loading.value) {
     if (loadError.value) return loadError.value;
-    return 'No teachers yet.';
+    if (teacherTotal.value === 0) return 'No teachers yet.';
+    return 'No teachers on this page.';
   }
   if (filteredTeachers.value.length) return '';
-  if (searchQuery.value.trim()) return 'No teachers match your search.';
-  if (filterGrade.value || filterSection.value) return 'No teachers match the selected filters.';
-  return 'No teachers match your search or filters.';
+  if (filterGrade.value || filterSection.value) return 'No teachers match the selected filters on this page.';
+  return 'No teachers match the selected filters.';
 });
 
 function clearGradeSectionFilters() {
@@ -966,16 +981,55 @@ function confirmDelete(t) {
   showDeleteModal.value = true;
 }
 
+/**
+ * debouncedTeacherSearch
+ * PURPOSE: Debounces server-side teacher search when the toolbar query changes.
+ * WHY: Avoids hammering the API on every keystroke while keeping lists scalable.
+ */
+function debouncedTeacherSearch() {
+  if (teacherSearchTimer) clearTimeout(teacherSearchTimer);
+  teacherSearchTimer = setTimeout(() => {
+    teacherListPage.value = 1;
+    load();
+  }, 350);
+}
+
+/**
+ * goTeacherPage
+ * PURPOSE: Changes the server-side teacher list page.
+ * WHY: Pagination keeps payloads small for large faculties.
+ *
+ * @param {number} page 1-based page index.
+ */
+function goTeacherPage(page) {
+  if (page < 1 || page > teacherLastPage.value) return;
+  teacherListPage.value = page;
+  load();
+}
+
 async function load() {
   loading.value = true;
   loadError.value = '';
   try {
     const [res] = await Promise.all([
-      fetchTeachers(),
+      fetchTeachers({
+        page: teacherListPage.value,
+        per_page: teacherPerPage.value,
+        search: searchQuery.value.trim() || undefined,
+      }),
       loadSchoolSections(),
     ]);
-    const list = Array.isArray(res) ? res : (res?.data ?? []);
-    teachers.value = list;
+    if (Array.isArray(res)) {
+      teachers.value = res;
+      teacherLastPage.value = 1;
+      teacherTotal.value = res.length;
+      teacherListPage.value = 1;
+    } else {
+      teachers.value = res?.data ?? [];
+      teacherLastPage.value = res?.last_page ?? 1;
+      teacherTotal.value = res?.total ?? 0;
+      teacherListPage.value = res?.current_page ?? teacherListPage.value;
+    }
     photoLoadError.value = {};
   } catch {
     teachers.value = [];
