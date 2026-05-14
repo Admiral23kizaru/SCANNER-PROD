@@ -5,17 +5,21 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Ehris\EhrisReportingManager;
 use App\Models\Ehris\EhrisUser;
-use App\Models\School;
+use App\Services\SchoolResolver;
 use Illuminate\Http\JsonResponse;
 
 class SchoolController extends Controller
 {
+    public function __construct(private SchoolResolver $schools)
+    {
+    }
+
     /** BAT Step 1 — verify DepEd ID exists before POST /guard/login. */
     public function check(string $deped_id): JsonResponse
     {
-        $school = School::where('deped_school_id', $deped_id)->first();
+        $resolved = $this->schools->findExistingOrEhrisDepartment($deped_id);
 
-        if (!$school) {
+        if (!$resolved) {
             return response()->json([
                 'exists'      => false,
                 'school_name' => null,
@@ -26,7 +30,7 @@ class SchoolController extends Controller
         $principalName = null;
         $principalFound = false;
 
-        $ehrisPrincipal = $this->resolvePrincipalCandidate($school);
+        $ehrisPrincipal = $this->resolvePrincipalCandidateByDepedId($resolved['deped_id']);
 
         if ($ehrisPrincipal) {
             $principalFound = true;
@@ -39,8 +43,8 @@ class SchoolController extends Controller
 
         return response()->json([
             'exists'          => true,
-            'school_name'     => $school->name,
-            'deped_id'        => $school->deped_school_id,
+            'school_name'     => $resolved['name'],
+            'deped_id'        => $resolved['deped_id'],
             'principal_found' => $principalFound,
             'principal_name'  => $principalName,
         ], 200);
@@ -53,14 +57,14 @@ class SchoolController extends Controller
      * 1) Exact tbl_reporting_manager mapping (legacy expected source)
      * 2) Fallback active users in same department with role/title principal hints
      */
-    private function resolvePrincipalCandidate(School $school): ?EhrisUser
+    private function resolvePrincipalCandidateByDepedId(string $depedId): ?EhrisUser
     {
-        $manager = EhrisReportingManager::where('department_id', $school->deped_school_id)->first();
+        $manager = EhrisReportingManager::where('department_id', $depedId)->first();
 
         if ($manager) {
             $mapped = EhrisUser::active()
                 ->where('userId', $manager->manager_name)
-                ->where('department_id', $school->deped_school_id)
+                ->where('department_id', $depedId)
                 ->first();
 
             if ($mapped) {
@@ -69,7 +73,7 @@ class SchoolController extends Controller
         }
 
         return EhrisUser::active()
-            ->where('department_id', $school->deped_school_id)
+            ->where('department_id', $depedId)
             ->where(function ($q) {
                 $q->whereIn('role', ['Reporting Manager', 'Principal', 'School Principal'])
                     ->orWhere('job_title', 'like', '%Principal%');

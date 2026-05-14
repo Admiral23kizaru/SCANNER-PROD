@@ -13,6 +13,7 @@ use App\Models\SchoolYear;
 use App\Models\Student;
 use App\Models\User;
 use App\Services\MailerService;
+use App\Services\SchoolResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -26,7 +27,10 @@ use Illuminate\Support\Facades\Validator;
  */
 class AttendanceController extends Controller
 {
-    public function __construct(protected readonly ?MailerService $mailer = null)
+    public function __construct(
+        protected readonly SchoolResolver $schools,
+        protected readonly ?MailerService $mailer = null
+    )
     {
     }
 
@@ -776,7 +780,7 @@ class AttendanceController extends Controller
                 return null;
             }
 
-            $school = School::where('deped_school_id', $depedId)->first();
+            $school = $this->schools->resolveForScanUpWrite($depedId);
             if (! $school) {
                 return null;
             }

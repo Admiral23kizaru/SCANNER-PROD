@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\SectionController;
 use App\Http\Controllers\Api\TeacherManagementController;
 use Illuminate\Support\Facades\Route;
+use App\Services\SchoolResolver;
 
 /* ====================================================================== */
 /*  Public (unauthenticated) routes                                       */
@@ -35,7 +36,12 @@ Route::get('/school/{id}/info', function ($id) {
 
 // 2. Public endpoint — Guard Terminal resolves DepEd school ID to internal school_id + name
 Route::get('/school/by-deped-id/{depedId}', function ($depedId) {
-    $school = \App\Models\School::where('deped_school_id', $depedId)->firstOrFail();
+    $school = app(SchoolResolver::class)->resolveForScanUpWrite($depedId);
+
+    if (! $school) {
+        abort(404);
+    }
+
     return response()->json([
         'id'   => $school->id,
         'name' => $school->name,

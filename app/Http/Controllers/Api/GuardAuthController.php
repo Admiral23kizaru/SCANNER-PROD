@@ -8,6 +8,7 @@ use App\Models\Ehris\EhrisUser;
 use App\Models\Role;
 use App\Models\School;
 use App\Models\User;
+use App\Services\SchoolResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -15,6 +16,10 @@ use Illuminate\Support\Str;
 
 class GuardAuthController extends Controller
 {
+    public function __construct(private SchoolResolver $schools)
+    {
+    }
+
     /**
      * Authenticate the guard terminal for a school scanner session.
      *
@@ -50,7 +55,7 @@ class GuardAuthController extends Controller
         ]);
 
         $email = 'school' . $validated['deped_school_id'] . '@deped.ozamiz.edu.ph';
-        $school = School::where('deped_school_id', $validated['deped_school_id'])->first();
+        $school = $this->schools->resolveForScanUpWrite($validated['deped_school_id']);
 
         if (!$school) {
             RateLimiter::hit($key, 60);
