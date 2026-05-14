@@ -3,7 +3,6 @@
     class="w-64 shrink-0 flex flex-col h-full bg-white fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:relative lg:transform-none"
     :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
   >
-    <!-- Brand -->
     <div class="px-6 py-3 border-b border-r border-slate-700" style="background-color: #050517;">
       <div class="flex items-center gap-3">
         <img
@@ -20,7 +19,6 @@
       </div>
     </div>
 
-    <!-- Navigation -->
     <nav class="flex-1 px-3 py-4 space-y-1 text-sm overflow-y-auto border-r border-slate-200">
       <button
         type="button"
@@ -64,7 +62,6 @@
         <span>Students</span>
       </button>
 
-      <!-- Manage Subjects sidebar item (before sections) -->
       <button
         type="button"
         class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent cursor-pointer"
@@ -79,7 +76,6 @@
         <span>Manage Subjects</span>
       </button>
 
-      <!-- Manage Sections sidebar item -->
       <button
         type="button"
         class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent cursor-pointer"
@@ -93,32 +89,14 @@
         <FolderPlus class="h-4 w-4" />
         <span>Manage Sections</span>
       </button>
-
-      <!-- Admin: Create School Account (Super Admin — no school scoped in session) -->
-      <button
-        v-if="user && user.school_id == null"
-        type="button"
-        class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition-colors border-l-2 border-transparent cursor-pointer"
-        :class="
-          isCreateSchoolActive
-            ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm border-l-blue-600'
-            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-        "
-        @click="updatePage('create-school')"
-      >
-        <Building2 class="h-4 w-4" />
-        <span>Create School Account</span>
-      </button>
     </nav>
   </aside>
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { useRoute } from 'vue-router';
-import { LayoutDashboard, Users, GraduationCap, FolderPlus, Building2, BookOpen } from 'lucide-vue-next';
+import { LayoutDashboard, Users, GraduationCap, FolderPlus, BookOpen } from 'lucide-vue-next';
 
-const props = defineProps({
+defineProps({
   currentPage: {
     type: String,
     required: true
@@ -130,18 +108,8 @@ const props = defineProps({
   logoSrc: {
     type: String,
     required: true
-  },
-  user: {
-    type: Object,
-    default: null
   }
 });
-
-const route = useRoute();
-
-const isCreateSchoolActive = computed(
-  () => props.currentPage === 'create-school' || route.name === 'AdminCreateSchool',
-);
 
 const emit = defineEmits(['update:currentPage', 'update:isSidebarOpen']);
 

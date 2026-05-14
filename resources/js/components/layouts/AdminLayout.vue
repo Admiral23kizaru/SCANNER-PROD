@@ -6,7 +6,6 @@
       @update:currentPage="onSidebarPage"
       v-model:isSidebarOpen="isSidebarOpen"
       :logoSrc="logoSrc"
-      :user="user"
     />
 
     <!-- Mobile sidebar overlay -->
@@ -36,7 +35,6 @@
           <AdminStudentsPage v-else-if="currentPage === 'students'" />
           <ManageSubjects v-else-if="currentPage === 'subjects'" />
           <ManageSections v-else-if="currentPage === 'sections'" />
-          <AdminCreateSchoolPage v-else-if="currentPage === 'create-school'" />
         </div>
       </main>
     </div>
@@ -47,8 +45,7 @@
 
 <script setup>
 import { assetPath } from '../../composables/useAsset';
-import { ref, computed, onMounted, watch } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { ref, computed, onMounted } from 'vue';
 import { fetchUser } from '../../services/authService';
 import { useLogout } from '../../composables/useLogout';
 import AdminHeader from '../admin/AdminHeader.vue';
@@ -59,16 +56,11 @@ import AdminStudentsPage from '../admin/AdminStudentsPage.vue';
 import ManageSubjects from '../admin/ManageSubjects.vue';
 import ManageSections from '../admin/ManageSections.vue';
 import AdminProfileModal from '../admin/AdminProfileModal.vue';
-import AdminCreateSchoolPage from '../admin/AdminCreateSchoolPage.vue';
 
-const router = useRouter();
-const route = useRoute();
 const currentPage = ref('dashboard');
 const isSidebarOpen = ref(false);
 const logoSrc = assetPath('/logo/depedozamiz.png');
 const user = ref(null);
-const userPhotoError = ref(false);
-const isProfileOpen = ref(false);
 const showProfileModal = ref(false);
 
 const { logout } = useLogout();
@@ -84,7 +76,6 @@ const pageTitle = computed(() => {
   if (currentPage.value === 'students') return 'STUDENTS';
   if (currentPage.value === 'subjects') return 'SUBJECTS';
   if (currentPage.value === 'sections') return 'SECTIONS';
-  if (currentPage.value === 'create-school') return 'CREATE SCHOOL';
   return 'DASHBOARD';
 });
 
@@ -93,42 +84,17 @@ const pageSubtitle = computed(() => {
   if (currentPage.value === 'students') return 'Master list and records for students';
   if (currentPage.value === 'subjects') return 'Create and manage subjects';
   if (currentPage.value === 'sections') return 'Create and manage class sections';
-  if (currentPage.value === 'create-school') return 'Register a new school and its admin account';
   return 'Overview of Ozamiz Schools QR-ID System activity';
 });
 
-function syncRouteToCurrentPage() {
-  if (route.name === 'AdminCreateSchool') {
-    currentPage.value = 'create-school';
-  }
-}
-
 function onSidebarPage(page) {
   currentPage.value = page;
-  if (page === 'create-school') {
-    router.push({ name: 'AdminCreateSchool' });
-    return;
-  }
-  if (route.name === 'AdminCreateSchool') {
-    router.replace({ name: 'Admin' });
-  }
 }
-
-watch(
-  () => route.name,
-  () => {
-    syncRouteToCurrentPage();
-  },
-  { immediate: true },
-);
-
-
 
 onMounted(async () => {
   try {
     const data = await fetchUser();
     user.value = data;
   } catch (_) {}
-  syncRouteToCurrentPage();
 });
 </script>

@@ -6,6 +6,28 @@ import GuardScanner from '../components/guard/GuardScanner.vue';
 import TeacherDashboard from '../components/teacher/TeacherDashboard.vue';
 import AdminLayout from '../components/layouts/AdminLayout.vue';
 
+function normalizeRouterBase(raw) {
+    const value = String(raw || '/').trim();
+    if (!value || value === '/') {
+        return '/';
+    }
+
+    const withLeadingSlash = value.startsWith('/') ? value : `/${value}`;
+    return withLeadingSlash.endsWith('/') ? withLeadingSlash : `${withLeadingSlash}/`;
+}
+
+function resolveRouterBase() {
+    if (import.meta.env.VITE_ROUTER_BASE) {
+        return normalizeRouterBase(import.meta.env.VITE_ROUTER_BASE);
+    }
+
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/qrid')) {
+        return '/qrid/';
+    }
+
+    return normalizeRouterBase(import.meta.env.BASE_URL || '/');
+}
+
 function getStoredToken() {
     return localStorage.getItem('scan_up_token');
 }
@@ -44,28 +66,6 @@ function roleGuard(allowedRoles) {
         const roleName = user.role?.name || user.role_name;
         if (!allowed.includes(roleName)) {
             next({ path: '/login' });
-            return;
-        }
-        next();
-    };
-}
-
-/** Super Admin session: Admin role + no school scoped (matches SchoolController::store). */
-function superAdminSchoolCreateGuard() {
-    return async (to, from, next) => {
-        const user = await fetchCurrentUser();
-        if (!user) {
-            setStoredToken(null);
-            next({ path: '/login', query: { redirect: to.fullPath } });
-            return;
-        }
-        const roleName = user.role?.name || user.role_name;
-        if (roleName !== 'Admin') {
-            next({ path: '/login' });
-            return;
-        }
-        if (user.school_id != null) {
-            next({ path: '/admin' });
             return;
         }
         next();
@@ -211,12 +211,6 @@ const routes = [
         beforeEnter: roleGuard('Subject Teacher'),
     },
     {
-        path: '/admin/schools/create',
-        name: 'AdminCreateSchool',
-        component: AdminLayout,
-        beforeEnter: superAdminSchoolCreateGuard(),
-    },
-    {
         // Keep old /guard URL working — redirect to scanner home
         path: '/guard',
         redirect: '/scanner',
@@ -229,7 +223,7 @@ const routes = [
 ];
 
 const router = createRouter({
-    history: createWebHistory(import.meta.env.BASE_URL || '/'),
+    history: createWebHistory(resolveRouterBase()),
     routes,
 });
 

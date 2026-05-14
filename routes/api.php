@@ -108,8 +108,6 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/dashboard', 'dashboard');
         });
 
-        Route::post('/schools', [\App\Http\Controllers\Api\SchoolController::class, 'store']);
-
         Route::controller(StatsController::class)->group(function () {
             Route::get('/stats', 'index');
             Route::get('/dashboard/stats', 'dashboardStats');
