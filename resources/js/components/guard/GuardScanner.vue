@@ -257,45 +257,91 @@ import AccessibilityToolbar from '../AccessibilityToolbar.vue';
  *
  * See useScanner.js for detailed documentation of each function.
  */
-import { computed, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import axios from 'axios';
+import { computed, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { Clock, User, Search } from 'lucide-vue-next';
 import { useScanner } from '../../composables/useScanner';
 
 const route = useRoute();
+const router = useRouter();
+
+const TOKEN_KEY = 'scan_up_token';
+const DEPED_ID_KEY = 'scan_up_deped_id';
+const SCHOOL_NAME_KEY = 'scan_up_school_name';
+
+const resolvedDepedId = ref('');
+const resolvedSchoolName = ref(localStorage.getItem(SCHOOL_NAME_KEY) || '');
+
+function firstQueryValue(value) {
+    return Array.isArray(value) ? value[0] : value;
+}
+
+async function hydrateSchoolName(depedId) {
+    if (!depedId) return;
+
+    try {
+        const { data } = await axios.get(`/api/school/check/${encodeURIComponent(depedId)}`, {
+            headers: { Accept: 'application/json' },
+        });
+
+        if (data?.school_name) {
+            resolvedSchoolName.value = String(data.school_name);
+            localStorage.setItem(SCHOOL_NAME_KEY, resolvedSchoolName.value);
+        }
+    } catch {
+        resolvedSchoolName.value = localStorage.getItem(SCHOOL_NAME_KEY) || 'Unknown School';
+    }
+}
 
 onMounted(() => {
-    // Read token and deped_id from URL if present
+    // Read scanner scope and token from URL if present.
     const urlParams = new URLSearchParams(window.location.search);
     const urlToken = urlParams.get('token');
     const urlDepedId = urlParams.get('deped_id');
+    const urlSchoolName = urlParams.get('school_name');
+    const storedDepedId = localStorage.getItem(DEPED_ID_KEY);
+    const effectiveDepedId = urlDepedId || storedDepedId || '';
 
-    // Store token from URL to localStorage
     if (urlToken) {
-        localStorage.setItem('scan_up_token', urlToken);
+        localStorage.setItem(TOKEN_KEY, urlToken);
     }
 
-    // Store deped_id for scan requests
-    if (urlDepedId) {
-        localStorage.setItem('scan_up_deped_id', urlDepedId);
+    if (effectiveDepedId) {
+        resolvedDepedId.value = effectiveDepedId;
+        localStorage.setItem(DEPED_ID_KEY, effectiveDepedId);
     }
 
-    // Clean URL to prevent token in browser history
-    if (urlToken || urlDepedId) {
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
+    if (urlSchoolName) {
+        resolvedSchoolName.value = urlSchoolName;
+        localStorage.setItem(SCHOOL_NAME_KEY, urlSchoolName);
+    } else if (urlDepedId && urlDepedId !== storedDepedId) {
+        resolvedSchoolName.value = '';
+        localStorage.removeItem(SCHOOL_NAME_KEY);
     }
+
+    const nextQuery = { ...route.query };
+    delete nextQuery.token;
+    delete nextQuery.school_name;
+
+    if (effectiveDepedId) {
+        nextQuery.deped_id = effectiveDepedId;
+    }
+
+    if (urlToken || urlSchoolName || (!urlDepedId && effectiveDepedId)) {
+        router.replace({ path: route.path, query: nextQuery });
+    }
+
+    hydrateSchoolName(effectiveDepedId);
 });
 
 const depedId = computed(() => {
-    const v = route.query.deped_id;
-    const fromQuery = Array.isArray(v) ? v[0] : v;
-    return fromQuery || localStorage.getItem('scan_up_deped_id');
+    const fromQuery = firstQueryValue(route.query.deped_id);
+    return fromQuery || resolvedDepedId.value || localStorage.getItem(DEPED_ID_KEY) || '';
 });
 const schoolName = computed(() => {
-    const v = route.query.school_name;
-    const raw = Array.isArray(v) ? v[0] : v;
-    return raw ? String(raw) : 'Unknown School';
+    const raw = firstQueryValue(route.query.school_name);
+    return raw || resolvedSchoolName.value || localStorage.getItem(SCHOOL_NAME_KEY) || 'Unknown School';
 });
 
 const {

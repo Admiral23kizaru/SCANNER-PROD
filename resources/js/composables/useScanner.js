@@ -242,6 +242,10 @@ export function useScanner(depedId, schoolName) {
         return value === lastScannedValue.value && (now - lastScannedAt.value) < DEBOUNCE_MS;
     }
 
+    function hasSchoolContext() {
+        return Boolean(String(depedId.value || '').trim());
+    }
+
     /**
      * Prepend a new attendance entry to the live feed and cap at 50 entries.
      *
@@ -277,6 +281,12 @@ export function useScanner(depedId, schoolName) {
      * @param {string} decodedText - Raw text decoded from the QR image.
      */
     async function onScanSuccess(decodedText) {
+        if (!hasSchoolContext()) {
+            playBeep('error');
+            showMessage('No school selected. Open the scanner from the ScanUp launcher.', 'error', 0);
+            return;
+        }
+
         let raw = String(decodedText).trim();
         if (!raw) return;
 
@@ -300,7 +310,7 @@ export function useScanner(depedId, schoolName) {
             scanProcessing.value = true;
             showMessage('Processing...', 'warning', 0);
             
-            // Inject deped_id and school_name from URL
+            // deped_id is the authoritative school isolation key.
             const payload = { student_id: raw, deped_id: depedId.value, school_name: schoolName.value };
             const res = await scanAttendancePublic(payload);
 
@@ -344,6 +354,7 @@ export function useScanner(depedId, schoolName) {
 
     /** Reload the recent attendance feed from the server. */
     async function loadRecent() {
+        if (!hasSchoolContext()) return;
         if (loadingRecent.value) return;
         loadingRecent.value = true;
         try {
@@ -355,6 +366,7 @@ export function useScanner(depedId, schoolName) {
 
     /** Reload the stat card counts from the server. */
     async function refreshStats() {
+        if (!hasSchoolContext()) return;
         try {
             const data = await fetchGuardStatsPublic();
             if (data) stats.value = data;
@@ -399,6 +411,11 @@ export function useScanner(depedId, schoolName) {
      */
     async function startCamera() {
         if (destroyed) return;
+        if (!hasSchoolContext()) {
+            cameraStatus.value = 'error';
+            showMessage('No school selected. Open the scanner from the ScanUp launcher.', 'error', 0);
+            return;
+        }
         clearAutoRetry();
         cameraStatus.value = 'starting';
 
