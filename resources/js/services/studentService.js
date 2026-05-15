@@ -182,3 +182,44 @@ export async function bulkImportStudents(file) {
     });
     return data;
 }
+
+/**
+ * School sections for learner create/edit forms (from Manage Sections).
+ *
+ * @returns {Promise<Array<{ id: number, name: string, grade_level: string }>>}
+ */
+export async function fetchTeacherSections() {
+    const { data } = await axios.get(base + '/sections', {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data?.data ?? [];
+}
+
+export async function fetchTeacherSubjects() {
+    const { data } = await axios.get(base + '/subjects', {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data;
+}
+
+export async function fetchTeacherStudentSubjects(studentId) {
+    const { data } = await axios.get(`${base}/students/${studentId}/subjects`, {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data;
+}
+
+export async function syncTeacherStudentSubjects(studentId, subjectIds) {
+    const { data } = await axios.put(
+        `${base}/students/${studentId}/subjects`,
+        { subject_ids: subjectIds },
+        {
+            headers: {
+                ...getAuthHeaders(),
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+            },
+        }
+    );
+    return data;
+}

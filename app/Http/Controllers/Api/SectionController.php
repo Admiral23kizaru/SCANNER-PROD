@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\School;
 use App\Models\Section;
 use App\Models\Student;
 use App\Models\User;
+use App\Services\EhrisSchoolTeachersService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -58,6 +60,51 @@ class SectionController extends BaseController
         });
 
         return response()->json(['data' => $data]);
+    }
+
+    /**
+     * Section names for learner create/edit forms (teachers and admins).
+     */
+    public function formOptions(Request $request): JsonResponse
+    {
+        $schoolId = $request->user()?->school_id;
+        if (! $schoolId) {
+            return response()->json([
+                'message' => 'Account is not assigned to a school.',
+                'data' => [],
+            ], 422);
+        }
+
+        $query = Section::query()
+            ->where('school_id', $schoolId)
+            ->orderBy('grade_level')
+            ->orderBy('name');
+
+        $user = $request->user();
+        if ($user?->role?->name === 'Teacher' && $user->grade_level) {
+            $query->where('grade_level', $user->grade_level);
+        }
+
+        $sections = $query->get(['id', 'name', 'grade_level']);
+
+        if ($sections->isEmpty()) {
+            $fallback = Student::query()
+                ->where('school_id', $schoolId)
+                ->whereNotNull('section')
+                ->where('section', '!=', '')
+                ->when($user?->role?->name === 'Teacher' && $user->grade_level, function ($q) use ($user) {
+                    $q->where('grade', $user->grade_level);
+                })
+                ->distinct()
+                ->orderBy('section')
+                ->pluck('section')
+                ->map(fn (string $name) => ['id' => null, 'name' => $name, 'grade_level' => null])
+                ->values();
+
+            return response()->json(['data' => $fallback]);
+        }
+
+        return response()->json(['data' => $sections]);
     }
 
     /**
@@ -299,22 +346,24 @@ class SectionController extends BaseController
     }
 
     /**
-     * PURPOSE: Return teacher-role users for section assignment dropdown in the authenticated admin's school.
-     * FIX: Uses getAuthSchoolId() and strict where('school_id', ...) filtering.
-     * LIMITATION: Depends on role table naming for Teacher.
+     * Teachers for section assignment — active EHRIS teachers for this school's DepEd ID only.
      */
     public function teachers(Request $request): JsonResponse
     {
-        $schoolId = $this->getAuthSchoolId();
-        $teacherRoleId = \App\Models\Role::where('name', 'Teacher')->value('id');
+        $school = School::find($this->getAuthSchoolId());
 
-        $teachers = User::where('role_id', $teacherRoleId)
-            ->where('school_id', $schoolId)
-            ->select('id', 'name', 'grade_level', 'section')
-            ->orderBy('name')
-            ->get();
+        if (! $school) {
+            return response()->json(['message' => 'School not found.', 'data' => [], 'total' => 0], 404);
+        }
 
-        return response()->json(['data' => $teachers]);
+        $result = app(EhrisSchoolTeachersService::class)->assignmentListForSchool($school);
+
+        return response()->json([
+            'data' => $result['data'],
+            'total' => $result['total'],
+            'deped_school_id' => $result['deped_school_id'],
+            'message' => $result['message'] ?? null,
+        ]);
     }
 
     /**

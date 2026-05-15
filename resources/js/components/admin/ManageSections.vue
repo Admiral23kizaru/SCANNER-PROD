@@ -77,14 +77,14 @@
     <!-- ═══ CREATE / EDIT SECTION MODAL ═══ -->
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
-      <div class="relative bg-white rounded-2xl w-full max-w-md shadow-xl" @click.stop>
+      <div class="relative bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[90vh] flex flex-col" @click.stop>
         <div class="flex items-center justify-between p-5 border-b border-slate-100">
           <h2 class="text-lg font-semibold text-slate-900">{{ editTarget ? 'Edit Section' : 'Create Section' }}</h2>
           <button @click="closeModal" class="p-2 -mr-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50 transition">
             <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
-        <form @submit.prevent="submitSection" class="p-5 space-y-4">
+        <form @submit.prevent="submitSection" class="p-5 space-y-4 overflow-y-auto flex-1">
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Section Name</label>
             <input v-model="form.name" type="text" required placeholder="e.g. Section A" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition" />
@@ -97,11 +97,65 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Assign Teacher</label>
-            <select v-model="form.teacher_id" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-200">
-              <option :value="null">— No teacher —</option>
-              <option v-for="t in teacherList" :key="t.id" :value="t.id">{{ t.name }}</option>
-            </select>
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <label class="block text-sm font-medium text-slate-700">Assign Teacher</label>
+              <span class="text-xs text-slate-500">{{ teachersTotal }} total</span>
+            </div>
+            <div class="relative mb-2">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" />
+              </svg>
+              <input
+                v-model="teacherSearch"
+                type="search"
+                placeholder="Search by name or employee ID…"
+                class="w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition"
+              />
+            </div>
+            <p v-if="selectedTeacherLabel" class="text-xs text-slate-600 mb-2">
+              Selected: <span class="font-medium text-slate-900">{{ selectedTeacherLabel }}</span>
+            </p>
+            <div v-if="teachersLoading" class="rounded-lg border border-slate-200 py-6 text-center text-sm text-slate-500">
+              Loading teachers…
+            </div>
+            <div
+              v-else
+              class="max-h-52 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100"
+              role="listbox"
+              aria-label="Teachers"
+            >
+              <button
+                type="button"
+                role="option"
+                class="w-full text-left px-3 py-2.5 text-sm transition"
+                :class="form.teacher_id === null ? 'bg-indigo-50 text-indigo-900 font-medium' : 'text-slate-700 hover:bg-slate-50'"
+                @click="selectTeacher(null)"
+              >
+                — No teacher —
+              </button>
+              <button
+                v-for="t in filteredTeacherList"
+                :key="t.listKey"
+                type="button"
+                role="option"
+                :disabled="!t.assignable"
+                class="w-full text-left px-3 py-2.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-50"
+                :class="form.teacher_id === t.id ? 'bg-indigo-50 text-indigo-900' : 'text-slate-700 hover:bg-slate-50'"
+                @click="selectTeacher(t.id)"
+              >
+                <span class="font-medium">{{ t.name }}</span>
+                <span v-if="t.employee_id" class="text-xs text-slate-500 ml-1">· {{ t.employee_id }}</span>
+                <span v-if="!t.assignable" class="block text-[11px] text-amber-600 mt-0.5">No login account — sync from Manage Teachers</span>
+              </button>
+              <p v-if="!teachersLoading && filteredTeacherList.length === 0" class="px-3 py-6 text-center text-sm text-slate-400 italic">
+                No teachers match your search.
+              </p>
+            </div>
+            <p v-if="teachersLoadError" class="text-xs text-amber-700 mt-1.5">{{ teachersLoadError }}</p>
+            <p v-else class="text-xs text-slate-500 mt-1.5">
+              Showing {{ filteredTeacherList.length }} of {{ teachersTotal }} teachers in your school
+              <span v-if="depedSchoolId"> (EHRIS DepEd ID {{ depedSchoolId }})</span>
+            </p>
           </div>
           <div v-if="formError" class="text-sm text-red-600">{{ formError }}</div>
           <div class="flex justify-end gap-2 pt-2">
@@ -253,13 +307,17 @@
  * // Author: Antigravity System Agent
  */
 
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 
 // ─── State ──────────────────────────────────────────────────────────────────
 
 const sections = ref([]);
 const teacherList = ref([]);
+const teachersTotal = ref(0);
+const teachersLoading = ref(false);
+const teachersLoadError = ref('');
+const teacherSearch = ref('');
 const loading = ref(false);
 
 const showModal = ref(false);
@@ -309,11 +367,73 @@ async function loadSections() {
 /**
  * // Description: loadTeachers - Fetches all teacher-role users for the dropdown.
  */
+const depedSchoolId = ref('');
+
 async function loadTeachers() {
+  teachersLoading.value = true;
+  teachersLoadError.value = '';
   try {
     const res = await axios.get('/api/admin/sections/teachers-list');
     teacherList.value = res.data.data || [];
-  } catch { teacherList.value = []; }
+    teachersTotal.value = res.data.total ?? teacherList.value.length;
+    depedSchoolId.value = res.data.deped_school_id || '';
+    if (res.data.message) {
+      teachersLoadError.value = res.data.message;
+    }
+  } catch (err) {
+    teacherList.value = [];
+    teachersTotal.value = 0;
+    depedSchoolId.value = '';
+    teachersLoadError.value = err?.response?.data?.message
+      || 'Could not load teachers for your school.';
+  } finally {
+    teachersLoading.value = false;
+  }
+}
+
+const filteredTeacherList = computed(() => {
+  const q = teacherSearch.value.trim().toLowerCase();
+  let list = teacherList.value.map((t, index) => ({
+    ...t,
+    listKey: t.id != null ? `u-${t.id}` : `na-${index}`,
+  }));
+
+  if (q) {
+    list = list.filter((t) => {
+      const name = (t.name || '').toLowerCase();
+      const emp = (t.employee_id || '').toLowerCase();
+      return name.includes(q) || emp.includes(q);
+    });
+  }
+
+  const selectedId = form.value.teacher_id;
+  if (selectedId != null && !list.some((t) => t.id === selectedId)) {
+    const assigned = teacherList.value.find((t) => t.id === selectedId);
+    if (assigned) {
+      list = [{ ...assigned, listKey: `u-${assigned.id}` }, ...list];
+    } else if (editTarget.value?.teacher?.name) {
+      list = [{
+        id: selectedId,
+        name: editTarget.value.teacher.name,
+        employee_id: null,
+        assignable: true,
+        listKey: `u-${selectedId}`,
+      }, ...list];
+    }
+  }
+
+  return list;
+});
+
+const selectedTeacherLabel = computed(() => {
+  if (form.value.teacher_id == null) return '';
+  const t = teacherList.value.find((x) => x.id === form.value.teacher_id);
+  if (t?.name) return t.name;
+  return editTarget.value?.teacher?.name || '';
+});
+
+function selectTeacher(userId) {
+  form.value.teacher_id = userId;
 }
 
 // ─── Create / Edit Logic ────────────────────────────────────────────────────
@@ -322,6 +442,7 @@ function openCreateModal() {
   editTarget.value = null;
   form.value = { name: '', grade_level: '', teacher_id: null };
   formError.value = '';
+  teacherSearch.value = '';
   showModal.value = true;
 }
 
@@ -329,12 +450,14 @@ function openEditModal(sec) {
   editTarget.value = sec;
   form.value = { name: sec.name, grade_level: sec.grade_level, teacher_id: sec.teacher_id || null };
   formError.value = '';
+  teacherSearch.value = '';
   showModal.value = true;
 }
 
 function closeModal() {
   showModal.value = false;
   editTarget.value = null;
+  teacherSearch.value = '';
 }
 
 /**

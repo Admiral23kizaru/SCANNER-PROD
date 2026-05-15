@@ -258,7 +258,16 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-stone-700 mb-1">Section</label>
-                <input v-model="form.section" type="text" placeholder="e.g. A" class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm" />
+                <select
+                  v-model="form.section"
+                  class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
+                >
+                  <option value="">Select section</option>
+                  <option v-for="sec in formSectionChoices" :key="sec" :value="sec">{{ sec }}</option>
+                </select>
+                <p v-if="availableSections.length === 0" class="mt-1 text-xs text-stone-500">
+                  No sections yet. Add them under Manage Sections, then reopen this form.
+                </p>
               </div>
             </div>
             <div>
@@ -479,6 +488,16 @@ const formError = ref('');
 const availableSubjects = ref([]);
 const selectedSubjectIds = ref([]);
 
+/** Section names from Manage Sections, plus current form value when editing a legacy row. */
+const formSectionChoices = computed(() => {
+  const names = [...availableSections.value];
+  const cur = (form.value.section || '').trim();
+  if (cur && !names.includes(cur)) {
+    names.push(cur);
+  }
+  return names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+});
+
 let debounceTimer = null;
 
 function debouncedFetch() {
@@ -583,6 +602,7 @@ function openCreateModal() {
   formError.value = '';
   selectedSubjectIds.value = [];
   showFormModal.value = true;
+  loadFilterOptions();
 }
 
 async function openEditModal(row) {
@@ -609,6 +629,7 @@ async function openEditModal(row) {
     selectedSubjectIds.value = [];
   }
   showFormModal.value = true;
+  loadFilterOptions();
 }
 
 function formatGradeSection(row) {
