@@ -148,7 +148,7 @@
               <h3 id="la-preview-title" class="text-lg font-bold text-stone-900">Analysis preview</h3>
               <p class="text-xs text-stone-500 mt-0.5">
                 {{ analyzeResult.student_count }} students · {{ analyzeResult.total_keyed_items }} items with an answer key ·
-                Difficulty index = correct ÷ examinees (non-blank responses per item)
+                Difficulty index = correct ÷ examinees (non-blank responses per item). This preview is read-only.
               </p>
             </div>
             <button
@@ -311,17 +311,7 @@
             </div>
           </div>
 
-          <div class="flex flex-col gap-2 px-5 py-4 border-t border-stone-200 bg-stone-50 shrink-0">
-            <p v-if="analyzeExportMessage" class="text-sm text-red-600">{{ analyzeExportMessage }}</p>
-            <div class="flex flex-wrap gap-3">
-            <button
-              type="button"
-              class="inline-flex items-center justify-center rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 transition disabled:opacity-50"
-              :disabled="analyzeExporting"
-              @click="downloadAnalyzedExcel"
-            >
-              {{ analyzeExporting ? 'Building file…' : 'Download analyzed Excel' }}
-            </button>
+          <div class="flex justify-end px-5 py-4 border-t border-stone-200 bg-stone-50 shrink-0">
             <button
               type="button"
               class="inline-flex items-center justify-center rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-100 transition"
@@ -329,7 +319,6 @@
             >
               Close
             </button>
-            </div>
           </div>
         </div>
       </div>
@@ -365,10 +354,8 @@ const exporting = ref(false);
 const analyzeFileInput = ref(null);
 const analyzeResult = ref(null);
 const importAnalyzing = ref(false);
-const analyzeExporting = ref(false);
 const previewOpen = ref(false);
 const analyzeError = ref('');
-const analyzeExportMessage = ref('');
 
 /** Matches the percentage-based interpretation guide in the analyzed Excel export. */
 const INTERPRETATION_GUIDE = [
@@ -478,7 +465,6 @@ async function onAnalyzeFile(ev) {
   if (!file) return;
   importAnalyzing.value = true;
   analyzeError.value = '';
-  analyzeExportMessage.value = '';
   try {
     const fd = new FormData();
     fd.append('file', file);
@@ -493,64 +479,6 @@ async function onAnalyzeFile(ev) {
   } finally {
     importAnalyzing.value = false;
     input.value = '';
-  }
-}
-
-async function downloadAnalyzedExcel() {
-  if (!analyzeResult.value) return;
-  analyzeExporting.value = true;
-  analyzeExportMessage.value = '';
-  try {
-    const sub = meta.value.subjects?.find((s) => s.id === filters.value.subject_id);
-    const r = analyzeResult.value;
-    const res = await axios.post(
-      `${learningAssessmentApiBase}/import-analyze/export`,
-      {
-        sheet_title: sub?.name || 'Learning Assessment',
-        item_numbers: r.item_numbers,
-        answer_key: r.answer_key,
-        students: r.students,
-        item_stats: r.item_stats,
-      },
-      {
-        responseType: 'blob',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json',
-          Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        },
-      }
-    );
-
-    const cd = res.headers?.['content-disposition'] || '';
-    const match = /filename=\"?([^\";]+)\"?/i.exec(cd);
-    const filename = match?.[1] || 'Learning_Assessment_Analyzed.xlsx';
-    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
-  } catch (err) {
-    let fallback = 'Export failed.';
-    try {
-      const blobData = err?.response?.data;
-      if (blobData instanceof Blob) {
-        const txt = await blobData.text();
-        const parsed = JSON.parse(txt);
-        fallback = parsed?.message || fallback;
-      } else if (blobData?.message) {
-        fallback = blobData.message;
-      }
-    } catch (_) {
-      /* ignore */
-    }
-    analyzeExportMessage.value = fallback;
-  } finally {
-    analyzeExporting.value = false;
   }
 }
 
