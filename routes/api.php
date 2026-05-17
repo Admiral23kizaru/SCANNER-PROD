@@ -7,7 +7,7 @@ use App\Http\Controllers\Api\AdminStudentSubjectController;
 use App\Http\Controllers\Api\AdminSubjectController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\GmrcController;
+use App\Http\Controllers\Api\LearningAssessmentController;
 use App\Http\Controllers\Api\GuardAuthController;
 use App\Http\Controllers\Api\IdCardController;
 use App\Http\Controllers\Api\PasswordResetController;
@@ -196,6 +196,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/students/{id}/photo', 'uploadPhoto');
         });
 
+        Route::get('/sections', [SectionController::class, 'formOptions']);
+        Route::get('/subjects', [AdminSubjectController::class, 'index']);
+        Route::get('/students/{id}/subjects', [AdminStudentSubjectController::class, 'show']);
+        Route::put('/students/{id}/subjects', [AdminStudentSubjectController::class, 'sync']);
+
         /*
          * Target Role: Attendance Guard / Parent.
          * Source: QR Scanner (Teacher Dashboard).
@@ -219,7 +224,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /*  Learning Assessment (scores + Excel export)                        */
         /* ------------------------------------------------------------------ */
 
-        Route::controller(GmrcController::class)->prefix('learning-assessment')->group(function () {
+        Route::controller(LearningAssessmentController::class)->prefix('learning-assessment')->group(function () {
             Route::get('/meta', 'meta');
             Route::get('/students', 'students');
             Route::get('/recent', 'recent');

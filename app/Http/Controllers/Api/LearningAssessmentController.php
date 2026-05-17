@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Exports\GmrcTemplateExport;
 use App\Exports\LearningAssessmentAnalyzedExport;
-use App\Http\Controllers\Controller;
 use App\Models\GmrcScore;
 use App\Models\Student;
 use App\Models\Subject;
@@ -15,22 +14,18 @@ use Illuminate\Support\Facades\Validator;
 use InvalidArgumentException;
 use Maatwebsite\Excel\Facades\Excel;
 
-class GmrcController extends BaseController
+class LearningAssessmentController extends BaseController
 {
     /**
-     * PURPOSE: Return the authenticated school_id for GMRC operations.
-     * FIX: Uses getAuthSchoolId() to block null-school wildcard access.
-     * LIMITATION: Requires authenticated user to be assigned to a school.
+     * Return the authenticated school_id for Learning Assessment operations.
      */
     private function schoolScope(): int
     {
-        return $this->getAuthSchoolId();  c                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
+        return $this->getAuthSchoolId();
     }
 
     /**
-     * PURPOSE: Build a student query constrained to the authenticated school and teacher visibility rules.
-     * FIX: Enforces mandatory school scope using getAuthSchoolId() through schoolScope().
-     * LIMITATION: Teacher visibility still depends on grade/section or ownership fallback.
+     * Build a student query constrained to the authenticated school and teacher visibility rules.
      */
     private function studentScopeQuery(Request $request)
     {
@@ -39,7 +34,6 @@ class GmrcController extends BaseController
 
         $query = Student::query()->where('school_id', $schoolId);
 
-        // Mirror StudentController visibility rules for teachers.
         if ($user->role?->name === 'Teacher') {
             if ($user->grade_level && $user->section) {
                 $query->where('grade', $user->grade_level)->where('section', $user->section);
@@ -56,13 +50,17 @@ class GmrcController extends BaseController
     private function parseWrongItems(string $raw, int $totalItems): array
     {
         $raw = trim($raw);
-        if ($raw === '') return [];
+        if ($raw === '') {
+            return [];
+        }
 
         $parts = preg_split('/\s*,\s*/', $raw);
         $items = [];
         foreach ($parts as $p) {
-            if ($p === '') continue;
-            if (!preg_match('/^\d+$/', $p)) {
+            if ($p === '') {
+                continue;
+            }
+            if (! preg_match('/^\d+$/', $p)) {
                 throw new \InvalidArgumentException('Wrong items must contain only numbers and commas.');
             }
             $n = (int) $p;
@@ -73,14 +71,10 @@ class GmrcController extends BaseController
         }
         $items = array_values(array_unique($items));
         sort($items);
+
         return $items;
     }
 
-    /**
-     * PURPOSE: Return GMRC filter metadata (grades/sections) scoped to the authenticated school.
-     * FIX: Uses school-scoped studentScopeQuery() with mandatory non-null school context.
-     * LIMITATION: Metadata depends on existing student records in scope.
-     */
     public function meta(Request $request): JsonResponse
     {
         $query = $this->studentScopeQuery($request);
@@ -107,11 +101,6 @@ class GmrcController extends BaseController
         ]);
     }
 
-    /**
-     * PURPOSE: Return GMRC student selector data scoped to authenticated school and role visibility.
-     * FIX: Keeps all filters on top of strict school-scoped base query.
-     * LIMITATION: Search/filters are limited to first 200 matching records.
-     */
     public function students(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -131,8 +120,6 @@ class GmrcController extends BaseController
         if ($request->filled('section')) {
             $q->where('section', $request->input('section'));
         }
-        // Roster is by grade/section only — do not require student_subject enrollment
-        // (many classes are not linked to a subject in the pivot, which hid everyone).
         if ($request->filled('search')) {
             $term = '%' . trim((string) $request->input('search')) . '%';
             $q->where(function ($sub) use ($term) {
@@ -157,11 +144,6 @@ class GmrcController extends BaseController
         return response()->json(['data' => $students]);
     }
 
-    /**
-     * PURPOSE: Return recent GMRC entries for students within the authenticated school scope.
-     * FIX: Entry retrieval is constrained by scoped student IDs only.
-     * LIMITATION: Returns latest 10 entries for the scoped dataset.
-     */
     public function recent(Request $request): JsonResponse
     {
         $studentIds = $this->studentScopeQuery($request)->pluck('id');
@@ -174,6 +156,7 @@ class GmrcController extends BaseController
                 $s = $e->student;
                 $sub = $e->subject;
                 $studentName = $s ? trim(($s->last_name ?? '') . ', ' . ($s->first_name ?? '')) : 'Student';
+
                 return [
                     'id' => $e->id,
                     'section' => $e->section,
@@ -190,11 +173,6 @@ class GmrcController extends BaseController
         return response()->json(['data' => $entries]);
     }
 
-    /**
-     * PURPOSE: Store a GMRC score for a student that is accessible within the authenticated school scope.
-     * FIX: Student resolution now always inherits mandatory school scope from studentScopeQuery().
-     * LIMITATION: Subject-level separation is not implemented in this phase.
-     */
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -211,7 +189,7 @@ class GmrcController extends BaseController
         $totalItems = (int) ($request->input('total_items') ?? 50);
 
         $student = $this->studentScopeQuery($request)->find((int) $request->input('student_id'));
-        if (!$student) {
+        if (! $student) {
             return response()->json(['message' => 'Student not found or not accessible.'], 404);
         }
 
@@ -220,7 +198,7 @@ class GmrcController extends BaseController
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->find((int) $request->input('subject_id'));
 
-        if (!$subject) {
+        if (! $subject) {
             return response()->json(['message' => 'Subject not found.'], 404);
         }
 
@@ -260,11 +238,6 @@ class GmrcController extends BaseController
         ], 201);
     }
 
-    /**
-     * PURPOSE: Export GMRC template rows for students within the authenticated school scope.
-     * FIX: Export query inherits strict school scope via studentScopeQuery().
-     * LIMITATION: Export remains grade/section filtered without subject partitioning.
-     */
     public function export(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -284,7 +257,6 @@ class GmrcController extends BaseController
         if ($request->filled('section')) {
             $q->where('section', $request->input('section'));
         }
-        // Excel roster matches class list: grade + section only (subject is for score entry metadata).
 
         $students = $q->orderBy('grade')->orderBy('section')->orderBy('last_name')->orderBy('first_name')->get();
         $totalItems = (int) ($request->input('total_items') ?? 50);
@@ -385,4 +357,3 @@ class GmrcController extends BaseController
         return Excel::download(new LearningAssessmentAnalyzedExport($validated, $sheetTitle), $filename);
     }
 }
-

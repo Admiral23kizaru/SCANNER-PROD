@@ -18,15 +18,13 @@ class AdminStudentSubjectController extends Controller
 
     public function show(Request $request, int $studentId): JsonResponse
     {
-        $schoolId = $this->schoolScope($request);
-        $student = Student::query()
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->with('subjects:id,name')
-            ->find($studentId);
+        $student = $this->findAccessibleStudent($request, $studentId);
 
-        if (!$student) {
+        if (! $student) {
             return response()->json(['message' => 'Student not found.'], 404);
         }
+
+        $student->load('subjects:id,name');
 
         return response()->json([
             'data' => $student->subjects->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])->values(),
@@ -43,15 +41,13 @@ class AdminStudentSubjectController extends Controller
             return response()->json(['message' => 'Validation failed.', 'errors' => $validator->errors()], 422);
         }
 
-        $schoolId = $this->schoolScope($request);
-        $student = Student::query()
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->find($studentId);
+        $student = $this->findAccessibleStudent($request, $studentId);
 
-        if (!$student) {
+        if (! $student) {
             return response()->json(['message' => 'Student not found.'], 404);
         }
 
+        $schoolId = $this->schoolScope($request);
         $subjectIds = array_values(array_unique(array_map('intval', $request->input('subject_ids', []))));
 
         // Only allow subjects within the admin's school scope (or global if super-admin).
@@ -65,6 +61,26 @@ class AdminStudentSubjectController extends Controller
         $student->subjects()->sync($validSubjectIds);
 
         return response()->json(['message' => 'Student subjects updated.', 'data' => $validSubjectIds]);
+    }
+
+    private function findAccessibleStudent(Request $request, int $studentId): ?Student
+    {
+        $schoolId = $this->schoolScope($request);
+        $query = Student::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
+
+        $user = $request->user();
+        if ($user?->role?->name === 'Teacher') {
+            if ($user->grade_level && $user->section) {
+                $query->where('grade', $user->grade_level)->where('section', $user->section);
+            } else {
+                $query->where(function ($q) use ($user) {
+                    $q->where('teacher_id', $user->id)->orWhere('created_by', $user->id);
+                });
+            }
+        }
+
+        return $query->find($studentId);
     }
 }
 

@@ -217,12 +217,16 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-stone-700 mb-1">Section</label>
-                <input
+                <select
                   v-model="form.section"
-                  type="text"
-                  placeholder="e.g. A"
-                  class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
-                />
+                  class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white focus:border-blue-700 focus:ring-1 focus:ring-blue-700"
+                >
+                  <option value="">Select section</option>
+                  <option v-for="sec in formSectionChoices" :key="sec" :value="sec">{{ sec }}</option>
+                </select>
+                <p v-if="availableSections.length === 0" class="mt-1 text-xs text-stone-500">
+                  No sections yet. Ask your admin to add sections under Manage Sections.
+                </p>
               </div>
             </div>
             <div>
@@ -232,6 +236,28 @@
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
               </select>
+            </div>
+            <div class="rounded-lg border border-stone-200 bg-stone-50/60 p-4">
+              <div class="text-sm font-semibold text-stone-800 mb-2">Subject Enrollment</div>
+              <p class="text-xs text-stone-500 mb-3">Select the subjects this learner is enrolled in.</p>
+              <div v-if="availableSubjects.length === 0" class="text-sm text-stone-500">
+                No subjects available. Ask your admin to add subjects under Manage Subjects.
+              </div>
+              <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                <label
+                  v-for="sub in availableSubjects"
+                  :key="'sub-' + sub.id"
+                  class="flex items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    class="rounded border-stone-300 text-blue-700 focus:ring-blue-600"
+                    :value="sub.id"
+                    v-model="selectedSubjectIds"
+                  />
+                  <span class="truncate">{{ sub.name }}</span>
+                </label>
+              </div>
             </div>
             <div>
               <label class="block text-sm font-medium text-stone-700 mb-1">Guardian</label>
@@ -403,7 +429,19 @@ import { fetchUser, logoutUser } from '../../services/authService';
 import QRCode from 'qrcode';
 import { Search, Upload, Plus, User, Pencil, ChevronLeft, ChevronRight, Filter } from 'lucide-vue-next';
 import router, { setStoredToken } from '../../router';
-import { fetchStudents, createStudent, createStudentWithFormData, updateStudent, updateStudentWithFormData, uploadStudentPhoto, bulkImportStudents } from '../../services/studentService';
+import {
+  fetchStudents,
+  fetchTeacherSections,
+  fetchTeacherSubjects,
+  fetchTeacherStudentSubjects,
+  syncTeacherStudentSubjects,
+  createStudent,
+  createStudentWithFormData,
+  updateStudent,
+  updateStudentWithFormData,
+  uploadStudentPhoto,
+  bulkImportStudents,
+} from '../../services/studentService';
 import TeacherProfileModal from './TeacherProfileModal.vue';
 import AttendanceMonitor from '../AttendanceMonitor.vue';
 import TeacherLayout from '../layouts/TeacherLayout.vue';
@@ -492,6 +530,18 @@ const photoInputRef = ref(null);
 const photoFile = ref(null);
 const photoFileName = ref('');
 const photoError = ref('');
+const availableSections = ref([]);
+const availableSubjects = ref([]);
+const selectedSubjectIds = ref([]);
+
+const formSectionChoices = computed(() => {
+  const names = [...availableSections.value];
+  const cur = (form.value.section || '').trim();
+  if (cur && !names.includes(cur)) {
+    names.push(cur);
+  }
+  return names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+});
 
 const bulkImportInput = ref(null);
 const bulkImporting = ref(false);
@@ -587,6 +637,40 @@ function onPhotoChange(e) {
   photoFileName.value = file ? file.name : '';
 }
 
+async function loadSectionOptions() {
+  try {
+    const rows = await fetchTeacherSections();
+    const names = rows.map((s) => (typeof s === 'string' ? s : s?.name)).filter(Boolean);
+    availableSections.value = [...new Set(names)].sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+    );
+  } catch {
+    availableSections.value = [];
+  }
+}
+
+async function loadSubjectOptions() {
+  try {
+    const res = await fetchTeacherSubjects();
+    availableSubjects.value = res.data || [];
+  } catch {
+    availableSubjects.value = [];
+  }
+}
+
+async function loadStudentSubjectSelection(studentId) {
+  if (!studentId) {
+    selectedSubjectIds.value = [];
+    return;
+  }
+  try {
+    const res = await fetchTeacherStudentSubjects(studentId);
+    selectedSubjectIds.value = (res.data || []).map((s) => s.id);
+  } catch {
+    selectedSubjectIds.value = [];
+  }
+}
+
 function openAddModal() {
   editingId.value = null;
   form.value = {
@@ -598,6 +682,9 @@ function openAddModal() {
   photoFileName.value = '';
   photoError.value = '';
   if (photoInputRef.value) photoInputRef.value.value = '';
+  selectedSubjectIds.value = [];
+  loadSectionOptions();
+  loadSubjectOptions();
   showFormModal.value = true;
 }
 
@@ -627,6 +714,9 @@ function openEditModal(row) {
   photoFile.value = null;
   photoFileName.value = '';
   if (photoInputRef.value) photoInputRef.value.value = '';
+  loadSectionOptions();
+  loadSubjectOptions();
+  loadStudentSubjectSelection(row.id);
   showFormModal.value = true;
 }
 
@@ -677,10 +767,13 @@ async function submitForm() {
       } else {
         await load();
       }
+      await syncTeacherStudentSubjects(editingId.value, selectedSubjectIds.value);
     } else {
+      let newStudent;
       if (photoFile.value) {
         const res = await createStudentWithFormData(buildFormData());
-        students.value = [res.student, ...students.value];
+        newStudent = res.student;
+        students.value = [newStudent, ...students.value];
         total.value = (total.value || 0) + 1;
       } else {
         const res = await createStudent({
@@ -696,8 +789,12 @@ async function submitForm() {
           contact_number: form.value.contact_number || '',
           notification_preference: form.value.notification_preference ?? 0,
         });
-        students.value = [res.student, ...students.value];
+        newStudent = res.student;
+        students.value = [newStudent, ...students.value];
         total.value = (total.value || 0) + 1;
+      }
+      if (newStudent?.id && selectedSubjectIds.value.length) {
+        await syncTeacherStudentSubjects(newStudent.id, selectedSubjectIds.value);
       }
     }
     showFormModal.value = false;
@@ -751,5 +848,5 @@ onMounted(async () => {
     const data = await fetchUser();
     user.value = data;
   } catch (_) {}
-  await load();
+  await Promise.all([load(), loadSectionOptions(), loadSubjectOptions()]);
 });</script>
