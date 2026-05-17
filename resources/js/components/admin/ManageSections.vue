@@ -1,7 +1,7 @@
 <!--
   Action: Implementing Section Management and fixing school-level data scoping.
   // Description: ManageSections.vue - Admin page for creating, viewing, and
-  //   managing class sections. Supports teacher assignment and bulk student enrollment.
+  //   managing class sections. Supports teacher assignment and bulk student assignment.
   // Author: Antigravity System Agent
 -->
 <template>
@@ -10,11 +10,11 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h1 class="text-xl font-semibold text-slate-900">Manage Sections</h1>
-        <p class="text-sm text-slate-500 mt-1">Create sections, assign teachers, and enroll students</p>
+        <p class="text-sm text-slate-500 mt-1">Create sections, assign teachers, and organize students</p>
       </div>
       <button
         type="button"
-        class="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 transition shadow-sm"
+        class="inline-flex items-center gap-2 rounded-lg bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-800 transition shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-200"
         @click="openCreateModal"
       >
         <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
@@ -23,10 +23,10 @@
     </div>
 
     <!-- Sections Table -->
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
-          <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+          <thead class="bg-slate-50 text-slate-600 text-xs font-semibold uppercase tracking-wide">
             <tr>
               <th class="py-3 px-5 border-b border-slate-200">Section Name</th>
               <th class="py-3 px-5 border-b border-slate-200">Grade Level</th>
@@ -39,7 +39,7 @@
             <tr
               v-for="sec in sections"
               :key="sec.id"
-              class="border-b border-slate-100 hover:bg-slate-50 transition"
+              class="border-b border-slate-100 hover:bg-sky-50/50 transition"
             >
               <td class="py-3 px-5 font-semibold text-slate-900">{{ sec.name }}</td>
               <td class="py-3 px-5 text-slate-600">{{ sec.grade_level }}</td>
@@ -62,7 +62,7 @@
               <td colspan="5" class="py-12 text-center text-slate-500">
                 <div class="flex flex-col items-center gap-2">
                   <div class="w-6 h-6 border-3 border-slate-300 border-t-slate-700 rounded-full animate-spin"></div>
-                  Loading sections…
+                  Loading sections...
                 </div>
               </td>
             </tr>
@@ -99,7 +99,7 @@
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Assign Teacher</label>
             <select v-model="form.teacher_id" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-200">
-              <option :value="null">— No teacher —</option>
+              <option :value="null">- No teacher -</option>
               <option v-for="t in teacherList" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
           </div>
@@ -107,7 +107,7 @@
           <div class="flex justify-end gap-2 pt-2">
             <button type="button" @click="closeModal" class="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">Cancel</button>
             <button type="submit" :disabled="submitting" class="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition disabled:opacity-50">
-              {{ submitting ? 'Saving…' : (editTarget ? 'Update' : 'Create') }}
+              {{ submitting ? 'Saving...' : (editTarget ? 'Update' : 'Create') }}
             </button>
           </div>
         </form>
@@ -127,7 +127,7 @@
         <div class="flex-1 overflow-auto p-5">
           <div v-if="assignLoading" class="flex flex-col items-center py-10">
             <div class="w-7 h-7 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-            <p class="mt-3 text-sm text-slate-500">Loading unassigned students…</p>
+            <p class="mt-3 text-sm text-slate-500">Loading unassigned students...</p>
           </div>
           <div v-else-if="unassignedStudents.length === 0" class="text-center py-10 text-slate-400 italic">
             All students are already assigned to a section.
@@ -155,7 +155,7 @@
             class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
             @click="submitAssign"
           >
-            {{ assignSubmitting ? 'Assigning…' : 'Assign Selected' }}
+            {{ assignSubmitting ? 'Assigning...' : 'Assign Selected' }}
           </button>
         </div>
       </div>
@@ -175,7 +175,7 @@
         <div class="flex-1 overflow-auto p-5">
           <div v-if="sectionStudentsLoading" class="flex flex-col items-center py-10">
             <div class="w-7 h-7 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-            <p class="mt-3 text-sm text-slate-500">Loading section students…</p>
+            <p class="mt-3 text-sm text-slate-500">Loading section students...</p>
           </div>
 
           <div v-else-if="sectionStudents.length === 0" class="text-center py-10 text-slate-400 italic">
@@ -198,7 +198,7 @@
               <div class="min-w-0">
                 <p class="text-sm font-semibold text-slate-900 truncate">{{ s.last_name }}, {{ s.first_name }}</p>
                 <p class="text-xs text-slate-500 truncate">{{ s.student_number }}</p>
-                <p class="text-[11px] text-slate-400 truncate">{{ s.grade && s.section ? s.grade + ' / ' + s.section : '—' }}</p>
+                <p class="text-[11px] text-slate-400 truncate">{{ s.grade && s.section ? s.grade + ' / ' + s.section : '-' }}</p>
               </div>
             </label>
           </div>
@@ -220,7 +220,7 @@
               class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
               @click="submitUnassignSelected"
             >
-              {{ unassignSectionSubmitting ? 'Unassigning…' : 'Unassign Selected' }}
+              {{ unassignSectionSubmitting ? 'Unassigning...' : 'Unassign Selected' }}
             </button>
           </div>
         </div>
@@ -236,7 +236,7 @@
         <div class="flex justify-center gap-3 mt-5">
           <button @click="showDeleteModal = false" class="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">Cancel</button>
           <button @click="executeDelete" :disabled="deleting" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition disabled:opacity-50">
-            {{ deleting ? 'Deleting…' : 'Delete' }}
+            {{ deleting ? 'Deleting...' : 'Delete' }}
           </button>
         </div>
       </div>

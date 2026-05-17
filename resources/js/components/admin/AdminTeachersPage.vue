@@ -1,37 +1,32 @@
 <template>
   <div>
-    <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden">
       <!-- Toolbar (match screenshot layout) -->
       <div class="p-4 sm:p-5 border-b border-slate-200 bg-white flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <button
-            type="button"
-            class="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 shadow-sm transition inline-flex items-center gap-2"
-            @click="openCreateModal"
-          >
-            <Plus class="h-4 w-4" />
+          <AppButton @click="openCreateModal">
+            <template #icon><Plus class="h-4 w-4" /></template>
             Create Teacher
-          </button>
+          </AppButton>
 
-          <button
-            type="button"
-            class="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-800 hover:bg-indigo-100 transition inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            @click="openEhrisModal"
+          <AppButton
+            variant="soft"
             :disabled="ehrisModalLoading"
+            @click="openEhrisModal"
           >
-            <Users class="h-4 w-4" />
+            <template #icon><Users class="h-4 w-4" /></template>
             Fetch from EHRIS
-          </button>
+          </AppButton>
 
-          <button
-            type="button"
-            class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            @click="handleExport"
+          <AppButton
+            variant="secondary"
             :disabled="exporting"
+            :loading="exporting"
+            @click="handleExport"
           >
-            <Download class="h-4 w-4" />
+            <template #icon><Download class="h-4 w-4" /></template>
             {{ exporting ? 'Exporting...' : 'Export' }}
-          </button>
+          </AppButton>
         </div>
 
         <div class="flex items-center gap-2 w-full md:w-auto">
@@ -41,20 +36,19 @@
               v-model="searchQuery"
               type="search"
               placeholder="Search teachers..."
-              class="w-full md:w-64 rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+              class="w-full md:w-72 rounded-lg border border-slate-300 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-500"
               @input="debouncedTeacherSearch"
             />
           </div>
           <div class="relative shrink-0">
-            <button
-              type="button"
-              class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition"
+            <AppIconButton
+              label="Filter by grade / section"
+              size="lg"
               :class="(filterGrade || filterSection) ? 'ring-2 ring-indigo-200 border-indigo-200' : ''"
-              title="Filter by grade / section"
               @click="showFilterPanel = !showFilterPanel"
             >
               <Filter class="h-4 w-4" />
-            </button>
+            </AppIconButton>
             <div
               v-if="showFilterPanel"
               class="absolute right-0 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-lg z-20 text-left"
@@ -115,9 +109,9 @@
         <template v-if="lastSyncSummary.skipped_count">
           , {{ lastSyncSummary.skipped_count }} skipped
         </template>
-        · Users: {{ lastSyncSummary.users_created_count }} created,
+        - Users: {{ lastSyncSummary.users_created_count }} created,
         {{ lastSyncSummary.users_updated_count }} updated)
-        <span class="text-emerald-700/80">· {{ lastSyncSummary.at }}</span>
+        <span class="text-emerald-700/80">- {{ lastSyncSummary.at }}</span>
         <button
           type="button"
           class="ml-2 text-xs font-medium text-emerald-800 underline underline-offset-2 hover:text-emerald-950"
@@ -129,7 +123,7 @@
 
       <div class="overflow-x-auto">
         <table class="w-full text-sm text-left border-separate border-spacing-0">
-          <thead class="bg-slate-50 text-slate-500 text-xs font-medium">
+          <thead class="bg-slate-50 text-slate-600 text-xs font-semibold uppercase tracking-wide">
             <tr>
               <th class="py-3 px-4 border-b border-slate-200">Name</th>
               <th class="py-3 px-4 border-b border-slate-200">Employee ID</th>
@@ -142,7 +136,7 @@
             <tr
               v-for="(t, idx) in filteredTeachers"
               :key="t.id"
-              class="border-b border-slate-100 hover:bg-slate-50 transition"
+              class="border-b border-slate-100 hover:bg-sky-50/50 transition"
             >
               <td class="py-3 px-4">
                 <div 
@@ -175,37 +169,27 @@
                 </div>
               </td>
               <td class="py-3 px-4 text-slate-700 whitespace-nowrap">
-                {{ t.employee_id || '—' }}
+                {{ t.employee_id || '-' }}
               </td>
               <td class="py-3 px-4 text-slate-700">{{ formatTeacherGradeSection(t) }}</td>
               <td class="py-3 px-4 text-slate-600">{{ formatDate(t.created_at) }}</td>
               <td class="py-3 px-4 text-right">
                 <span class="inline-flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
-                    title="Edit teacher"
-                    @click="openEditModal(t)"
-                  >
+                  <AppIconButton label="Edit teacher" size="sm" @click="openEditModal(t)">
                     <PencilLine class="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-600 hover:text-red-600 hover:bg-slate-100 transition"
-                    title="Delete teacher"
-                    @click="confirmDelete(t)"
-                  >
+                  </AppIconButton>
+                  <AppIconButton label="Delete teacher" variant="danger" size="sm" @click="confirmDelete(t)">
                     <Trash2 class="h-4 w-4" />
-                  </button>
+                  </AppIconButton>
                 </span>
               </td>
             </tr>
             <tr v-if="loading && teachers.length === 0">
-              <td colspan="5" class="py-12 text-center text-slate-500">Loading…</td>
+              <td colspan="5" class="py-12 text-center text-slate-500">Loading...</td>
             </tr>
             <tr v-if="!loading && filteredTeachers.length === 0">
-              <td colspan="5" class="py-12 text-center text-slate-500">
-                {{ emptyTeachersMessage }}
+              <td colspan="5">
+                <AppEmptyState :title="emptyTeachersMessage" message="Try changing the search or grade/section filters." />
               </td>
             </tr>
           </tbody>
@@ -213,28 +197,24 @@
       </div>
       <div class="p-4 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3 bg-slate-50/60">
         <span class="text-sm text-slate-600">
-          Showing {{ filteredTeachers.length }} on this page · {{ teacherTotal }} total
+          Showing {{ filteredTeachers.length }} on this page - {{ teacherTotal }} total
         </span>
         <div class="flex items-center gap-2">
-          <button
-            type="button"
-            class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          <AppIconButton
+            label="Previous page"
             :disabled="teacherListPage <= 1"
             @click="goTeacherPage(teacherListPage - 1)"
-            title="Previous page"
           >
             <ChevronLeft class="h-4 w-4" />
-          </button>
+          </AppIconButton>
           <span class="text-sm text-slate-600 px-1">{{ teacherListPage }} / {{ teacherLastPage || 1 }}</span>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          <AppIconButton
+            label="Next page"
             :disabled="teacherListPage >= teacherLastPage"
             @click="goTeacherPage(teacherListPage + 1)"
-            title="Next page"
           >
             <ChevronRight class="h-4 w-4" />
-          </button>
+          </AppIconButton>
         </div>
       </div>
     </div>
@@ -461,8 +441,8 @@
             <h2 class="text-lg font-semibold text-slate-900">EHRIS teachers (preview)</h2>
             <p class="text-xs text-slate-500 mt-1">
               Active EHRIS accounts with role Teacher for DepEd ID
-              <span class="font-mono font-medium text-slate-700">{{ ehrisDepedSchoolId || '—' }}</span>
-              · Read-only from EHRIS; sync updates ScanUp only.
+              <span class="font-mono font-medium text-slate-700">{{ ehrisDepedSchoolId || '-' }}</span>
+              - Read-only from EHRIS; sync updates ScanUp only.
             </p>
           </div>
           <button
@@ -481,7 +461,7 @@
             <input
               v-model="ehrisSearchInput"
               type="search"
-              placeholder="Search name, email, employee ID…"
+              placeholder="Search name, email, employee ID..."
               class="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2.5 text-sm"
               @keyup.enter="loadEhrisPreview"
             />
@@ -503,7 +483,7 @@
 
         <div class="flex-1 overflow-auto min-h-[200px] p-4 sm:p-5">
           <div v-if="ehrisModalLoading && !ehrisRows.length" class="py-16 text-center text-slate-500 text-sm">
-            Loading EHRIS roster…
+            Loading EHRIS roster...
           </div>
           <div v-else-if="!ehrisRows.length && !ehrisModalLoading" class="py-16 text-center text-slate-500 text-sm">
             No EHRIS teachers found for this school. Check DepEd School ID on the school record or try another search.
@@ -559,7 +539,7 @@
 
         <div class="p-4 sm:p-5 border-t border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p class="text-xs text-slate-600">
-            {{ ehrisRows.length }} row(s) in preview · {{ ehrisSelectedIds.length }} selected
+            {{ ehrisRows.length }} row(s) in preview - {{ ehrisSelectedIds.length }} selected
           </p>
           <div class="flex flex-wrap gap-2 justify-end">
             <button
@@ -575,7 +555,7 @@
               :disabled="syncingEhris || !ehrisRows.length"
               @click="runEhrisSyncSelected"
             >
-              {{ syncingEhris ? 'Syncing…' : 'Sync selected' }}
+              {{ syncingEhris ? 'Syncing...' : 'Sync selected' }}
             </button>
             <button
               type="button"
@@ -583,7 +563,7 @@
               :disabled="syncingEhris || !ehrisRows.length"
               @click="runEhrisSyncAll"
             >
-              {{ syncingEhris ? 'Syncing…' : 'Sync all in preview' }}
+              {{ syncingEhris ? 'Syncing...' : 'Sync all in preview' }}
             </button>
           </div>
         </div>
@@ -604,7 +584,7 @@
         <div class="flex justify-end gap-2">
           <button type="button" class="rounded-md border border-stone-300 px-4 py-2 text-sm" @click="showDeleteModal = false">Cancel</button>
           <button type="button" class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50" :disabled="deleting" @click="executeDelete">
-            {{ deleting ? 'Deleting…' : 'Delete' }}
+            {{ deleting ? 'Deleting...' : 'Delete' }}
           </button>
         </div>
       </div>
@@ -651,6 +631,9 @@ import { assetPath } from '../../composables/useAsset';
 import { ref, computed, onMounted, watch } from 'vue';
 import axios from 'axios';
 import { PencilLine, Trash2, Plus, Download, Search, Filter, RefreshCw, Users, ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import AppButton from '../ui/AppButton.vue';
+import AppEmptyState from '../ui/AppEmptyState.vue';
+import AppIconButton from '../ui/AppIconButton.vue';
 import { fetchTeachers, createTeacher, updateTeacher, deleteTeacher, uploadTeacherPhoto, exportAdminTeachers, fetchEhrisTeachers, syncEhrisTeachers } from '../../services/adminService';
 
 const teachers = ref([]);
@@ -716,7 +699,7 @@ function formatTeacherGradeSection(t) {
   if (grade && section) return `${grade} / ${section}`;
   if (grade) return grade;
   if (section) return section;
-  return '—';
+  return '-';
 }
 
 const gradeFilterOptions = computed(() => {
@@ -878,7 +861,7 @@ function handlePhotoError(id) {
 }
 
 function formatDate(iso) {
-  if (!iso) return '—';
+  if (!iso) return '-';
   return new Date(iso).toLocaleDateString();
 }
 

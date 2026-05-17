@@ -120,18 +120,30 @@
       <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h2 class="text-lg font-semibold text-slate-900">Attendance Trends</h2>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <select v-model="trendFilter.group_by" @change="loadTrends" class="text-xs rounded-lg border-slate-200 focus:ring-slate-900">
               <option value="day">Daily</option>
               <option value="week">Weekly</option>
               <option value="month">Monthly</option>
             </select>
-            <input 
-              v-model="trendFilter.grade" 
-              @change="loadTrends" 
-              placeholder="Grade" 
-              class="text-xs w-16 rounded-lg border-slate-200 focus:ring-slate-900" 
-            />
+            <select
+              v-if="gradeOptions.length"
+              v-model="trendFilter.grade"
+              @change="onGradeFilterChange"
+              class="text-xs rounded-lg border-slate-200 focus:ring-slate-900"
+            >
+              <option value="">All grades</option>
+              <option v-for="grade in gradeOptions" :key="grade" :value="grade">{{ grade }}</option>
+            </select>
+            <select
+              v-if="sectionOptions.length"
+              v-model="trendFilter.section"
+              @change="loadTrends"
+              class="text-xs rounded-lg border-slate-200 focus:ring-slate-900"
+            >
+              <option value="">All sections</option>
+              <option v-for="section in sectionOptions" :key="section" :value="section">{{ section }}</option>
+            </select>
           </div>
         </div>
         <div class="h-[300px] relative">
@@ -294,9 +306,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive, computed } from 'vue';
+import { ref, onMounted, reactive, computed, watch } from 'vue';
 import axios from 'axios';
-import { fetchDashboardOverview, fetchSummaryReportPdfBlob, fetchDashboardStats, fetchAttendanceTrends } from '../../services/adminService';
+import { fetchDashboardOverview, fetchSummaryReportPdfBlob, fetchDashboardStats, fetchAttendanceTrends, fetchAdminSections } from '../../services/adminService';
 import {
   GraduationCap,
   Users,
@@ -345,6 +357,7 @@ const emit = defineEmits(['navigate']);
 const dashboardStats = ref({});
 const recentActivity = ref([]);
 const loading = ref(false);
+const schoolSections = ref([]);
 
 // ─── Population Modal State ─────────────────────────────────────────────
 // Why: Clicking "Male", "Female", or "Absent" on the status card should
@@ -451,6 +464,23 @@ const trendFilter = reactive({
 });
 
 const trendResponse = ref([]);
+
+const gradeOptions = computed(() => {
+  return [...new Set(
+    schoolSections.value
+      .map((section) => section.grade_level)
+      .filter(Boolean)
+  )].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+});
+
+const sectionOptions = computed(() => {
+  return [...new Set(
+    schoolSections.value
+      .filter((section) => !trendFilter.grade || section.grade_level === trendFilter.grade)
+      .map((section) => section.name)
+      .filter(Boolean)
+  )].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+});
 
 const trendData = computed(() => ({
   labels: trendResponse.value.map(item => item.label),
@@ -589,6 +619,30 @@ function quickGoStudents() {
   emit('navigate', 'students');
 }
 
+async function loadSectionFilters() {
+  try {
+    schoolSections.value = await fetchAdminSections();
+  } catch {
+    schoolSections.value = [];
+    trendFilter.grade = '';
+    trendFilter.section = '';
+  }
+}
+
+function onGradeFilterChange() {
+  if (trendFilter.section && !sectionOptions.value.includes(trendFilter.section)) {
+    trendFilter.section = '';
+  }
+  loadTrends();
+}
+
+watch(sectionOptions, (options) => {
+  if (trendFilter.section && !options.includes(trendFilter.section)) {
+    trendFilter.section = '';
+    loadTrends();
+  }
+});
+
 async function loadOverview() {
   try {
     const data = await fetchDashboardOverview();
@@ -600,6 +654,7 @@ async function loadOverview() {
 
 async function loadData() {
   loading.value = true;
+  await loadSectionFilters();
   await Promise.all([
     (async () => {
       try {

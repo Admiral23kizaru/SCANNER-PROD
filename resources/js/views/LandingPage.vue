@@ -216,7 +216,7 @@
             </div>
             <div class="sys-desc">Document Tracking System</div>
           </a>
-          <a class="sys-card" href="http://58.69.118.16:83/ehris/" target="_blank" rel="noopener noreferrer">
+          <a class="sys-card" href="http://58.69.118.16:88/ehris/" target="_blank" rel="noopener noreferrer">
             <div class="sys-logo sys-logo--dawn">
               <img :src="dawnImg" alt="D.A.W.N. Protocol" class="sys-icon-img" />
             </div>
@@ -230,7 +230,7 @@
           </a>
           <a
             class="sys-card"
-            href="https://dtsnew.deped10.com/login"
+            href="http://122.3.185.245/rox-cms/"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -367,7 +367,7 @@
             Region X
           </p>
           <div class="hero-actions">
-            <RouterLink class="btn btn-primary" to="/scanner">Get Started</RouterLink>
+            <a class="btn btn-primary" href="#manual">User Manual</a>
             <RouterLink class="btn btn-secondary" to="/login">Admin Login</RouterLink>
           </div>
         </div>
@@ -414,78 +414,115 @@
       </div>
     </section>
 
-    <!-- Section 8 — Stats -->
+    <!-- Section 8 - User Manual -->
+    <section id="manual" class="manual">
+      <div class="manual-inner">
+        <div class="section-kicker">User Manual</div>
+        <h2>How to use the ScanUp system</h2>
+        <div class="manual-grid">
+          <div class="manual-card">
+            <div class="manual-role">Admin / Principal</div>
+            <p>Log in to the admin workspace, fetch EHRIS accounts, sync the approved teachers, create sections, register students, and monitor school attendance.</p>
+          </div>
+          <div class="manual-card">
+            <div class="manual-role">Teacher</div>
+            <p>Use the EHRIS-based account only after the school admin has synced it into ScanUp, then manage assigned learner records and class data.</p>
+          </div>
+          <div class="manual-card">
+            <div class="manual-role">Guard Scanner</div>
+            <p>Open the live BAT launcher, enter the school's department ID, sign in through the authorized terminal, and scan learner QR-ID cards.</p>
+          </div>
+          <div class="manual-card">
+            <div class="manual-role">Reports</div>
+            <p>Use the dashboard and attendance views to compare encoded learners against actual daily scan activity for the selected school.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 9 - Stats -->
     <section class="stats">
       <div class="stats-inner">
         <div class="stat-card">
           <div class="stat-label">Total Schools</div>
           <div class="stat-value">58</div>
+          <div class="stat-note">Division-wide coverage</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Students Enrolled</div>
+          <div class="stat-label">Students Registered</div>
           <div class="stat-value">{{ studentsEnrolledText }}</div>
+          <div class="stat-note">All ScanUp school records</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Scans Today</div>
           <div class="stat-value">{{ scansTodayText }}</div>
+          <div class="stat-note">All school terminals</div>
         </div>
       </div>
     </section>
 
-    <!-- Section 8 — Footer -->
+    <!-- Section 10 - Footer -->
     <footer class="footer">
       <div class="systems-banner">
-        <img
-          :src="imageTempSrc('EBEIS.png')"
-          @error="onFooterImgError($event, 'EBEIS.png')"
-          alt="Enhanced Basic Education Information System banner"
-        />
-        <img
-          :src="imageTempSrc('LIS.png')"
-          @error="onFooterImgError($event, 'LIS.png')"
-          alt="Learner Information System banner"
-        />
-        <img
-          :src="imageTempSrc('LRMDS.png')"
-          @error="onFooterImgError($event, 'LRMDS.png')"
-          alt="Learning Resource Management and Development System banner"
-        />
-        <img
-          :src="imageTempSrc('dpds.png')"
-          @error="onFooterImgError($event, 'dpds.png')"
-          alt="DepEd Partnership Database System banner"
-        />
+        <a href="https://ebeis.deped.gov.ph/beis/" target="_blank" rel="noopener noreferrer">
+          <img
+            :src="imageTempSrc('EBEIS.png')"
+            @error="onFooterImgError($event, 'EBEIS.png')"
+            alt="Enhanced Basic Education Information System banner"
+          />
+        </a>
+        <a href="http://lis.deped.gov.ph/" target="_blank" rel="noopener noreferrer">
+          <img
+            :src="imageTempSrc('LIS.png')"
+            @error="onFooterImgError($event, 'LIS.png')"
+            alt="Learner Information System banner"
+          />
+        </a>
+        <a href="https://lrmds.deped.gov.ph/" target="_blank" rel="noopener noreferrer">
+          <img
+            :src="imageTempSrc('LRMDS.png')"
+            @error="onFooterImgError($event, 'LRMDS.png')"
+            alt="Learning Resource Management and Development System banner"
+          />
+        </a>
+        <a href="https://partnershipsdatabase.deped.gov.ph/" target="_blank" rel="noopener noreferrer">
+          <img
+            :src="imageTempSrc('dpds.png')"
+            @error="onFooterImgError($event, 'dpds.png')"
+            alt="DepEd Partnership Database System banner"
+          />
+        </a>
       </div>
 
       <div class="seals-row">
-        <div class="seal-item">
+        <a class="seal-item" href="https://www.foi.gov.ph/" target="_blank" rel="noopener noreferrer">
           <img
             :src="imageTempSrc('foi-logo-160x160-4.png')"
             @error="onFooterImgError($event, 'foi-logo-160x160-4.png')"
             alt="Freedom of Information Philippines seal"
           />
-        </div>
-        <div class="seal-item">
+        </a>
+        <a class="seal-item" href="https://ozamiz.deped.gov.ph/transparency/" target="_blank" rel="noopener noreferrer">
           <img
             :src="imageTempSrc('transparency-seal-160x160-2.png')"
             @error="onFooterImgError($event, 'transparency-seal-160x160-2.png')"
             alt="Philippine Transparency Seal"
           />
-        </div>
-        <div class="seal-item">
+        </a>
+        <a class="seal-item" href="https://www.deped.gov.ph/" target="_blank" rel="noopener noreferrer">
           <img
             :src="imageTempSrc('depedlogo-1.png')"
             @error="onFooterImgError($event, 'depedlogo-1.png')"
             alt="Kagawaran ng Edukasyon seal"
           />
-        </div>
-        <div class="seal-item">
+        </a>
+        <a class="seal-item" href="http://deped10.com/" target="_blank" rel="noopener noreferrer">
           <img
             :src="imageTempSrc('region-1.png')"
             @error="onFooterImgError($event, 'region-1.png')"
             alt="DepEd Region X seal"
           />
-        </div>
+        </a>
       </div>
 
       <div class="footer-main">
@@ -531,12 +568,12 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { RouterLink, useRouter } from 'vue-router';
+import { RouterLink } from 'vue-router';
 import axios from 'axios';
 import AccessibilityToolbar from '../components/AccessibilityToolbar.vue';
 import { assetPath, getAssetRoot } from '../composables/useAsset';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faPhone, faEnvelope, faMagnifyingGlass, faQrcode } from '@fortawesome/free-solid-svg-icons';
+import { faPhone, faEnvelope } from '@fortawesome/free-solid-svg-icons';
 import { faFacebook } from '@fortawesome/free-brands-svg-icons';
 
 const depedLogo = assetPath('/logo/depedozamiz.png');
@@ -550,7 +587,6 @@ const scanupImg = assetPath('/images/scanup.png');
 const openDropdown = ref(null);
 const searchQuery = ref('');
 const isMobileMenuOpen = ref(false);
-const router = useRouter();
 const pstNow = ref('');
 let tick = null;
 
@@ -666,10 +702,12 @@ function updateClock() {
 
 async function loadStats() {
   try {
-    const { data } = await axios.get('/api/attendance/public/stats', { headers: { Accept: 'application/json' } });
-    scansToday.value = Number(data?.total_today ?? 0);
+    const { data } = await axios.get('/api/attendance/public/division-stats', { headers: { Accept: 'application/json' } });
+    scansToday.value = Number(data?.scans_today ?? 0);
+    studentsEnrolled.value = Number(data?.students_enrolled ?? 0);
   } catch {
     scansToday.value = null;
+    studentsEnrolled.value = null;
   }
 }
 
@@ -1369,6 +1407,66 @@ onUnmounted(() => {
   color: #ea580c;
 }
 
+.stat-note {
+  margin-top: 6px;
+  color: rgba(31, 41, 55, 0.62);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* User manual */
+.manual {
+  background: #ffffff;
+  padding: 34px 0;
+}
+
+.manual-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.section-kicker {
+  color: #ea580c;
+  font-size: 11px;
+  font-weight: 1000;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.manual-inner h2 {
+  margin: 6px 0 16px;
+  font-size: 22px;
+  color: #1e3a5f;
+  font-weight: 1000;
+}
+
+.manual-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.manual-card {
+  border: 1px solid rgba(31, 41, 55, 0.12);
+  border-radius: 14px;
+  padding: 16px;
+  background: #f9fafb;
+}
+
+.manual-role {
+  color: #1e3a5f;
+  font-weight: 1000;
+}
+
+.manual-card p {
+  margin: 8px 0 0;
+  color: rgba(31, 41, 55, 0.78);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
 /* How section */
 .how {
   background: #f3f4f6;
@@ -1463,6 +1561,11 @@ onUnmounted(() => {
   padding: 0;
 }
 
+.systems-banner a {
+  display: block;
+  text-decoration: none;
+}
+
 .systems-banner img {
   width: 100%;
   height: 60px;
@@ -1486,6 +1589,13 @@ onUnmounted(() => {
   justify-content: center;
   align-items: center;
   padding: 10px;
+  text-decoration: none;
+  transition: transform 0.15s ease;
+}
+
+.seals-row .seal-item:hover,
+.systems-banner a:hover {
+  transform: translateY(-1px);
 }
 
 .seals-row img {

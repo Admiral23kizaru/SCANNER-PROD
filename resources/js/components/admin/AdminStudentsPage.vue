@@ -1,26 +1,22 @@
 <template>
   <div>
-    <div class="bg-white rounded-xl shadow-md border border-slate-200">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden">
       <!-- Toolbar matching AdminTeachersPage layout -->
-      <div class="p-4 sm:p-5 border-b border-slate-200 bg-white rounded-t-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+      <div class="p-4 sm:p-5 border-b border-slate-200 bg-white flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <button
-            type="button"
-            class="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 shadow-sm transition inline-flex items-center gap-2"
-            @click="openCreateModal"
-          >
-            <Plus class="h-4 w-4" />
+          <AppButton @click="openCreateModal">
+            <template #icon><Plus class="h-4 w-4" /></template>
             Create Student
-          </button>
-          <button
-            type="button"
-            class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            @click="handleExport"
+          </AppButton>
+          <AppButton
+            variant="secondary"
+            :loading="exporting"
             :disabled="exporting"
+            @click="handleExport"
           >
-            <Download class="h-4 w-4" />
+            <template #icon><Download class="h-4 w-4" /></template>
             {{ exporting ? 'Exporting...' : 'Export' }}
-          </button>
+          </AppButton>
         </div>
 
         <div class="flex items-center gap-2 w-full md:w-auto">
@@ -30,23 +26,22 @@
               v-model="searchQuery"
               type="search"
               placeholder="Search students..."
-              class="w-full md:w-64 rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+              class="w-full md:w-72 rounded-lg border border-slate-300 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-500"
               @input="debouncedFetch"
             />
           </div>
           <div class="relative shrink-0">
-            <button
-              type="button"
-              class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition relative"
+            <AppIconButton
+              label="Filter"
+              size="lg"
               :class="{ 'bg-slate-100 ring-2 ring-slate-200': showFilterDropdown || activeFiltersCount > 0 }"
-              title="Filter"
               @click="showFilterDropdown = !showFilterDropdown"
             >
               <Filter class="h-4 w-4" />
               <div v-if="activeFiltersCount > 0" class="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 bg-blue-600 text-white text-[9px] font-bold rounded-full border-2 border-white shadow-sm">
                 {{ activeFiltersCount }}
               </div>
-            </button>
+            </AppIconButton>
 
             <!-- Invisible backdrop to close dropdown -->
             <div v-if="showFilterDropdown" class="fixed inset-0 z-40" @click="showFilterDropdown = false"></div>
@@ -101,7 +96,7 @@
 
       <div class="overflow-x-auto">
         <table class="w-full text-sm text-left border-separate border-spacing-0">
-          <thead class="bg-slate-50 text-slate-500 text-xs font-medium">
+          <thead class="bg-slate-50 text-slate-600 text-xs font-semibold uppercase tracking-wide">
             <tr>
               <th class="py-3 px-4 border-b border-slate-200">Photo</th>
               <th class="py-3 px-4 border-b border-slate-200">Full Name</th>
@@ -116,7 +111,7 @@
             <tr
               v-for="(row) in students"
               :key="row.id"
-              class="border-b border-slate-100 hover:bg-slate-50 transition"
+              class="border-b border-slate-100 hover:bg-sky-50/50 transition"
             >
                <td class="py-3 px-4">
                 <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-200 shrink-0 shadow-sm">
@@ -141,44 +136,31 @@
                   <div class="font-medium text-slate-900 truncate">{{ row.full_name }}</div>
                 </div>
               </td>
-              <td class="py-3 px-4 text-slate-600">{{ row.gender || '—' }}</td>
+              <td class="py-3 px-4 text-slate-600">{{ row.gender || '-' }}</td>
               <td class="py-3 px-4 font-mono text-slate-700 whitespace-nowrap">{{ row.student_number }}</td>
               <td class="py-3 px-4 text-slate-700">{{ formatGradeSection(row) }}</td>
-              <td class="py-3 px-4 text-slate-600">{{ row.guardian || '—' }}</td>
+              <td class="py-3 px-4 text-slate-600">{{ row.guardian || '-' }}</td>
               <td class="py-3 px-4 text-right">
                 <span class="inline-flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
-                    title="Generate QR Code (LRN)"
-                    @click="openQrModal(row)"
-                  >
+                  <AppIconButton label="Generate QR Code (LRN)" variant="soft" size="sm" @click="openQrModal(row)">
                     <QrCode class="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
-                    title="Edit student"
-                    @click="openEditModal(row)"
-                  >
+                  </AppIconButton>
+                  <AppIconButton label="Edit student" size="sm" @click="openEditModal(row)">
                     <PencilLine class="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-md text-slate-600 hover:text-red-600 hover:bg-slate-100 transition"
-                    title="Delete student"
-                    @click="confirmDelete(row)"
-                  >
+                  </AppIconButton>
+                  <AppIconButton label="Delete student" variant="danger" size="sm" @click="confirmDelete(row)">
                     <Trash2 class="h-4 w-4" />
-                  </button>
+                  </AppIconButton>
                 </span>
               </td>
             </tr>
             <tr v-if="loading && students.length === 0">
-              <td colspan="7" class="py-12 text-center text-slate-500">Loading…</td>
+              <td colspan="7" class="py-12 text-center text-slate-500">Loading...</td>
             </tr>
             <tr v-if="!loading && students.length === 0">
-              <td colspan="7" class="py-12 text-center text-slate-500">No students found.</td>
+              <td colspan="7">
+                <AppEmptyState title="No students found." message="Try adjusting the search or filter options." />
+              </td>
             </tr>
           </tbody>
         </table>
@@ -187,28 +169,24 @@
       <!-- Footer pagination -->
       <div class="p-4 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3 bg-slate-50/60 rounded-b-xl">
         <span class="text-sm text-slate-600">
-          Showing {{ total ? (currentPage - 1) * perPage + 1 : 0 }}–{{ Math.min(currentPage * perPage, total) }} of {{ total }} entries
+          Showing {{ total ? (currentPage - 1) * perPage + 1 : 0 }}-{{ Math.min(currentPage * perPage, total) }} of {{ total }} entries
         </span>
         <div class="flex items-center gap-2">
-          <button
-            type="button"
-            class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          <AppIconButton
+            label="Previous"
             :disabled="currentPage <= 1"
             @click="goToPage(currentPage - 1)"
-            title="Previous"
           >
             <ChevronLeft class="h-4 w-4" />
-          </button>
+          </AppIconButton>
           <span class="text-sm text-slate-600 px-1">{{ currentPage }} / {{ lastPage || 1 }}</span>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          <AppIconButton
+            label="Next"
             :disabled="currentPage >= lastPage"
             @click="goToPage(currentPage + 1)"
-            title="Next"
           >
             <ChevronRight class="h-4 w-4" />
-          </button>
+          </AppIconButton>
         </div>
       </div>
     </div>
@@ -279,9 +257,9 @@
                 v-model.number="form.notification_preference"
                 class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm bg-white"
               >
-                <option :value="0">No SMS — Email only (free, unlimited)</option>
-                <option :value="1">Regular SMS — 1 SMS per day + Email</option>
-                <option :value="2">VIP SMS — Every scan SMS + Email</option>
+                <option :value="0">No SMS - Email only (free, unlimited)</option>
+                <option :value="1">Regular SMS - 1 SMS per day + Email</option>
+                <option :value="2">VIP SMS - Every scan SMS + Email</option>
               </select>
               <p class="mt-1 text-xs text-stone-400">Email is always sent on every scan regardless of this setting.</p>
             </div>
@@ -289,7 +267,7 @@
             <div class="rounded-lg border border-stone-200 bg-stone-50/60 p-4">
               <div class="text-sm font-semibold text-stone-800 mb-2">Subject Enrollment</div>
               <p class="text-xs text-stone-500 mb-3">Select the subjects this student is enrolled in.</p>
-              <div v-if="availableSubjects.length === 0" class="text-sm text-stone-500">No subjects available. Add subjects in “Manage Subjects”.</div>
+              <div v-if="availableSubjects.length === 0" class="text-sm text-stone-500">No subjects available. Add subjects in Manage Subjects.</div>
               <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <label
                   v-for="sub in availableSubjects"
@@ -327,7 +305,7 @@
       <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 border border-slate-200" @click.stop>
         <h2 class="text-lg font-semibold text-slate-900 mb-1">Student QR Code</h2>
         <p class="text-xs text-slate-500 mb-4">Encodes LRN only (for scanner compatibility).</p>
-        <div v-if="qrLoading" class="py-12 text-center text-slate-500 text-sm">Loading…</div>
+        <div v-if="qrLoading" class="py-12 text-center text-slate-500 text-sm">Loading...</div>
         <div v-else-if="qrError" class="text-sm text-red-600 mb-4">{{ qrError }}</div>
         <template v-else>
           <p class="text-sm font-medium text-slate-800 text-center mb-1">{{ qrFullName }}</p>
@@ -376,7 +354,7 @@
             :disabled="deleting"
             @click="executeDelete"
           >
-            {{ deleting ? 'Deleting…' : 'Delete' }}
+            {{ deleting ? 'Deleting...' : 'Delete' }}
           </button>
         </div>
       </div>
@@ -389,6 +367,9 @@ import { assetPath } from '../../composables/useAsset';
 import { ref, onMounted, computed } from 'vue';
 import { Search, PencilLine, Trash2, QrCode, Plus, Download, Filter, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import QRCode from 'qrcode';
+import AppButton from '../ui/AppButton.vue';
+import AppEmptyState from '../ui/AppEmptyState.vue';
+import AppIconButton from '../ui/AppIconButton.vue';
 import {
   fetchAdminStudents,
   createAdminStudent,
@@ -622,7 +603,7 @@ function formatGradeSection(row) {
   // Fallback to server-computed combined value.
   if (row?.grade_section) return row.grade_section;
 
-  return '—';
+  return '-';
 }
 
 function closeForm() {

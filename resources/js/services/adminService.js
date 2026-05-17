@@ -76,6 +76,18 @@ export async function fetchAttendanceTrends(params = {}) {
 }
 
 /**
+ * Fetch school-scoped sections for admin dropdowns.
+ *
+ * @returns {Promise<Array<{ id: number, name: string, grade_level: string, teacher_id?: number }>>}
+ */
+export async function fetchAdminSections() {
+    const { data } = await axios.get(base + '/sections', {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data.data || [];
+}
+
+/**
  * Fetch the dashboard overview: stats + recent activity feed (attendance + new users).
  *
  * @returns {Promise<{

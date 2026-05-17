@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen overflow-hidden bg-slate-50 text-slate-900 flex">
+  <div class="h-screen overflow-hidden bg-[#f4f7fb] text-slate-900 flex">
     <!-- Sidebar -->
     <AdminSidebar
       :currentPage="currentPage"
@@ -16,7 +16,7 @@
     ></div>
 
     <!-- Main content -->
-    <div class="flex-1 flex flex-col bg-slate-50 min-w-0 h-full overflow-hidden">
+    <div class="flex-1 flex flex-col bg-[#f4f7fb] min-w-0 h-full overflow-hidden">
       <!-- Top navbar -->
       <AdminHeader
         :user="user"
@@ -28,8 +28,8 @@
       />
 
       <!-- Page content -->
-      <main class="flex-1 overflow-auto px-4 py-6 lg:px-10 lg:py-8">
-        <div class="max-w-7xl mx-auto space-y-6">
+      <main class="flex-1 overflow-auto px-4 py-5 lg:px-8 lg:py-7">
+        <div class="max-w-[1500px] mx-auto space-y-6">
           <AdminDashboardStats v-if="currentPage === 'dashboard'" @navigate="(page) => { currentPage = page; }" />
           <AdminTeachersPage v-else-if="currentPage === 'teachers'" />
           <AdminStudentsPage v-else-if="currentPage === 'students'" />

@@ -7,6 +7,7 @@ use App\Models\Ehris\EhrisReportingManager;
 use App\Models\Ehris\EhrisUser;
 use App\Models\Role;
 use App\Models\School;
+use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -17,7 +18,7 @@ use Illuminate\Support\Str;
  * PURPOSE: All EHRIS authentication logic lives here.
  * Verifies teacher/reporting manager credentials
  * against EHRIS local database (read-only).
- * After verification, provisions the ScanUp user.
+ * After verification, provisions the ScanUp user when allowed.
  *
  * FLOW:
  * 1. Find user in EHRIS tbl_user by email
@@ -25,8 +26,9 @@ use Illuminate\Support\Str;
  * 3. Verify password with Hash::check
  * 4. Check tbl_reporting_manager for RM status
  * 5. Find ScanUp school via department_id
- * 6. Create or update ScanUp user (with trashed)
- * 7. Return ScanUp User for token issuance
+ * 6. Require Teacher accounts to already exist in tbl_scanup_teachers
+ * 7. Create or update ScanUp user (with trashed)
+ * 8. Return ScanUp User for token issuance
  *
  * ZERO WRITES TO EHRIS — read-only always.
  */
@@ -145,9 +147,9 @@ class EhrisAuthService
 
     /**
      * provisionUser
-     * PURPOSE: Creates or updates ScanUp user after
-     * successful EHRIS verification.
-     * WHY: Auto-creates on first login and restores soft-deleted rows safely.
+     * PURPOSE: Creates or updates ScanUp user after successful EHRIS verification.
+     * WHY: Reporting Managers can bootstrap their school, but Teacher accounts
+     * must already be synced through Fetch EHRIS before they can login.
      *
      * SOFT DELETE HANDLING:
      * Uses withTrashed() + restore() to avoid
@@ -195,6 +197,10 @@ class EhrisAuthService
             );
         }
 
+        if ($roleName === 'Teacher') {
+            $this->ensureTeacherWasSynced($ehrisUser, $school);
+        }
+
         $existing = User::withTrashed()
             ->where('email', $ehrisUser->email)
             ->first();
@@ -210,7 +216,7 @@ class EhrisAuthService
                 'role_id' => $role->id,
                 'school_id' => $school->id,
                 'status' => 'active',
-                'employee_id' => (string) ($ehrisUser->hrId ?? ''),
+                'employee_id' => (string) ($ehrisUser->hrId ?: $ehrisUser->userId),
                 'job_title' => $ehrisUser->job_title ?? null,
                 'password' => Str::random(64),
             ]
@@ -221,6 +227,60 @@ class EhrisAuthService
         }
 
         return $user->fresh();
+    }
+
+    /**
+     * ensureTeacherWasSynced
+     * PURPOSE: Block first-login auto-provisioning for EHRIS teachers.
+     * WHY: Teachers should only login after the Principal/Reporting Manager
+     * uses Fetch EHRIS / Sync All, which creates their tbl_scanup_teachers row.
+     *
+     * @param EhrisUser $ehrisUser Verified EHRIS Teacher row.
+     * @param School $school ScanUp school resolved from department_id.
+     *
+     * @throws \RuntimeException When the teacher is active in EHRIS but not yet synced.
+     */
+    private function ensureTeacherWasSynced(EhrisUser $ehrisUser, School $school): void
+    {
+        $employeeId = trim((string) ($ehrisUser->hrId ?: $ehrisUser->userId));
+        $email = strtolower(trim((string) ($ehrisUser->email ?? '')));
+
+        if ($employeeId === '' && $email === '') {
+            throw new \RuntimeException(
+                'Your EHRIS teacher account is missing both employee ID and email.'
+            );
+        }
+
+        $teacher = Teacher::where('school_id', $school->id)
+            ->where(function ($query) use ($employeeId, $email) {
+                if ($employeeId !== '') {
+                    $query->where('employee_id', $employeeId);
+                }
+
+                if ($email !== '') {
+                    if ($employeeId !== '') {
+                        $query->orWhere('email', $email);
+                    } else {
+                        $query->where('email', $email);
+                    }
+                }
+            })
+            ->first();
+
+        if (!$teacher) {
+            throw new \RuntimeException(
+                'Your EHRIS teacher account is active, but it has not been ' .
+                'synced in ScanUp yet. Ask your Principal or Reporting Manager ' .
+                'to use Fetch EHRIS / Sync All first.'
+            );
+        }
+
+        if (($teacher->status ?? 'active') !== 'active') {
+            throw new \RuntimeException(
+                'Your teacher account is inactive in ScanUp. Contact your ' .
+                'Principal or Reporting Manager.'
+            );
+        }
     }
 
     /**

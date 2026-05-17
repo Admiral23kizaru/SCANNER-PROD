@@ -72,6 +72,7 @@ Route::controller(PasswordResetController::class)->prefix('password')->group(fun
 Route::controller(AttendanceController::class)->group(function () {
     Route::get('/attendance/public/recent', 'publicRecent')->middleware('throttle:120,1');
     Route::get('/attendance/public/stats', 'publicStats')->middleware('throttle:120,1');  // public stats for Guard Terminal
+    Route::get('/attendance/public/division-stats', 'divisionPublicStats')->middleware('throttle:120,1');
 });
 
 /* ====================================================================== */

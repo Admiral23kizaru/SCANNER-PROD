@@ -46,7 +46,9 @@ class StatsController extends BaseController
             'total_students'    => Student::where('school_id', $schoolId)->count(),
             'total_teachers'    => User::where('role_id', $teacherRoleId)->where('school_id', $schoolId)->count(),
             'todays_attendance' => Attendance::where('school_id', $schoolId)
-                ->whereDate('scanned_at', now()->toDateString())->count(),
+                ->whereDate('scanned_at', now()->toDateString())
+                ->distinct('student_id')
+                ->count('student_id'),
         ]);
     }
 
@@ -116,23 +118,36 @@ class StatsController extends BaseController
             $totalTeachers    = $teacherRoleId === null
                 ? 0
                 : User::where('role_id', $teacherRoleId)->where('school_id', $schoolId)->count();
-            $todaysAttendance = Attendance::where('school_id', $schoolId)
-                ->whereDate('scanned_at', now()->toDateString())->count();
-
-            $maleToday   = Student::where('school_id', $schoolId)->where('gender', 'Male')->count();
-            $femaleToday = Student::where('school_id', $schoolId)->where('gender', 'Female')->count();
-
             $presentCount = Attendance::where('school_id', $schoolId)
                 ->whereDate('scanned_at', now()->toDateString())
                 ->distinct('student_id')
                 ->count('student_id');
+            $todaysAttendance = $presentCount;
             $absentToday = max(0, $totalStudents - $presentCount);
+
+            $presentStudentIds = Attendance::where('school_id', $schoolId)
+                ->whereDate('scanned_at', now()->toDateString())
+                ->select('student_id');
+
+            $maleToday = Student::where('school_id', $schoolId)
+                ->where('gender', 'Male')
+                ->whereIn('id', $presentStudentIds)
+                ->count();
+
+            $presentStudentIds = Attendance::where('school_id', $schoolId)
+                ->whereDate('scanned_at', now()->toDateString())
+                ->select('student_id');
+
+            $femaleToday = Student::where('school_id', $schoolId)
+                ->where('gender', 'Female')
+                ->whereIn('id', $presentStudentIds)
+                ->count();
 
             $attendanceQuery = DB::table('tbl_scanup_attendance as attendance')
                 ->join('tbl_scanup_students as students', 'attendance.student_id', '=', 'students.id')
                 ->whereDate('attendance.scanned_at', now()->toDateString())
                 ->where('attendance.school_id', $schoolId)
-                ->select('students.grade', DB::raw('count(*) as count'))
+                ->select('students.grade', DB::raw('count(DISTINCT attendance.student_id) as count'))
                 ->groupBy('students.grade');
             $attendancePerGrade = $attendanceQuery->get()->toArray();
 

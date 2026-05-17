@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Section;
 use App\Models\Student;
+use App\Models\Role;
+use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -80,11 +82,11 @@ class SectionController extends BaseController
         }
 
         if ($request->filled('teacher_id')) {
-            $teacherUser = \App\Models\User::where(
-                'id', $request->teacher_id
-            )->first();
-            if (!$teacherUser ||
-                $teacherUser->school_id !== $schoolId) {
+            $teacherUser = $this->assignableTeacherQuery($schoolId)
+                ->where('id', $request->teacher_id)
+                ->first();
+
+            if (!$teacherUser) {
                 return response()->json([
                     'message' => 'Selected teacher does not belong to your school.'
                 ], 422);
@@ -133,11 +135,11 @@ class SectionController extends BaseController
         }
 
         if ($request->filled('teacher_id')) {
-            $teacherUser = \App\Models\User::where(
-                'id', $request->teacher_id
-            )->first();
-            if (!$teacherUser ||
-                $teacherUser->school_id !== $schoolId) {
+            $teacherUser = $this->assignableTeacherQuery($schoolId)
+                ->where('id', $request->teacher_id)
+                ->first();
+
+            if (!$teacherUser) {
                 return response()->json([
                     'message' => 'Selected teacher does not belong to your school.'
                 ], 422);
@@ -299,22 +301,61 @@ class SectionController extends BaseController
     }
 
     /**
-     * PURPOSE: Return teacher-role users for section assignment dropdown in the authenticated admin's school.
-     * FIX: Uses getAuthSchoolId() and strict where('school_id', ...) filtering.
-     * LIMITATION: Depends on role table naming for Teacher.
+     * PURPOSE: Return synced teacher login users for section assignment in the authenticated school.
+     * WHY: EHRIS uses tbl_user.department_id for school assignment, but section assignment
+     *      must use ScanUp login IDs from tbl_scanup_users. Fetch EHRIS / Sync All writes
+     *      the school scope into tbl_scanup_users and tbl_scanup_teachers; this endpoint
+     *      reads only those same-school records.
+     * LIMITATION: Teachers must already be synced into ScanUp before they can be assigned.
      */
     public function teachers(Request $request): JsonResponse
     {
         $schoolId = $this->getAuthSchoolId();
-        $teacherRoleId = \App\Models\Role::where('name', 'Teacher')->value('id');
 
-        $teachers = User::where('role_id', $teacherRoleId)
-            ->where('school_id', $schoolId)
-            ->select('id', 'name', 'grade_level', 'section')
+        $teachers = $this->assignableTeacherQuery($schoolId)
+            ->select('id', 'name', 'email', 'employee_id', 'grade_level', 'section')
             ->orderBy('name')
             ->get();
 
         return response()->json(['data' => $teachers]);
+    }
+
+    /**
+     * PURPOSE: Build the single source of truth for teachers assignable to sections.
+     * WHY: Prevents the dropdown and submit validation from drifting apart.
+     *
+     * A teacher is assignable when:
+     * - their ScanUp user role is Teacher;
+     * - their ScanUp account is active;
+     * - their user row belongs to the admin school, or an older synced teacher profile
+     *   with the same email belongs to the admin school.
+     */
+    private function assignableTeacherQuery(int $schoolId)
+    {
+        $teacherRoleId = Role::where('name', 'Teacher')->value('id');
+
+        if ($teacherRoleId === null) {
+            return User::query()->whereRaw('1 = 0');
+        }
+
+        $teacherTable = (new Teacher())->getTable();
+        $userTable = (new User())->getTable();
+
+        return User::query()
+            ->where('role_id', $teacherRoleId)
+            ->where(function ($query) {
+                $query->whereNull('status')
+                    ->orWhere('status', 'active');
+            })
+            ->where(function ($query) use ($schoolId, $teacherTable, $userTable) {
+                $query->where($userTable . '.school_id', $schoolId)
+                    ->orWhereExists(function ($subquery) use ($schoolId, $teacherTable, $userTable) {
+                        $subquery->selectRaw('1')
+                            ->from($teacherTable)
+                            ->whereColumn($teacherTable . '.email', $userTable . '.email')
+                            ->where($teacherTable . '.school_id', $schoolId);
+                    });
+            });
     }
 
     /**
@@ -325,7 +366,11 @@ class SectionController extends BaseController
      */
     private function syncTeacherAssignment(int $teacherId, Section $section): void
     {
-        User::where('id', $teacherId)->update([
+        $schoolId = (int) $section->school_id;
+
+        $this->assignableTeacherQuery($schoolId)
+            ->where('id', $teacherId)
+            ->update([
             'grade_level' => $section->grade_level,
             'section'     => $section->name,
         ]);

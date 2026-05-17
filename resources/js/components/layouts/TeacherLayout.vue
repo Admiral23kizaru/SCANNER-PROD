@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen overflow-hidden bg-stone-50 text-stone-900 flex">
+  <div class="h-screen overflow-hidden bg-[#f4f7fb] text-slate-900 flex">
     <TeacherSidebar
       :currentTab="currentTab"
       :isSidebarOpen="isSidebarOpen"
@@ -10,7 +10,7 @@
 
     <div v-if="isSidebarOpen" class="fixed inset-0 z-40 bg-black/50 lg:hidden" @click="isSidebarOpen = false" />
 
-    <div class="flex-1 flex flex-col bg-stone-50 min-w-0 h-full overflow-hidden">
+    <div class="flex-1 flex flex-col bg-[#f4f7fb] min-w-0 h-full overflow-hidden">
       <TeacherHeader
         :user="user"
         :pageTitle="pageTitle"

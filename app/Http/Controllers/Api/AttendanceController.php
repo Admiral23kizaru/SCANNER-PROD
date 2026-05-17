@@ -352,6 +352,24 @@ class AttendanceController extends Controller
         ]);
     }
 
+    /**
+     * Public landing-page summary.
+     *
+     * This intentionally returns only aggregate, non-personal counts. Scanner
+     * and guard terminal requests must still use publicStats() with a school
+     * context so school-level isolation is preserved.
+     */
+    public function divisionPublicStats(): JsonResponse
+    {
+        $studentsEnrolled = Student::whereNull('deleted_at')->count();
+        $scansToday = Attendance::whereDate('scanned_at', today())->count();
+
+        return response()->json([
+            'students_enrolled' => (int) $studentsEnrolled,
+            'scans_today'       => (int) $scansToday,
+        ]);
+    }
+
     /* ====================================================================== */
     /*  Teacher-side scanner (authenticated)                                  */
     /* ====================================================================== */

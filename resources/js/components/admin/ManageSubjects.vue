@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden">
     <div class="p-4 sm:p-5 border-b border-slate-200 bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
       <div>
         <h2 class="text-lg font-semibold text-slate-900">Manage Subjects</h2>
@@ -7,7 +7,7 @@
       </div>
       <button
         type="button"
-        class="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 shadow-sm transition"
+        class="rounded-lg bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-800 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-sky-200"
         @click="openCreate"
       >
         Add Subject
@@ -20,7 +20,7 @@
 
     <div class="overflow-x-auto">
       <table class="w-full text-sm text-left">
-        <thead class="bg-slate-50 text-slate-500 text-xs font-medium">
+        <thead class="bg-slate-50 text-slate-600 text-xs font-semibold uppercase tracking-wide">
           <tr>
             <th class="py-3 px-4 border-b border-slate-200">Subject</th>
             <th class="py-3 px-4 border-b border-slate-200">Created</th>
@@ -28,21 +28,21 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="s in subjects" :key="s.id" class="border-b border-slate-100 hover:bg-slate-50 transition">
+          <tr v-for="s in subjects" :key="s.id" class="border-b border-slate-100 hover:bg-sky-50/50 transition">
             <td class="py-3 px-4 font-medium text-slate-900">{{ s.name }}</td>
             <td class="py-3 px-4 text-slate-600 text-xs">{{ formatTime(s.created_at) }}</td>
             <td class="py-3 px-4 text-right">
               <div class="inline-flex items-center gap-2">
                 <button
                   type="button"
-                  class="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
+                  class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                   @click="openEdit(s)"
                 >
                   Edit
                 </button>
                 <button
                   type="button"
-                  class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 transition"
+                  class="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 transition"
                   @click="openDelete(s)"
                 >
                   Delete
@@ -54,7 +54,7 @@
             <td colspan="3" class="py-12 text-center text-slate-400 italic">No subjects yet.</td>
           </tr>
           <tr v-if="loading && subjects.length === 0">
-            <td colspan="3" class="py-12 text-center text-slate-500">Loading…</td>
+            <td colspan="3" class="py-12 text-center text-slate-500">Loading...</td>
           </tr>
         </tbody>
       </table>
@@ -86,7 +86,7 @@
             class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
             :disabled="saving"
           >
-            {{ saving ? 'Saving…' : 'Save' }}
+            {{ saving ? 'Saving...' : 'Save' }}
           </button>
         </div>
       </form>
@@ -106,7 +106,7 @@
           :disabled="saving"
           @click="doDelete"
         >
-          {{ saving ? 'Deleting…' : 'Delete' }}
+          {{ saving ? 'Deleting...' : 'Delete' }}
         </button>
       </div>
     </div>
@@ -134,9 +134,9 @@ const form = ref({ name: '' });
 const formError = ref('');
 
 function formatTime(iso) {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '-';
   return d.toLocaleString();
 }
 
@@ -213,4 +213,3 @@ async function doDelete() {
 
 onMounted(load);
 </script>
-

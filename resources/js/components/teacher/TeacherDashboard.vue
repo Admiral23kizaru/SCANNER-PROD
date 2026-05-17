@@ -15,10 +15,10 @@
 
         <div v-show="currentTab === 'learners'" class="w-full">
            <!-- Page Content Wrapper -->
-           <div class="w-full mx-auto p-4 sm:p-6 lg:max-w-6xl">
+           <div class="w-full mx-auto p-4 sm:p-6 lg:max-w-[1400px]">
       <!-- White card with subtle shadow -->
-      <div class="bg-white rounded-lg shadow-md border border-stone-200 overflow-hidden">
-        <div class="p-4 sm:p-5 border-b border-stone-200 bg-stone-50/50">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-slate-200 bg-white">
           <div v-if="bulkImportResult" class="mb-3 p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
             Imported {{ bulkImportResult.imported }} learner(s). {{ bulkImportResult.skipped ? bulkImportResult.skipped + ' skipped (duplicate or invalid).' : '' }}
           </div>
@@ -26,11 +26,14 @@
             {{ bulkImportError }}
           </div>
           <div class="flex flex-wrap items-center justify-between gap-4">
-            <h2 class="text-lg font-semibold text-stone-800">List of Learners</h2>
+            <div>
+              <h2 class="text-lg font-semibold text-slate-900">Learner Master List</h2>
+              <p class="mt-1 text-sm text-slate-500">Search, import, and maintain learner records for your assigned class.</p>
+            </div>
           </div>
         </div>
         <!-- Toolbar (match screenshot layout) -->
-        <div class="p-4 border-b border-stone-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white">
+        <div class="p-4 border-b border-slate-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-slate-50/60">
           <div class="flex items-center gap-2 w-full md:w-auto">
             <label class="relative flex-1 md:flex-none md:w-[420px] max-w-full">
               <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400 pointer-events-none" />
@@ -38,18 +41,15 @@
                 v-model="searchQuery"
                 type="search"
                 placeholder="Search learners by name or LRN..."
-                class="w-full rounded-lg border border-stone-200 bg-white pl-9 pr-3 py-2.5 text-sm text-stone-700 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-200"
+                class="w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-500"
                 @input="debouncedFetch"
               />
             </label>
 
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition"
-            >
-              <Filter class="h-4 w-4 text-stone-500" />
+            <AppButton variant="secondary">
+              <template #icon><Filter class="h-4 w-4 text-slate-500" /></template>
               <span class="hidden sm:inline">Filter</span>
-            </button>
+            </AppButton>
           </div>
 
           <div class="flex flex-wrap items-center gap-2 w-full md:w-auto md:justify-end">
@@ -60,23 +60,15 @@
               class="sr-only"
               @change="onBulkImportFile"
             />
-            <span v-if="bulkImporting" class="text-sm text-stone-500 mr-2">Importing…</span>
-            <button
-              type="button"
-              class="rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition inline-flex items-center gap-2"
-              @click="triggerBulkImport"
-            >
-              <Upload class="h-4 w-4" />
+            <span v-if="bulkImporting" class="text-sm text-slate-500 mr-2">Importing...</span>
+            <AppButton variant="secondary" @click="triggerBulkImport">
+              <template #icon><Upload class="h-4 w-4" /></template>
               Bulk Import
-            </button>
-            <button
-              type="button"
-              class="rounded-lg bg-stone-900 px-3 py-2.5 text-sm font-medium text-white hover:bg-stone-800 transition inline-flex items-center gap-2"
-              @click="openAddModal"
-            >
-              <Plus class="h-4 w-4" />
+            </AppButton>
+            <AppButton @click="openAddModal">
+              <template #icon><Plus class="h-4 w-4" /></template>
               Add Learner
-            </button>
+            </AppButton>
           </div>
 
           <!-- Keep per-page control (UI hidden to match screenshot, logic unchanged) -->
@@ -92,93 +84,81 @@
 
         <div class="overflow-x-auto">
           <table class="w-full text-sm text-left">
-            <thead class="bg-stone-50 text-stone-500 text-xs font-medium">
+            <thead class="bg-slate-50 text-slate-600 text-xs font-semibold uppercase tracking-wide">
               <tr>
-                <th class="py-3 px-4 border-b border-stone-200">Last Name</th>
-                <th class="py-3 px-4 border-b border-stone-200">First Name</th>
-                <th class="py-3 px-4 border-b border-stone-200">Gender</th>
-                <th class="py-3 px-4 border-b border-stone-200">Middle Name</th>
-                <th class="py-3 px-4 border-b border-stone-200">Grade</th>
-                <th class="py-3 px-4 border-b border-stone-200">Section</th>
-                <th class="py-3 px-4 border-b border-stone-200">LRN</th>
-                <th class="py-3 px-4 border-b border-stone-200 text-right">Actions</th>
+                <th class="py-3 px-4 border-b border-slate-200">Last Name</th>
+                <th class="py-3 px-4 border-b border-slate-200">First Name</th>
+                <th class="py-3 px-4 border-b border-slate-200">Gender</th>
+                <th class="py-3 px-4 border-b border-slate-200">Middle Name</th>
+                <th class="py-3 px-4 border-b border-slate-200">Grade</th>
+                <th class="py-3 px-4 border-b border-slate-200">Section</th>
+                <th class="py-3 px-4 border-b border-slate-200">LRN</th>
+                <th class="py-3 px-4 border-b border-slate-200 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr
                 v-for="(row, idx) in students"
                 :key="row.id"
-                class="border-b border-stone-100 hover:bg-stone-50 transition"
+                class="border-b border-slate-100 hover:bg-sky-50/50 transition"
               >
-                <td class="py-4 px-4 font-medium text-stone-800 capitalize">{{ titleCase(row.last_name) }}</td>
-                <td class="py-4 px-4 text-stone-700 capitalize">{{ titleCase(row.first_name) }}</td>
-                <td class="py-4 px-4 text-stone-600 capitalize text-sm">{{ row.gender || '—' }}</td>
-                <td class="py-4 px-4 text-stone-600 capitalize">{{ row.middle_name ? titleCase(row.middle_name) : '—' }}</td>
-                <td class="py-4 px-4 text-stone-700">{{ row.grade || row.grade_section || '—' }}</td>
-                <td class="py-4 px-4 text-stone-700">{{ row.section || '—' }}</td>
-                <td class="py-4 px-4 font-mono text-stone-600 tabular-nums">{{ row.student_number }}</td>
+                <td class="py-4 px-4 font-semibold text-slate-900 capitalize">{{ titleCase(row.last_name) }}</td>
+                <td class="py-4 px-4 text-slate-700 capitalize">{{ titleCase(row.first_name) }}</td>
+                <td class="py-4 px-4 text-slate-600 capitalize text-sm">{{ row.gender || '-' }}</td>
+                <td class="py-4 px-4 text-slate-600 capitalize">{{ row.middle_name ? titleCase(row.middle_name) : '-' }}</td>
+                <td class="py-4 px-4 text-slate-700">{{ row.grade || row.grade_section || '-' }}</td>
+                <td class="py-4 px-4 text-slate-700">{{ row.section || '-' }}</td>
+                <td class="py-4 px-4 font-mono text-slate-600 tabular-nums">{{ row.student_number }}</td>
                 <td class="py-4 px-4 text-right">
                   <span class="inline-flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-stone-900 text-white hover:bg-stone-800 transition shadow-sm"
-                      title="Profile"
-                      @click="openViewModal(row)"
-                    >
+                    <AppIconButton label="Profile" variant="primary" @click="openViewModal(row)">
                       <User class="h-5 w-5" />
-                    </button>
-                    <button
-                      type="button"
-                      class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-stone-200 text-stone-800 hover:bg-stone-300 transition shadow-sm"
-                      title="Edit Profile"
-                      @click="openEditModal(row)"
-                    >
+                    </AppIconButton>
+                    <AppIconButton label="Edit Profile" @click="openEditModal(row)">
                       <Pencil class="h-5 w-5" />
-                    </button>
+                    </AppIconButton>
                   </span>
                 </td>
               </tr>
               <tr v-if="loading && students.length === 0">
-                <td colspan="7" class="py-12 text-center text-stone-500">Loading…</td>
+                <td colspan="8" class="py-12 text-center text-slate-500">Loading...</td>
               </tr>
               <tr v-if="!loading && students.length === 0">
-                <td colspan="7" class="py-12 text-center text-stone-500">No learners found.</td>
+                <td colspan="8">
+                  <AppEmptyState title="No learners found." message="Try searching by learner name or LRN." />
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div class="p-4 border-t border-stone-200 flex items-center justify-between flex-wrap gap-3 bg-white">
-          <span class="text-sm text-stone-600">
+        <div class="p-4 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3 bg-slate-50/60">
+          <span class="text-sm text-slate-600">
             Showing {{ total ? (currentPage - 1) * perPage + 1 : 0 }} to {{ Math.min(currentPage * perPage, total) }} of {{ total }} entries
           </span>
           <div class="flex items-center gap-2">
-            <button
-              type="button"
-              class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-stone-200 bg-white text-stone-700 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            <AppIconButton
+              label="Previous"
               :disabled="currentPage <= 1"
               @click="goToPage(currentPage - 1)"
-              title="Previous"
             >
               <ChevronLeft class="h-4 w-4" />
-            </button>
+            </AppIconButton>
             <button
               type="button"
-              class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-stone-900 text-white"
+              class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-sky-700 text-white"
               disabled
               title="Current page"
             >
               {{ currentPage }}
             </button>
-            <button
-              type="button"
-              class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-stone-200 bg-white text-stone-700 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            <AppIconButton
+              label="Next"
               :disabled="currentPage >= lastPage"
               @click="goToPage(currentPage + 1)"
-              title="Next"
             >
               <ChevronRight class="h-4 w-4" />
-            </button>
+            </AppIconButton>
           </div>
           </div>
         </div>
@@ -286,9 +266,9 @@
                 v-model.number="form.notification_preference"
                 class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-blue-700 focus:ring-1 focus:ring-blue-700 bg-white"
               >
-                <option :value="0">No SMS — Email only (free)</option>
-                <option :value="1">Regular SMS — 1 SMS per day + Email</option>
-                <option :value="2">VIP SMS — Every scan SMS + Email</option>
+                <option :value="0">No SMS - Email only (free)</option>
+                <option :value="1">Regular SMS - 1 SMS per day + Email</option>
+                <option :value="2">VIP SMS - Every scan SMS + Email</option>
               </select>
               <p class="mt-1 text-xs text-stone-400">Email is always sent on every scan.</p>
             </div>
@@ -364,12 +344,12 @@
         <dl class="space-y-2 text-sm">
           <div class="flex justify-between gap-4"><dt class="text-stone-500">Last name</dt><dd class="font-medium text-stone-800">{{ viewModalStudent?.last_name }}</dd></div>
           <div class="flex justify-between gap-4"><dt class="text-stone-500">First name</dt><dd class="font-medium text-stone-800">{{ viewModalStudent?.first_name }}</dd></div>
-          <div class="flex justify-between gap-4"><dt class="text-stone-500">Middle name</dt><dd class="text-stone-700">{{ viewModalStudent?.middle_name || '—' }}</dd></div>
-          <div class="flex justify-between gap-4"><dt class="text-stone-500">Grade</dt><dd class="text-stone-700">{{ viewModalStudent?.grade || '—' }}</dd></div>
-          <div class="flex justify-between gap-4"><dt class="text-stone-500">Section</dt><dd class="text-stone-700">{{ viewModalStudent?.section || '—' }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-stone-500">Middle name</dt><dd class="text-stone-700">{{ viewModalStudent?.middle_name || '-' }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-stone-500">Grade</dt><dd class="text-stone-700">{{ viewModalStudent?.grade || '-' }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-stone-500">Section</dt><dd class="text-stone-700">{{ viewModalStudent?.section || '-' }}</dd></div>
           <div class="flex justify-between gap-4"><dt class="text-stone-500">LRN</dt><dd class="tabular-nums text-stone-700">{{ viewModalStudent?.student_number }}</dd></div>
-          <div class="flex justify-between gap-4"><dt class="text-stone-500">Guardian</dt><dd class="text-stone-700">{{ viewModalStudent?.guardian || '—' }}</dd></div>
-          <div class="flex justify-between gap-4"><dt class="text-stone-500">Contact</dt><dd class="text-stone-700">{{ viewModalStudent?.contact_number || '—' }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-stone-500">Guardian</dt><dd class="text-stone-700">{{ viewModalStudent?.guardian || '-' }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-stone-500">Contact</dt><dd class="text-stone-700">{{ viewModalStudent?.contact_number || '-' }}</dd></div>
         </dl>
         <div class="mt-4 flex flex-wrap gap-2">
           <button
@@ -428,6 +408,9 @@ import TeacherProfileModal from './TeacherProfileModal.vue';
 import AttendanceMonitor from '../AttendanceMonitor.vue';
 import TeacherLayout from '../layouts/TeacherLayout.vue';
 import LearningAssessment from './LearningAssessment.vue';
+import AppButton from '../ui/AppButton.vue';
+import AppEmptyState from '../ui/AppEmptyState.vue';
+import AppIconButton from '../ui/AppIconButton.vue';
 
 const attendanceMonitorRef = ref(null);
 
