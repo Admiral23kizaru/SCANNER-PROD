@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\SystemAdminDashboardService;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Read-only API endpoints for the division-level System Admin workspace.
@@ -50,6 +51,68 @@ class SystemAdminController extends Controller
 
         return response()->json([
             'data' => $detail,
+        ]);
+    }
+
+    /**
+     * Return one school's read-only dashboard snapshot.
+     */
+    public function schoolDashboard(string $depedSchoolId): JsonResponse
+    {
+        $dashboard = $this->dashboard->schoolDashboard($depedSchoolId);
+
+        if (!$dashboard) {
+            return response()->json([
+                'message' => 'School not found.',
+            ], 404);
+        }
+
+        return response()->json([
+            'data' => $dashboard,
+        ]);
+    }
+
+    /**
+     * Export division school setup status as CSV.
+     */
+    public function exportSchools(): StreamedResponse
+    {
+        $rows = $this->dashboard->schools();
+
+        return response()->streamDownload(function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, [
+                'Department ID',
+                'School Name',
+                'School Type',
+                'School Head',
+                'Assigned Admin',
+                'Students',
+                'Teachers',
+                'Scans Today',
+                'Setup Status',
+                'Health',
+            ]);
+
+            foreach ($rows as $row) {
+                fputcsv($handle, [
+                    $row['deped_school_id'],
+                    $row['school_name'],
+                    $row['school_type'],
+                    $row['school_head']['name'] ?? '',
+                    $row['assigned_admin']['name'] ?? '',
+                    $row['students'],
+                    $row['teachers'],
+                    $row['attendance_today'],
+                    $row['setup_status'],
+                    $row['health']['label'] ?? '',
+                ]);
+            }
+
+            fclose($handle);
+        }, 'scanup-division-school-status.csv', [
+            'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
 }

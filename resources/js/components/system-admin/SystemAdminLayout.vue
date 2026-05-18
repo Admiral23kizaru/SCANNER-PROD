@@ -18,6 +18,13 @@
           </div>
           <button
             type="button"
+            class="rounded-md border border-blue-500 px-3 py-2 text-sm font-semibold text-blue-100 hover:bg-blue-950"
+            @click="downloadExport"
+          >
+            Export Status
+          </button>
+          <button
+            type="button"
             class="rounded-md border border-slate-600 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-800"
             @click="logout"
           >
@@ -39,10 +46,19 @@
           :schools="schools"
           :selected-id="selectedSchool?.deped_school_id || ''"
           @select="selectSchool"
+          @view-dashboard="openSchoolDashboard"
         />
         <SystemAdminSchoolDetail :school="selectedDetail" />
       </div>
     </main>
+
+    <SystemAdminSchoolDashboardModal
+      v-if="showDashboardModal"
+      :dashboard="dashboardPreview"
+      :loading="dashboardLoading"
+      :error="dashboardError"
+      @close="showDashboardModal = false"
+    />
   </div>
 </template>
 
@@ -52,10 +68,13 @@ import { assetPath } from '../../composables/useAsset';
 import { fetchUser } from '../../services/authService';
 import { useLogout } from '../../composables/useLogout';
 import {
+  exportSystemAdminSchools,
   fetchSystemAdminOverview,
+  fetchSystemAdminSchoolDashboard,
   fetchSystemAdminSchoolDetail,
   fetchSystemAdminSchools,
 } from '../../services/systemAdminService';
+import SystemAdminSchoolDashboardModal from './SystemAdminSchoolDashboardModal.vue';
 import SystemAdminOverviewCards from './SystemAdminOverviewCards.vue';
 import SystemAdminSchoolDetail from './SystemAdminSchoolDetail.vue';
 import SystemAdminSchoolTable from './SystemAdminSchoolTable.vue';
@@ -69,6 +88,10 @@ const schools = ref([]);
 const overview = ref({});
 const selectedSchool = ref(null);
 const selectedDetail = ref(null);
+const dashboardPreview = ref(null);
+const dashboardError = ref('');
+const dashboardLoading = ref(false);
+const showDashboardModal = ref(false);
 
 async function loadDashboard() {
   error.value = '';
@@ -108,6 +131,35 @@ async function selectSchool(school) {
     selectedDetail.value = await fetchSystemAdminSchoolDetail(school.deped_school_id);
   } catch (_) {
     // Keep the table row detail visible if the drill-down request fails.
+  }
+}
+
+async function openSchoolDashboard(school) {
+  showDashboardModal.value = true;
+  dashboardLoading.value = true;
+  dashboardError.value = '';
+  dashboardPreview.value = null;
+
+  try {
+    dashboardPreview.value = await fetchSystemAdminSchoolDashboard(school.deped_school_id);
+  } catch (err) {
+    dashboardError.value = err.response?.data?.message || 'Unable to load the selected school dashboard.';
+  } finally {
+    dashboardLoading.value = false;
+  }
+}
+
+async function downloadExport() {
+  try {
+    const blob = await exportSystemAdminSchools();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'scanup-division-school-status.csv';
+    link.click();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    error.value = err.response?.data?.message || 'Unable to export division status.';
   }
 }
 

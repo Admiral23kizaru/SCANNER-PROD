@@ -23,3 +23,19 @@ export async function fetchSystemAdminSchoolDetail(depedSchoolId) {
   });
   return data.data;
 }
+
+export async function fetchSystemAdminSchoolDashboard(depedSchoolId) {
+  const { data } = await axios.get(`${base}/schools/${encodeURIComponent(depedSchoolId)}/dashboard`, {
+    headers: authHeaders(),
+  });
+  return data.data;
+}
+
+export async function exportSystemAdminSchools() {
+  const response = await axios.get(`${base}/schools/export`, {
+    headers: authHeaders(),
+    responseType: 'blob',
+  });
+
+  return response.data;
+}

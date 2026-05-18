@@ -8,7 +8,9 @@ use App\Models\Ehris\EhrisReportingManager;
 use App\Models\Ehris\EhrisUser;
 use App\Models\Role;
 use App\Models\School;
+use App\Models\Section;
 use App\Models\Student;
+use App\Models\Subject;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -90,6 +92,9 @@ class SystemAdminDashboardService
             $school = $schoolsByDeped->get($depedId);
             $schoolId = $school?->id;
             $attendance = $schoolId ? $attendanceToday->get($schoolId) : null;
+            $studentTotal = $schoolId ? (int) ($studentCounts[$schoolId] ?? 0) : 0;
+            $teacherTotal = $schoolId ? (int) ($teacherCounts[$schoolId] ?? 0) : 0;
+            $scanTotal = $attendance ? (int) $attendance->total : 0;
 
             return [
                 'school_id' => $schoolId,
@@ -97,11 +102,13 @@ class SystemAdminDashboardService
                 'school_name' => $school?->name ?: ($assignment['school_name'] ?: (string) $department->department_name),
                 'school_head' => $this->schoolHeadFor($depedId),
                 'assigned_admin' => $this->assignedAdminFor($depedId),
-                'students' => $schoolId ? (int) ($studentCounts[$schoolId] ?? 0) : 0,
-                'teachers' => $schoolId ? (int) ($teacherCounts[$schoolId] ?? 0) : 0,
-                'attendance_today' => $attendance ? (int) $attendance->total : 0,
+                'students' => $studentTotal,
+                'teachers' => $teacherTotal,
+                'attendance_today' => $scanTotal,
                 'last_scan_at' => $attendance?->last_scan_at,
                 'setup_status' => $schoolId ? 'ready' : 'not_created',
+                'school_type' => $this->schoolTypeFor($school?->name ?: ($assignment['school_name'] ?: (string) $department->department_name)),
+                'health' => $this->healthFor($schoolId, $studentTotal, $teacherTotal, $scanTotal),
             ];
         })->values()->all();
     }
@@ -144,6 +151,81 @@ class SystemAdminDashboardService
                     : 0,
             ],
         ];
+    }
+
+    /**
+     * Return the selected school's read-only dashboard snapshot.
+     */
+    public function schoolDashboard(string $depedSchoolId): ?array
+    {
+        $detail = $this->schoolDetail($depedSchoolId);
+
+        if (!$detail) {
+            return null;
+        }
+
+        $schoolId = $detail['school_id'];
+        $today = now()->toDateString();
+
+        if (!$schoolId) {
+            return $detail + [
+                'attendance_by_grade' => [],
+                'attendance_trends' => [],
+                'recent_activity' => [],
+                'sections' => 0,
+                'subjects' => 0,
+                'health' => $this->healthFor(null, 0, 0, 0),
+            ];
+        }
+
+        $attendanceByGrade = DB::table('tbl_scanup_attendance as attendance')
+            ->join('tbl_scanup_students as students', 'attendance.student_id', '=', 'students.id')
+            ->where('attendance.school_id', $schoolId)
+            ->whereDate('attendance.scanned_at', $today)
+            ->select('students.grade', DB::raw('COUNT(DISTINCT attendance.student_id) as count'))
+            ->groupBy('students.grade')
+            ->orderBy('students.grade')
+            ->get();
+
+        $attendanceTrends = Attendance::where('school_id', $schoolId)
+            ->where('scanned_at', '>=', now()->subDays(14))
+            ->select(DB::raw('DATE(scanned_at) as label'), DB::raw('COUNT(DISTINCT student_id) as count'))
+            ->groupBy('label')
+            ->orderBy('label')
+            ->get();
+
+        $recentActivity = Attendance::with('student')
+            ->where('school_id', $schoolId)
+            ->orderByDesc('scanned_at')
+            ->limit(8)
+            ->get()
+            ->map(fn (Attendance $attendance) => [
+                'type' => 'attendance',
+                'title' => 'Student scan recorded',
+                'subtitle' => trim(
+                    ($attendance->student?->first_name ?? '') . ' ' .
+                    ($attendance->student?->last_name ?? '') . ' - ' .
+                    ($attendance->student?->grade ?? 'No grade') . ' ' .
+                    ($attendance->student?->section ?? '')
+                ),
+                'time' => $attendance->scanned_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+
+        $detail['sections'] = Section::where('school_id', $schoolId)->count();
+        $detail['subjects'] = Subject::where('school_id', $schoolId)->count();
+        $detail['attendance_by_grade'] = $attendanceByGrade;
+        $detail['attendance_trends'] = $attendanceTrends;
+        $detail['recent_activity'] = $recentActivity;
+        $detail['health'] = $this->healthFor(
+            $schoolId,
+            (int) $detail['stats']['students'],
+            (int) $detail['stats']['teachers'],
+            (int) $detail['stats']['attendance_today']
+        );
+
+        return $detail;
     }
 
     /**
@@ -236,6 +318,68 @@ class SystemAdminDashboardService
             'email' => (string) ($user->email ?? ''),
             'role' => (string) ($user->role ?? ''),
             'job_title' => (string) ($user->job_title ?? ''),
+        ];
+    }
+
+    /**
+     * Classify school names for filter chips.
+     */
+    private function schoolTypeFor(string $name): string
+    {
+        $lower = strtolower($name);
+
+        if (str_contains($lower, 'integrated')) {
+            return 'Integrated';
+        }
+
+        if (str_contains($lower, 'national high') || str_contains($lower, 'arts and trades')) {
+            return 'Secondary';
+        }
+
+        return 'Elementary';
+    }
+
+    /**
+     * Produce a short setup health verdict for the System Admin table.
+     */
+    private function healthFor(?int $schoolId, int $students, int $teachers, int $attendanceToday): array
+    {
+        if (!$schoolId) {
+            return [
+                'status' => 'needs_setup',
+                'label' => 'School not created',
+                'severity' => 'danger',
+            ];
+        }
+
+        if ($teachers === 0) {
+            return [
+                'status' => 'no_teachers',
+                'label' => 'No teachers synced',
+                'severity' => 'warning',
+            ];
+        }
+
+        if ($students === 0) {
+            return [
+                'status' => 'no_students',
+                'label' => 'No students encoded',
+                'severity' => 'warning',
+            ];
+        }
+
+        if ($attendanceToday === 0) {
+            return [
+                'status' => 'no_scans_today',
+                'label' => 'No scans today',
+                'severity' => 'notice',
+            ];
+        }
+
+        return [
+            'status' => 'healthy',
+            'label' => 'Active today',
+            'severity' => 'success',
         ];
     }
 
