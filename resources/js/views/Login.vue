@@ -427,7 +427,9 @@ async function submit() {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
     const roleName = data.user?.role?.name || data.user?.role_name || '';
-    if (roleName === 'Admin') {
+    if (roleName === 'System Admin') {
+      await router.replace('/system-admin');
+    } else if (roleName === 'Admin') {
       await router.replace('/admin');
     } else if (roleName === 'Teacher') {
       await router.replace('/teacher');

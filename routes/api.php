@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\SchoolController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\SectionController;
+use App\Http\Controllers\Api\SystemAdminController;
 use App\Http\Controllers\Api\TeacherManagementController;
 use Illuminate\Support\Facades\Route;
 use App\Services\SchoolResolver;
@@ -103,6 +104,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/teacher/students/{id}/id-url', 'getSignedUrl')->middleware('role:Teacher');
         Route::get('/admin/students/{id}/id-url', 'getSignedUrl')->middleware('role:Admin');
         Route::get('/admin/teachers/{id}/id-url', 'getTeacherSignedUrl')->middleware('role:Admin');
+    });
+
+    /* ------------------------------------------------------------------ */
+    /*  System Admin panel (division-level, read-only monitoring)          */
+    /* ------------------------------------------------------------------ */
+
+    Route::middleware('role:System Admin')->prefix('system-admin')->group(function () {
+        Route::get('/overview', [SystemAdminController::class, 'overview']);
+        Route::get('/schools', [SystemAdminController::class, 'schools']);
+        Route::get('/schools/{depedSchoolId}', [SystemAdminController::class, 'schoolDetail']);
     });
 
     /* ------------------------------------------------------------------ */

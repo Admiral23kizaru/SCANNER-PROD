@@ -93,6 +93,10 @@ class EhrisAuthService
      */
     public function getScanUpRoleName(EhrisUser $ehrisUser): string
     {
+        if (strcasecmp((string) ($ehrisUser->role ?? ''), 'System Admin') === 0) {
+            return 'System Admin';
+        }
+
         if ($this->isReportingManager((int) $ehrisUser->userId)) {
             return 'Reporting Manager';
         }
@@ -172,6 +176,10 @@ class EhrisAuthService
      */
     public function provisionUser(EhrisUser $ehrisUser, string $roleName): User
     {
+        if ($roleName === 'System Admin') {
+            return $this->provisionSystemAdmin($ehrisUser);
+        }
+
         $school = $this->resolveScanUpSchool($ehrisUser);
 
         if (!$school) {
@@ -218,6 +226,48 @@ class EhrisAuthService
                 'status' => 'active',
                 'employee_id' => (string) ($ehrisUser->hrId ?: $ehrisUser->userId),
                 'job_title' => $ehrisUser->job_title ?? null,
+                'password' => Str::random(64),
+            ]
+        );
+
+        if ($user->deleted_at) {
+            $user->restore();
+        }
+
+        return $user->fresh();
+    }
+
+    /**
+     * PURPOSE: Provision an EHRIS System Admin as a division-level ScanUp user.
+     * WHY: System Admin accounts, such as the Division ITO account, must not be
+     * bound to one school_id because they monitor all schools through a separate
+     * school selector dashboard.
+     *
+     * @param EhrisUser $ehrisUser Verified active EHRIS System Admin row.
+     * @return User Division-level ScanUp user.
+     */
+    private function provisionSystemAdmin(EhrisUser $ehrisUser): User
+    {
+        $role = Role::firstOrCreate(['name' => 'System Admin']);
+
+        $existing = User::withTrashed()
+            ->where('email', $ehrisUser->email)
+            ->first();
+
+        if ($existing && $existing->trashed()) {
+            $existing->restore();
+        }
+
+        $user = User::withTrashed()->updateOrCreate(
+            ['email' => $ehrisUser->email],
+            [
+                'name' => $ehrisUser->full_name,
+                'role_id' => $role->id,
+                'school_id' => null,
+                'school_name' => 'DepEd Ozamiz City Division',
+                'status' => 'active',
+                'employee_id' => (string) ($ehrisUser->hrId ?: $ehrisUser->userId),
+                'job_title' => $ehrisUser->job_title ?? 'System Admin',
                 'password' => Str::random(64),
             ]
         );

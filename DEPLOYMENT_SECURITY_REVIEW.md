@@ -325,7 +325,7 @@ Use these if they are not already present:
 *.7z
 *.rar
 .phpunit.result.cache
-public/hot
+public/hotjean.alindo@deped.gov.ph
 ```
 
 Be careful with `*.sql`: if you intentionally keep safe schema scripts in source control, move private dumps elsewhere first.
@@ -355,3 +355,208 @@ Highest priority:
 7. Protect phpMyAdmin
 8. Add noindex and security headers
 
+## Second-Pass Codebase Findings
+
+This section records the latest read-only security scan notes. No code changes were made.
+
+### Critical Before Live
+
+#### Production `.env`
+
+The local development values must not be used on the live server:
+
+```env
+APP_ENV=production
+APP_DEBUG=false
+LOG_LEVEL=error
+```
+
+Reason:
+
+- `APP_ENV=local` can enable local-only development behavior.
+- `APP_DEBUG=true` can expose stack traces, file paths, SQL details, and internal configuration.
+- `LOG_LEVEL=debug` can store too much sensitive activity in logs.
+
+#### Local `/qrid/{path}` Route
+
+There is a development-only route for `/qrid/{path}` in `routes/web.php`.
+
+It is only active when Laravel thinks the environment is `local`, but this makes correct live `.env` settings very important.
+
+Required live behavior:
+
+- Live must use `APP_ENV=production`.
+- Live must not expose arbitrary project files through `/qrid/...`.
+- Apache should serve from `public/`, not from the project root.
+
+#### Dependency Advisories
+
+The security scan found package advisories:
+
+- Composer:
+  - `phpoffice/phpspreadsheet` has critical/high advisories.
+  - `league/commonmark` has medium advisories.
+- NPM:
+  - `vite` has high advisories.
+  - `picomatch` has high advisories.
+  - `postcss` has a moderate advisory.
+
+Recommended action:
+
+```bash
+composer audit
+npm audit --omit=dev
+```
+
+Then update packages carefully, rebuild assets, and retest login, admin pages, Excel imports, ID generation, and scanner.
+
+### Recommended Before Demo
+
+#### Add a Security Headers Middleware or Apache Header Block
+
+Because the system is small, the cleanest protection is a reusable security header layer.
+
+Recommended headers:
+
+```text
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Referrer-Policy: same-origin
+Permissions-Policy: camera=(self), microphone=(), geolocation=()
+X-Robots-Tag: noindex, nofollow, nosnippet, noarchive
+```
+
+Content Security Policy should be tested first because the landing page uses external media/widgets.
+
+#### Protect `public/storage`
+
+Uploads are validated, but public upload folders still need server-level protection.
+
+Add a `public/storage/.htaccess` rule that prevents execution of PHP/scripts inside uploads.
+
+Purpose:
+
+- If a malicious file ever reaches uploads, Apache should serve it only as a file or block it.
+- It should never execute as PHP.
+
+#### Strengthen Public Route Throttling
+
+Current rate limits exist on important scanner routes. Add or confirm throttle protection for:
+
+- `/api/login`
+- `/api/password/request-otp`
+- `/api/password/verify-otp`
+- `/api/password/reset`
+- `/api/school/check/{deped_id}`
+- `/api/school/by-deped-id/{depedId}`
+
+Recommended approach:
+
+- Login: strict.
+- Password reset: strict.
+- School lookup: moderate.
+- Scanner scan: enough for real scanning, but not unlimited.
+
+#### BAT Launcher Hardening
+
+The launcher should be live-ready before demo:
+
+- Base URL should point to the live `/qrid` URL.
+- The visible scanner URL should keep `deped_id`, not token.
+- Do not keep long-lived tokens in plaintext longer than needed.
+- If possible, require re-login at the start of each scanner session.
+
+#### Remove Standalone Debug PHP Files From Production
+
+Standalone root PHP helper files are not needed for normal system use:
+
+```text
+check_stats_data.php
+user_roles_clean.php
+```
+
+Recommended:
+
+- Keep them only offline if needed for development.
+- Do not deploy them to the live web directory.
+
+### Optional Hardening For A Small System
+
+These are practical additions that fit the current feature size without overengineering.
+
+#### 1. Admin Audit Log
+
+Add a simple audit table later for important actions:
+
+- login success/failure
+- EHRIS fetch/sync
+- teacher create/update/delete
+- student create/update/delete
+- section assignment
+- scanner login
+
+Why useful:
+
+- During demo/live use, you can answer “who changed this?” quickly.
+
+#### 2. Login Attempt Visibility
+
+Add a small admin-only security panel later:
+
+- recent failed login count
+- recent scanner login failures
+- locked/throttled IPs or school IDs
+
+Why useful:
+
+- Helps detect brute-force attempts without reading server logs.
+
+#### 3. Safer Token Storage Roadmap
+
+The frontend currently uses bearer tokens in browser storage.
+
+For a small demo system this is workable, but long-term safer options are:
+
+- short token expiration
+- forced logout after inactivity
+- re-login for scanner terminals
+- eventually use HttpOnly secure cookies if the deployment supports it cleanly
+
+#### 4. Backup And Restore Checklist
+
+Before demo/live:
+
+- backup database
+- backup uploaded images
+- backup `.env` offline
+- test restore on a non-live machine
+
+This is not only security; it protects the demo from accidental data loss.
+
+#### 5. File Integrity Watchlist
+
+Watch these paths for unexpected changes:
+
+```text
+public/
+routes/
+resources/views/
+.htaccess
+storage/framework/views/
+```
+
+If unexpected JavaScript, redirect scripts, or encoded PHP appears there, treat it as a compromise.
+
+## My Opinion: What To Add First
+
+For this system size, do not add heavy enterprise security features first. Add the small protections that reduce the most risk:
+
+1. Production `.env` checklist.
+2. Security headers.
+3. Upload execution blocking.
+4. Stronger throttles on login/password/school lookup.
+5. Remove debug PHP and SQL dump files from live deployment.
+6. Update vulnerable dependencies.
+7. Add an audit log for admin and scanner actions.
+
+These additions are enough for a small Laravel/Vue school attendance system and directly address spider crawling, SQL injection, XSS, brute force, DDoS-style abuse, and malware/header injection risk.

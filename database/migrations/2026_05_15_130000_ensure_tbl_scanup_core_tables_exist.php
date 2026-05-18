@@ -117,6 +117,7 @@ return new class extends Migration
             4 => 'Reporting Manager',
             5 => 'Adviser',
             6 => 'Subject Teacher',
+            7 => 'System Admin',
         ];
 
         foreach ($roles as $id => $name) {

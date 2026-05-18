@@ -5,6 +5,7 @@ import LandingPage from '../views/LandingPage.vue';
 import GuardScanner from '../components/guard/GuardScanner.vue';
 import TeacherDashboard from '../components/teacher/TeacherDashboard.vue';
 import AdminLayout from '../components/layouts/AdminLayout.vue';
+import SystemAdminLayout from '../components/system-admin/SystemAdminLayout.vue';
 
 function normalizeRouterBase(raw) {
     const value = String(raw || '/').trim();
@@ -85,7 +86,8 @@ async function loginRedirectGuard(to, from, next) {
             return;
         }
         const roleName = user.role?.name || user.role_name;
-        if (roleName === 'Admin') next({ path: '/admin' });
+        if (roleName === 'System Admin') next({ path: '/system-admin' });
+        else if (roleName === 'Admin') next({ path: '/admin' });
         else if (roleName === 'Teacher') next({ path: '/teacher' });
         else if (roleName === 'Reporting Manager') {
             next({ path: '/admin' });
@@ -134,6 +136,12 @@ const routes = [
         name: 'Admin',
         component: AdminLayout,
         beforeEnter: roleGuard(['Admin', 'Reporting Manager']),
+    },
+    {
+        path: '/system-admin',
+        name: 'SystemAdmin',
+        component: SystemAdminLayout,
+        beforeEnter: roleGuard('System Admin'),
     },
     {
         path: '/reporting-manager',

@@ -25,6 +25,7 @@ class ScanUpSeeder extends Seeder
         Role::firstOrCreate(['name' => 'Reporting Manager']);
         Role::firstOrCreate(['name' => 'Adviser']);
         Role::firstOrCreate(['name' => 'Subject Teacher']);
+        Role::firstOrCreate(['name' => 'System Admin']);
 
         $this->seedUserIfSet(1, env('SEED_ADMIN_EMAIL'), env('SEED_ADMIN_PASSWORD'), 'System Admin');
         $this->seedUserIfSet(2, env('SEED_TEACHER_EMAIL'), env('SEED_TEACHER_PASSWORD'), 'Jane Teacher');

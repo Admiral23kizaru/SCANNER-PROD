@@ -284,7 +284,8 @@ INSERT IGNORE INTO `ehris2`.`tbl_scanup_roles` (`id`, `name`, `created_at`, `upd
   (3, 'Guard', NOW(), NOW()),
   (4, 'Reporting Manager', NOW(), NOW()),
   (5, 'Adviser', NOW(), NOW()),
-  (6, 'Subject Teacher', NOW(), NOW());
+  (6, 'Subject Teacher', NOW(), NOW()),
+  (7, 'System Admin', NOW(), NOW());
 
 INSERT INTO `ehris2`.`tbl_scanup_migrations` (`migration`, `batch`)
 SELECT '2026_05_14_000000_create_scanup_tbls_in_ehris', 1
