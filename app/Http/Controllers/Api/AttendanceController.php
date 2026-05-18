@@ -336,13 +336,13 @@ class AttendanceController extends Controller
             SUM(status = 'late') as late_count
         ")->first();
 
-        $enrolled      = Student::where('school_id', $school->id)->count();
-        $morningMarked = Attendance::whereDate('scanned_at', today())
+        $enrolled = Student::where('school_id', $school->id)->count();
+        $markedToday = Attendance::whereDate('scanned_at', today())
             ->where('school_id', $school->id)
-            ->where('session', 'morning')
+            ->whereNotNull('student_id')
             ->distinct()
             ->count('student_id');
-        $absent = max(0, $enrolled - $morningMarked);
+        $absent = max(0, $enrolled - $markedToday);
 
         return response()->json([
             'total_today'   => (int) ($stats->total_today ?? 0),
@@ -754,14 +754,24 @@ class AttendanceController extends Controller
             ];
         }
 
-        $today   = now()->toDateString();
-        $present = Attendance::where('school_id', $schoolId)->whereDate('scanned_at', $today)->where('session', 'morning')->count();
-        $late    = Attendance::where('school_id', $schoolId)->whereDate('scanned_at', $today)->where('session', 'morning')->where('status', 'late')->count();
-        $total   = Student::where('school_id', $schoolId)->count();
-        $absent  = max(0, $total - $present);
+        $today = now()->toDateString();
+
+        $attendanceToday = Attendance::where('school_id', $schoolId)
+            ->whereDate('scanned_at', $today);
+
+        $totalToday = (clone $attendanceToday)->count();
+        $present = (clone $attendanceToday)->where('status', 'on_time')->count();
+        $late = (clone $attendanceToday)->where('status', 'late')->count();
+
+        $enrolled = Student::where('school_id', $schoolId)->count();
+        $markedToday = (clone $attendanceToday)
+            ->whereNotNull('student_id')
+            ->distinct()
+            ->count('student_id');
+        $absent = max(0, $enrolled - $markedToday);
 
         return [
-            'total_today'   => $total,
+            'total_today'   => $totalToday,
             'present_count' => $present,
             'late_count'    => $late,
             'absent_count'  => $absent,

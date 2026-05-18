@@ -258,7 +258,7 @@ export function useScanner(depedId, schoolName) {
      */
     function prependAttendance(student, attendance) {
         const fullName = student.full_name || `${student.first_name} ${student.last_name}`;
-        attendanceList.value = [{
+        const nextRow = {
             id:            attendance.id || Date.now(),
             full_name:     fullName,
             first_name:    student.first_name,
@@ -267,7 +267,12 @@ export function useScanner(depedId, schoolName) {
             time_in:       attendance.scanned_at || new Date().toISOString(),
             status:        attendance.status || 'on_time',
             photo_path:    student.photo_path,
-        }, ...attendanceList.value].slice(0, 50);
+        };
+
+        attendanceList.value = [
+            nextRow,
+            ...attendanceList.value.filter(row => String(row.id) !== String(nextRow.id)),
+        ].slice(0, 50);
     }
 
     // ── Scan processing ──────────────────────────────────────────────────────
@@ -362,8 +367,14 @@ export function useScanner(depedId, schoolName) {
         if (loadingRecent.value) return;
         loadingRecent.value = true;
         try {
-            const res = await fetchRecentAttendancePublic();
-            attendanceList.value = res.data || [];
+            const res = await fetchRecentAttendancePublic(depedId.value);
+            const seen = new Set();
+            attendanceList.value = (res.data || []).filter((row) => {
+                const key = String(row.id);
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
         } catch (_) { /* non-critical — feed will refresh on next interval */ }
         finally { loadingRecent.value = false; }
     }
@@ -372,7 +383,7 @@ export function useScanner(depedId, schoolName) {
     async function refreshStats() {
         if (!hasSchoolContext()) return;
         try {
-            const data = await fetchGuardStatsPublic();
+            const data = await fetchGuardStatsPublic(depedId.value);
             if (data) stats.value = data;
         } catch (_) { /* non-critical */ }
     }
@@ -392,7 +403,7 @@ export function useScanner(depedId, schoolName) {
     async function sendHeartbeat() {
         if (!hasSchoolContext()) return;
         try {
-            await sendScannerHeartbeat(cameraStatus.value || 'unknown');
+            await sendScannerHeartbeat(cameraStatus.value || 'unknown', depedId.value);
         } catch (_) { /* heartbeat failure is non-blocking */ }
     }
 

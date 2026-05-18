@@ -92,8 +92,8 @@ export async function scanAttendancePublic(data) {
  *   time_in: string, status: string, photo_path: string|null
  * }> }>}
  */
-export async function fetchRecentAttendancePublic() {
-    const depedId = getStoredDepedId();
+export async function fetchRecentAttendancePublic(depedIdOverride = null) {
+    const depedId = depedIdOverride || getStoredDepedId();
 
     const { data } = await axios.get(`${API_BASE}/api/attendance/public/recent`, {
         params: { deped_id: depedId },
@@ -113,8 +113,8 @@ export async function fetchRecentAttendancePublic() {
  *   total_today: number, present_count: number, late_count: number, absent_count: number
  * }>}
  */
-export async function fetchGuardStatsPublic() {
-    const depedId = getStoredDepedId();
+export async function fetchGuardStatsPublic(depedIdOverride = null) {
+    const depedId = depedIdOverride || getStoredDepedId();
 
     const { data } = await axios.get(`${API_BASE}/api/attendance/public/stats`, {
         params: { deped_id: depedId },
@@ -127,8 +127,8 @@ export async function fetchGuardStatsPublic() {
 /**
  * Send a lightweight scanner heartbeat for the System Admin live monitor.
  */
-export async function sendScannerHeartbeat(cameraStatus = 'active') {
-    const depedId = getStoredDepedId();
+export async function sendScannerHeartbeat(cameraStatus = 'active', depedIdOverride = null) {
+    const depedId = depedIdOverride || getStoredDepedId();
     if (!depedId) return null;
 
     const { data } = await axios.post(
