@@ -51,7 +51,7 @@
         </thead>
         <tbody class="divide-y divide-slate-100">
           <tr
-            v-for="school in filteredSchools"
+            v-for="school in paginatedSchools"
             :key="school.deped_school_id"
             class="hover:bg-blue-50/60"
             :class="{ 'bg-blue-50': selectedId === school.deped_school_id }"
@@ -100,11 +100,36 @@
         </tbody>
       </table>
     </div>
+
+    <div class="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-sm text-slate-600">
+        Showing {{ pageStart }}-{{ pageEnd }} of {{ filteredSchools.length }} schools
+      </p>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="currentPage <= 1"
+          @click="currentPage -= 1"
+        >
+          Previous
+        </button>
+        <span class="text-sm text-slate-600">{{ currentPage }} / {{ totalPages }}</span>
+        <button
+          type="button"
+          class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="currentPage >= totalPages"
+          @click="currentPage += 1"
+        >
+          Next
+        </button>
+      </div>
+    </div>
   </section>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
   schools: {
@@ -123,6 +148,8 @@ const search = ref('');
 const typeFilter = ref('');
 const setupFilter = ref('');
 const healthFilter = ref('');
+const currentPage = ref(1);
+const perPage = 10;
 
 function numberValue(value) {
   return Number(value || 0).toLocaleString();
@@ -146,6 +173,32 @@ const filteredSchools = computed(() => {
 
     return searchable.includes(term);
   });
+});
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredSchools.value.length / perPage)));
+
+const paginatedSchools = computed(() => {
+  const start = (currentPage.value - 1) * perPage;
+  return filteredSchools.value.slice(start, start + perPage);
+});
+
+const pageStart = computed(() => {
+  if (filteredSchools.value.length === 0) return 0;
+  return (currentPage.value - 1) * perPage + 1;
+});
+
+const pageEnd = computed(() => {
+  return Math.min(currentPage.value * perPage, filteredSchools.value.length);
+});
+
+watch([search, typeFilter, setupFilter, healthFilter], () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (pages) => {
+  if (currentPage.value > pages) {
+    currentPage.value = pages;
+  }
 });
 
 function healthClass(severity) {

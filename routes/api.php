@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\IdCardController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\SetupController;
 use App\Http\Controllers\Api\SchoolController;
+use App\Http\Controllers\Api\ScannerHeartbeatController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\SectionController;
@@ -64,6 +65,10 @@ Route::post('/guard/login', [GuardAuthController::class, 'login'])
 Route::post('/attendance/scan', [AttendanceController::class, 'scanPublic'])
     ->middleware('throttle:240,1');
 
+// PUBLIC — scanner terminal heartbeat for System Admin live monitor cards.
+Route::post('/scanner/heartbeat', [ScannerHeartbeatController::class, 'store'])
+    ->middleware('throttle:60,1');
+
 Route::controller(PasswordResetController::class)->prefix('password')->group(function () {
     Route::post('/request-otp', 'requestOtp');
     Route::post('/verify-otp', 'verifyOtp');
@@ -112,6 +117,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('role:System Admin')->prefix('system-admin')->group(function () {
         Route::get('/overview', [SystemAdminController::class, 'overview']);
+        Route::get('/scanner-monitor', [SystemAdminController::class, 'scannerMonitor']);
         Route::get('/schools', [SystemAdminController::class, 'schools']);
         Route::get('/schools/export', [SystemAdminController::class, 'exportSchools']);
         Route::get('/schools/{depedSchoolId}', [SystemAdminController::class, 'schoolDetail']);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\SystemAdminDashboardService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -37,6 +38,16 @@ class SystemAdminController extends Controller
     }
 
     /**
+     * Return scanner terminal live cards.
+     */
+    public function scannerMonitor(): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->dashboard->scannerMonitor(),
+        ]);
+    }
+
+    /**
      * Return one school's read-only detail panel.
      */
     public function schoolDetail(string $depedSchoolId): JsonResponse
@@ -57,9 +68,13 @@ class SystemAdminController extends Controller
     /**
      * Return one school's read-only dashboard snapshot.
      */
-    public function schoolDashboard(string $depedSchoolId): JsonResponse
+    public function schoolDashboard(Request $request, string $depedSchoolId): JsonResponse
     {
-        $dashboard = $this->dashboard->schoolDashboard($depedSchoolId);
+        $dashboard = $this->dashboard->schoolDashboard($depedSchoolId, $request->only([
+            'group_by',
+            'grade',
+            'section',
+        ]));
 
         if (!$dashboard) {
             return response()->json([

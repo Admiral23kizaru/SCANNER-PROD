@@ -1,56 +1,75 @@
 <template>
-  <div class="min-h-screen bg-[#f4f7fb] text-slate-900">
-    <header class="border-b border-slate-800 bg-slate-950 text-white">
-      <div class="mx-auto flex max-w-[1600px] flex-col gap-4 px-5 py-5 lg:flex-row lg:items-center lg:justify-between">
-        <div class="flex items-center gap-4">
-          <img :src="logoSrc" alt="DepEd Ozamiz" class="h-14 w-14 rounded-full bg-white object-contain p-1" />
+  <div class="flex h-screen overflow-hidden bg-[#f4f7fb] text-slate-900">
+    <SystemAdminSidebar
+      :current-page="currentPage"
+      :logo-src="logoSrc"
+      @update:current-page="currentPage = $event"
+    />
+
+    <div class="flex min-w-0 flex-1 flex-col">
+      <header class="border-b border-slate-200 bg-white">
+        <div class="flex flex-col gap-4 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.32em] text-blue-200">System Admin</p>
-            <h1 class="text-xl font-bold">Division Monitoring Dashboard</h1>
-            <p class="text-sm text-slate-300">Read-only view across Ozamiz City schools</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.28em] text-blue-600">System Admin</p>
+            <h1 class="text-xl font-bold text-slate-950">{{ pageTitle }}</h1>
+            <p class="text-sm text-slate-500">{{ pageSubtitle }}</p>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="text-right">
+              <p class="text-sm font-semibold">{{ user?.name || 'System Admin' }}</p>
+              <p class="text-xs uppercase tracking-wider text-slate-400">{{ user?.email || '' }}</p>
+            </div>
+            <button
+              type="button"
+              class="rounded-md border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+              @click="downloadExport"
+            >
+              Export Status
+            </button>
+            <button
+              type="button"
+              class="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              @click="logout"
+            >
+              Logout
+            </button>
           </div>
         </div>
+      </header>
 
-        <div class="flex items-center gap-3">
-          <div class="text-right">
-            <p class="text-sm font-semibold">{{ user?.name || 'System Admin' }}</p>
-            <p class="text-xs uppercase tracking-wider text-slate-400">{{ user?.email || '' }}</p>
-          </div>
-          <button
-            type="button"
-            class="rounded-md border border-blue-500 px-3 py-2 text-sm font-semibold text-blue-100 hover:bg-blue-950"
-            @click="downloadExport"
-          >
-            Export Status
-          </button>
-          <button
-            type="button"
-            class="rounded-md border border-slate-600 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-800"
-            @click="logout"
-          >
-            Logout
-          </button>
+      <main class="flex-1 overflow-auto px-6 py-6">
+        <div v-if="error" class="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {{ error }}
         </div>
-      </div>
-    </header>
 
-    <main class="mx-auto max-w-[1600px] space-y-5 px-5 py-6">
-      <div v-if="error" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-        {{ error }}
-      </div>
+        <section v-if="currentPage === 'dashboard'" class="space-y-5">
+          <SystemAdminOverviewCards :overview="overview" />
+          <SystemAdminDivisionCharts :schools="schools" />
+        </section>
 
-      <SystemAdminOverviewCards :overview="overview" />
+        <section v-else-if="currentPage === 'schools'">
+          <SystemAdminSchoolTable
+            :schools="schools"
+            :selected-id="selectedSchool?.deped_school_id || ''"
+            @select="selectSchool"
+            @view-dashboard="openSchoolDashboard"
+          />
+        </section>
 
-      <div class="grid gap-5 xl:grid-cols-[1fr_420px]">
-        <SystemAdminSchoolTable
+        <SystemAdminAccountsDirectory v-else-if="currentPage === 'accounts'" :schools="schools" />
+
+        <SystemAdminScannerMonitor v-else-if="currentPage === 'scanners'" />
+
+        <SystemAdminReports
+          v-else-if="currentPage === 'reports'"
+          :overview="overview"
           :schools="schools"
-          :selected-id="selectedSchool?.deped_school_id || ''"
-          @select="selectSchool"
-          @view-dashboard="openSchoolDashboard"
+          @download="downloadExport"
+          @navigate="currentPage = $event"
         />
-        <SystemAdminSchoolDetail :school="selectedDetail" />
-      </div>
-    </main>
+      </main>
+    </div>
 
     <SystemAdminSchoolDashboardModal
       v-if="showDashboardModal"
@@ -63,7 +82,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { assetPath } from '../../composables/useAsset';
 import { fetchUser } from '../../services/authService';
 import { useLogout } from '../../composables/useLogout';
@@ -71,27 +90,46 @@ import {
   exportSystemAdminSchools,
   fetchSystemAdminOverview,
   fetchSystemAdminSchoolDashboard,
-  fetchSystemAdminSchoolDetail,
   fetchSystemAdminSchools,
 } from '../../services/systemAdminService';
-import SystemAdminSchoolDashboardModal from './SystemAdminSchoolDashboardModal.vue';
+import SystemAdminAccountsDirectory from './SystemAdminAccountsDirectory.vue';
+import SystemAdminDivisionCharts from './SystemAdminDivisionCharts.vue';
 import SystemAdminOverviewCards from './SystemAdminOverviewCards.vue';
-import SystemAdminSchoolDetail from './SystemAdminSchoolDetail.vue';
+import SystemAdminReports from './SystemAdminReports.vue';
+import SystemAdminScannerMonitor from './SystemAdminScannerMonitor.vue';
+import SystemAdminSchoolDashboardModal from './SystemAdminSchoolDashboardModal.vue';
 import SystemAdminSchoolTable from './SystemAdminSchoolTable.vue';
+import SystemAdminSidebar from './SystemAdminSidebar.vue';
 
 const logoSrc = assetPath('/logo/depedozamiz.png');
 const { logout } = useLogout();
 
+const currentPage = ref('dashboard');
 const user = ref(null);
 const error = ref('');
 const schools = ref([]);
 const overview = ref({});
 const selectedSchool = ref(null);
-const selectedDetail = ref(null);
 const dashboardPreview = ref(null);
 const dashboardError = ref('');
 const dashboardLoading = ref(false);
 const showDashboardModal = ref(false);
+
+const pageTitle = computed(() => {
+  if (currentPage.value === 'schools') return 'Schools Monitor';
+  if (currentPage.value === 'accounts') return 'School Admins';
+  if (currentPage.value === 'scanners') return 'Live Scanners';
+  if (currentPage.value === 'reports') return 'Reports';
+  return 'Division Dashboard';
+});
+
+const pageSubtitle = computed(() => {
+  if (currentPage.value === 'schools') return 'Monitor each school dashboard in read-only mode';
+  if (currentPage.value === 'accounts') return 'School head and assigned admin directory';
+  if (currentPage.value === 'scanners') return 'Watch live scanner heartbeats and scan activity';
+  if (currentPage.value === 'reports') return 'Export division readiness reports';
+  return 'Overview of Ozamiz Schools QR-ID activity';
+});
 
 async function loadDashboard() {
   error.value = '';
@@ -107,31 +145,14 @@ async function loadDashboard() {
     overview.value = overviewData;
     schools.value = schoolRows;
 
-    if (schoolRows.length > 0) {
-      await selectSchool(schoolRows[0]);
-    }
+    selectedSchool.value = schoolRows[0] || null;
   } catch (err) {
     error.value = err.response?.data?.message || 'Unable to load the System Admin dashboard.';
   }
 }
 
-async function selectSchool(school) {
+function selectSchool(school) {
   selectedSchool.value = school;
-  selectedDetail.value = {
-    ...school,
-    stats: {
-      students: school.students,
-      teachers: school.teachers,
-      attendance_today: school.attendance_today,
-      late_today: 0,
-    },
-  };
-
-  try {
-    selectedDetail.value = await fetchSystemAdminSchoolDetail(school.deped_school_id);
-  } catch (_) {
-    // Keep the table row detail visible if the drill-down request fails.
-  }
 }
 
 async function openSchoolDashboard(school) {

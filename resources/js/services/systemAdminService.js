@@ -17,6 +17,11 @@ export async function fetchSystemAdminSchools() {
   return data.data || [];
 }
 
+export async function fetchSystemAdminScannerMonitor() {
+  const { data } = await axios.get(`${base}/scanner-monitor`, { headers: authHeaders() });
+  return data.data || [];
+}
+
 export async function fetchSystemAdminSchoolDetail(depedSchoolId) {
   const { data } = await axios.get(`${base}/schools/${encodeURIComponent(depedSchoolId)}`, {
     headers: authHeaders(),
@@ -24,9 +29,10 @@ export async function fetchSystemAdminSchoolDetail(depedSchoolId) {
   return data.data;
 }
 
-export async function fetchSystemAdminSchoolDashboard(depedSchoolId) {
+export async function fetchSystemAdminSchoolDashboard(depedSchoolId, params = {}) {
   const { data } = await axios.get(`${base}/schools/${encodeURIComponent(depedSchoolId)}/dashboard`, {
     headers: authHeaders(),
+    params,
   });
   return data.data;
 }

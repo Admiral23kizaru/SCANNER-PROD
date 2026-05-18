@@ -124,6 +124,29 @@ export async function fetchGuardStatsPublic() {
     return data;
 }
 
+/**
+ * Send a lightweight scanner heartbeat for the System Admin live monitor.
+ */
+export async function sendScannerHeartbeat(cameraStatus = 'active') {
+    const depedId = getStoredDepedId();
+    if (!depedId) return null;
+
+    const { data } = await axios.post(
+        `${API_BASE}/api/scanner/heartbeat`,
+        {
+            deped_id: depedId,
+            scanner_key: 'main-terminal',
+            camera_status: cameraStatus,
+        },
+        {
+            headers: jsonHeaders,
+            withCredentials: false,
+        }
+    );
+
+    return data;
+}
+
 // ─── Teacher-side scanner (authenticated) ─────────────────────────────────────
 
 /**

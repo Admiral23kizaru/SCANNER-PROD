@@ -8,6 +8,7 @@ use App\Models\Ehris\EhrisReportingManager;
 use App\Models\Ehris\EhrisUser;
 use App\Models\Role;
 use App\Models\School;
+use App\Models\ScannerHeartbeat;
 use App\Models\Section;
 use App\Models\Student;
 use App\Models\Subject;
@@ -38,6 +39,7 @@ class SystemAdminDashboardService
             ->count('school_id');
 
         return [
+            'districts' => $this->districtCount(),
             'total_schools' => $schoolCodes->count(),
             'scanup_schools' => $scanupSchoolIds->count(),
             'encoded_students' => Student::whereIn('school_id', $scanupSchoolIds)->count(),
@@ -156,7 +158,7 @@ class SystemAdminDashboardService
     /**
      * Return the selected school's read-only dashboard snapshot.
      */
-    public function schoolDashboard(string $depedSchoolId): ?array
+    public function schoolDashboard(string $depedSchoolId, array $filters = []): ?array
     {
         $detail = $this->schoolDetail($depedSchoolId);
 
@@ -171,7 +173,16 @@ class SystemAdminDashboardService
             return $detail + [
                 'attendance_by_grade' => [],
                 'attendance_trends' => [],
+                'filter_options' => [
+                    'grades' => [],
+                    'sections' => [],
+                ],
                 'recent_activity' => [],
+                'student_status_today' => [
+                    'male' => 0,
+                    'female' => 0,
+                    'absent' => 0,
+                ],
                 'sections' => 0,
                 'subjects' => 0,
                 'health' => $this->healthFor(null, 0, 0, 0),
@@ -187,12 +198,24 @@ class SystemAdminDashboardService
             ->orderBy('students.grade')
             ->get();
 
-        $attendanceTrends = Attendance::where('school_id', $schoolId)
-            ->where('scanned_at', '>=', now()->subDays(14))
-            ->select(DB::raw('DATE(scanned_at) as label'), DB::raw('COUNT(DISTINCT student_id) as count'))
-            ->groupBy('label')
-            ->orderBy('label')
-            ->get();
+        $attendanceTrends = $this->attendanceTrendsFor($schoolId, $filters);
+        $filterOptions = $this->dashboardFilterOptionsFor($schoolId);
+
+        $presentStudentIds = Attendance::where('school_id', $schoolId)
+            ->whereDate('scanned_at', $today)
+            ->select('student_id');
+        $maleToday = Student::where('school_id', $schoolId)
+            ->where('gender', 'Male')
+            ->whereIn('id', $presentStudentIds)
+            ->count();
+        $presentStudentIds = Attendance::where('school_id', $schoolId)
+            ->whereDate('scanned_at', $today)
+            ->select('student_id');
+        $femaleToday = Student::where('school_id', $schoolId)
+            ->where('gender', 'Female')
+            ->whereIn('id', $presentStudentIds)
+            ->count();
+        $absentToday = max(0, (int) $detail['stats']['students'] - (int) $detail['stats']['attendance_today']);
 
         $recentActivity = Attendance::with('student')
             ->where('school_id', $schoolId)
@@ -217,7 +240,16 @@ class SystemAdminDashboardService
         $detail['subjects'] = Subject::where('school_id', $schoolId)->count();
         $detail['attendance_by_grade'] = $attendanceByGrade;
         $detail['attendance_trends'] = $attendanceTrends;
+        $detail['filter_options'] = $filterOptions;
         $detail['recent_activity'] = $recentActivity;
+        $detail['student_status_today'] = [
+            'male' => $maleToday,
+            'female' => $femaleToday,
+            'absent' => $absentToday,
+        ];
+        $detail['stats']['male_today'] = $maleToday;
+        $detail['stats']['female_today'] = $femaleToday;
+        $detail['stats']['absent_today'] = $absentToday;
         $detail['health'] = $this->healthFor(
             $schoolId,
             (int) $detail['stats']['students'],
@@ -226,6 +258,145 @@ class SystemAdminDashboardService
         );
 
         return $detail;
+    }
+
+    /**
+     * Return scanner terminal cards for all schools.
+     */
+    public function scannerMonitor(): array
+    {
+        $schools = collect($this->schools());
+        $heartbeats = ScannerHeartbeat::with('school')->get()->keyBy('school_id');
+        $today = now()->toDateString();
+
+        return $schools->map(function (array $school) use ($heartbeats, $today) {
+            $heartbeat = $school['school_id'] ? $heartbeats->get($school['school_id']) : null;
+            $latestScan = Attendance::with('student')
+                ->when($school['school_id'], fn ($query) => $query->where('school_id', $school['school_id']))
+                ->when(!$school['school_id'], fn ($query) => $query->whereRaw('1 = 0'))
+                ->latest('scanned_at')
+                ->first();
+            $scansToday = $school['school_id']
+                ? Attendance::where('school_id', $school['school_id'])->whereDate('scanned_at', $today)->count()
+                : 0;
+            $presentToday = $school['school_id']
+                ? Attendance::where('school_id', $school['school_id'])
+                    ->whereDate('scanned_at', $today)
+                    ->where('session', 'morning')
+                    ->distinct('student_id')
+                    ->count('student_id')
+                : 0;
+            $lateToday = $school['school_id']
+                ? Attendance::where('school_id', $school['school_id'])
+                    ->whereDate('scanned_at', $today)
+                    ->where('session', 'morning')
+                    ->where('status', 'late')
+                    ->count()
+                : 0;
+            $absentToday = max(0, (int) ($school['students'] ?? 0) - $presentToday);
+            $lastSeen = $heartbeat?->last_seen_at;
+
+            return [
+                'school_id' => $school['school_id'],
+                'deped_school_id' => $school['deped_school_id'],
+                'school_name' => $school['school_name'],
+                'scanner_key' => $heartbeat?->scanner_key ?? 'main-terminal',
+                'camera_status' => $heartbeat?->camera_status,
+                'last_seen_at' => $lastSeen?->toIso8601String(),
+                'connection_status' => $this->connectionStatusFor($lastSeen),
+                'scans_today' => $scansToday,
+                'stats' => [
+                    'total_today' => (int) ($school['students'] ?? 0),
+                    'present_count' => $presentToday,
+                    'late_count' => $lateToday,
+                    'absent_count' => $absentToday,
+                ],
+                'latest_scan' => $latestScan ? [
+                    'student_name' => trim(($latestScan->student?->first_name ?? '') . ' ' . ($latestScan->student?->last_name ?? '')) ?: 'Unknown student',
+                    'grade_section' => $latestScan->student?->grade_section ?? '',
+                    'status' => $latestScan->status ?? 'on_time',
+                    'scanned_at' => $latestScan->scanned_at?->toIso8601String(),
+                ] : null,
+            ];
+        })
+            ->sortBy('school_name')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Build school-scoped trend data using the same filter idea as the admin dashboard.
+     */
+    private function attendanceTrendsFor(int $schoolId, array $filters): Collection
+    {
+        $requestedGroupBy = (string) ($filters['group_by'] ?? 'day');
+        $groupBy = in_array($requestedGroupBy, ['day', 'week', 'month'], true)
+            ? $requestedGroupBy
+            : 'day';
+        $grade = trim((string) ($filters['grade'] ?? ''));
+        $section = trim((string) ($filters['section'] ?? ''));
+
+        $query = Attendance::query()
+            ->from('tbl_scanup_attendance', 'attendance')
+            ->join('tbl_scanup_students as students', 'attendance.student_id', '=', 'students.id')
+            ->where('attendance.school_id', $schoolId);
+
+        if ($grade !== '') {
+            $query->where('students.grade', $grade);
+        }
+
+        if ($section !== '') {
+            $query->where('students.section', $section);
+        }
+
+        match ($groupBy) {
+            'month' => $query
+                ->select(DB::raw("DATE_FORMAT(attendance.scanned_at, '%Y-%m') as label"), DB::raw('COUNT(DISTINCT attendance.student_id) as count'))
+                ->where('attendance.scanned_at', '>=', now()->subMonths(12)),
+            'week' => $query
+                ->select(DB::raw('YEARWEEK(attendance.scanned_at) as label'), DB::raw('COUNT(DISTINCT attendance.student_id) as count'))
+                ->where('attendance.scanned_at', '>=', now()->subWeeks(12)),
+            default => $query
+                ->select(DB::raw('DATE(attendance.scanned_at) as label'), DB::raw('COUNT(DISTINCT attendance.student_id) as count'))
+                ->where('attendance.scanned_at', '>=', now()->subDays(30)),
+        };
+
+        return $query->groupBy('label')->orderBy('label')->get();
+    }
+
+    /**
+     * Return grade/section filter options from this school's encoded students.
+     */
+    private function dashboardFilterOptionsFor(int $schoolId): array
+    {
+        $grades = Student::where('school_id', $schoolId)
+            ->whereNotNull('grade')
+            ->where('grade', '<>', '')
+            ->distinct()
+            ->orderBy('grade')
+            ->pluck('grade')
+            ->values()
+            ->all();
+
+        $sections = Student::where('school_id', $schoolId)
+            ->whereNotNull('section')
+            ->where('section', '<>', '')
+            ->select('grade', 'section')
+            ->distinct()
+            ->orderBy('grade')
+            ->orderBy('section')
+            ->get()
+            ->map(fn (Student $student) => [
+                'grade' => (string) ($student->grade ?? ''),
+                'section' => (string) ($student->section ?? ''),
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'grades' => $grades,
+            'sections' => $sections,
+        ];
     }
 
     /**
@@ -381,6 +552,41 @@ class SystemAdminDashboardService
             'label' => 'Active today',
             'severity' => 'success',
         ];
+    }
+
+    /**
+     * Convert heartbeat timestamp into online/idle/offline.
+     */
+    private function connectionStatusFor($lastSeen): string
+    {
+        if (!$lastSeen) {
+            return 'offline';
+        }
+
+        $seconds = now()->diffInSeconds($lastSeen);
+
+        if ($seconds <= 75) {
+            return 'online';
+        }
+
+        if ($seconds <= 300) {
+            return 'idle';
+        }
+
+        return 'offline';
+    }
+
+    /**
+     * Count district-level PSDS accounts from EHRIS as the dashboard district basis.
+     */
+    private function districtCount(): int
+    {
+        return EhrisUser::active()
+            ->where(function ($query) {
+                $query->where('role', 'PSDS')
+                    ->orWhere('job_title', 'like', '%District Supervisor%');
+            })
+            ->count();
     }
 
     /**

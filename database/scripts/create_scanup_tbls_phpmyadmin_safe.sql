@@ -271,6 +271,23 @@ CREATE TABLE IF NOT EXISTS `ehris2`.`tbl_scanup_password_resets` (
   KEY `tbl_scanup_password_resets_email_index` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `ehris2`.`tbl_scanup_scanner_heartbeats` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `school_id` bigint unsigned NOT NULL,
+  `deped_school_id` varchar(50) NOT NULL,
+  `scanner_key` varchar(100) NOT NULL DEFAULT 'main-terminal',
+  `camera_status` varchar(32) DEFAULT NULL,
+  `last_seen_at` timestamp NULL DEFAULT NULL,
+  `user_agent` varchar(500) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `scanup_scanner_school_key_unique` (`school_id`, `scanner_key`),
+  KEY `scanup_scanner_deped_seen_idx` (`deped_school_id`, `last_seen_at`),
+  KEY `tbl_scanup_scanner_heartbeats_last_seen_at_index` (`last_seen_at`),
+  CONSTRAINT `tbl_scanup_scanner_heartbeats_school_id_foreign` FOREIGN KEY (`school_id`) REFERENCES `ehris2`.`tbl_scanup_schools` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `ehris2`.`tbl_scanup_migrations` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `migration` varchar(255) NOT NULL,
@@ -306,6 +323,13 @@ SELECT '2026_05_14_000002_add_tbl_scanup_scaling_performance_indexes', 1
 WHERE NOT EXISTS (
   SELECT 1 FROM `ehris2`.`tbl_scanup_migrations`
   WHERE `migration` = '2026_05_14_000002_add_tbl_scanup_scaling_performance_indexes'
+);
+
+INSERT INTO `ehris2`.`tbl_scanup_migrations` (`migration`, `batch`)
+SELECT '2026_05_18_000001_create_tbl_scanup_scanner_heartbeats', 1
+WHERE NOT EXISTS (
+  SELECT 1 FROM `ehris2`.`tbl_scanup_migrations`
+  WHERE `migration` = '2026_05_18_000001_create_tbl_scanup_scanner_heartbeats'
 );
 
 SELECT 'ScanUp tbl creation script finished. Refresh phpMyAdmin left sidebar and check ehris2 tbl_scanup_*.' AS result;

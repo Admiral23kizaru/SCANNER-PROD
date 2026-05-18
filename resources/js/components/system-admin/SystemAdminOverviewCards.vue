@@ -1,5 +1,5 @@
 <template>
-  <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+  <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
     <article
       v-for="card in cards"
       :key="card.label"
@@ -33,6 +33,12 @@ function numberValue(value) {
 }
 
 const cards = computed(() => [
+  {
+    label: 'Districts',
+    value: numberValue(props.overview.districts),
+    badge: 'active PSDS',
+    badgeClass: 'bg-sky-50 text-sky-700',
+  },
   {
     label: 'Schools',
     value: numberValue(props.overview.total_schools),

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-visible">
       <!-- Toolbar matching AdminTeachersPage layout -->
       <div class="p-4 sm:p-5 border-b border-slate-200 bg-white flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
@@ -49,13 +49,13 @@
             <!-- Filter Dropdown -->
             <div
               v-if="showFilterDropdown"
-              class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 z-50"
+              class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 z-[60]"
             >
               <div class="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0 rounded-t-xl">
                 <span class="text-sm font-semibold text-slate-700">Filters</span>
                 <button @click="clearFilters" class="text-xs text-blue-600 hover:text-blue-800 font-medium cursor-pointer transition">Clear all</button>
               </div>
-              <div class="p-4 max-h-[350px] overflow-y-auto space-y-6">
+              <div class="p-4 max-h-[60vh] overflow-y-auto overscroll-contain space-y-6">
                 <!-- Gender Filter -->
                 <div>
                   <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Gender</h4>
