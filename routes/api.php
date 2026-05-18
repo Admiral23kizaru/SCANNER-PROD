@@ -118,6 +118,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:System Admin')->prefix('system-admin')->group(function () {
         Route::get('/overview', [SystemAdminController::class, 'overview']);
         Route::get('/scanner-monitor', [SystemAdminController::class, 'scannerMonitor']);
+        Route::get('/subjects', [SystemAdminController::class, 'subjects']);
         Route::get('/schools', [SystemAdminController::class, 'schools']);
         Route::get('/schools/export', [SystemAdminController::class, 'exportSchools']);
         Route::get('/schools/{depedSchoolId}', [SystemAdminController::class, 'schoolDetail']);

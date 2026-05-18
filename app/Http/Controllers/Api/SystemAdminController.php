@@ -48,6 +48,16 @@ class SystemAdminController extends Controller
     }
 
     /**
+     * Return all learning areas configured by schools.
+     */
+    public function subjects(): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->dashboard->subjects(),
+        ]);
+    }
+
+    /**
      * Return one school's read-only detail panel.
      */
     public function schoolDetail(string $depedSchoolId): JsonResponse

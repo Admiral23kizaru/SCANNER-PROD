@@ -45,6 +45,7 @@ const items = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'schools', label: 'Schools Monitor' },
   { key: 'accounts', label: 'School Admins' },
+  { key: 'subjects', label: 'Learning Areas' },
   { key: 'scanners', label: 'Live Scanners' },
   { key: 'reports', label: 'Reports' },
 ];

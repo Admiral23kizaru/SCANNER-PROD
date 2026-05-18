@@ -22,6 +22,11 @@ export async function fetchSystemAdminScannerMonitor() {
   return data.data || [];
 }
 
+export async function fetchSystemAdminSubjects() {
+  const { data } = await axios.get(`${base}/subjects`, { headers: authHeaders() });
+  return data.data || [];
+}
+
 export async function fetchSystemAdminSchoolDetail(depedSchoolId) {
   const { data } = await axios.get(`${base}/schools/${encodeURIComponent(depedSchoolId)}`, {
     headers: authHeaders(),

@@ -325,6 +325,62 @@ class SystemAdminDashboardService
     }
 
     /**
+     * Return all ScanUp learning areas across schools for read-only System Admin review.
+     */
+    public function subjects(): array
+    {
+        $schoolCodes = $this->schoolDepartments()
+            ->pluck('department_id')
+            ->map(fn ($id) => (string) $id)
+            ->values();
+
+        $schoolIds = School::whereIn('deped_school_id', $schoolCodes)->pluck('id');
+
+        return Subject::query()
+            ->from('tbl_scanup_subjects as subjects')
+            ->leftJoin('tbl_scanup_schools as schools', 'subjects.school_id', '=', 'schools.id')
+            ->leftJoin('tbl_scanup_student_subject as student_subject', 'subjects.id', '=', 'student_subject.subject_id')
+            ->where(function ($query) use ($schoolIds) {
+                $query->whereIn('subjects.school_id', $schoolIds)
+                    ->orWhereNull('subjects.school_id');
+            })
+            ->select([
+                'subjects.id',
+                'subjects.name',
+                'subjects.school_id',
+                'subjects.created_at',
+                'subjects.updated_at',
+                'schools.name as school_name',
+                'schools.deped_school_id',
+                DB::raw('COUNT(DISTINCT student_subject.student_id) as enrolled_students'),
+            ])
+            ->groupBy([
+                'subjects.id',
+                'subjects.name',
+                'subjects.school_id',
+                'subjects.created_at',
+                'subjects.updated_at',
+                'schools.name',
+                'schools.deped_school_id',
+            ])
+            ->orderBy('schools.name')
+            ->orderBy('subjects.name')
+            ->get()
+            ->map(fn ($subject) => [
+                'id' => (int) $subject->id,
+                'name' => (string) $subject->name,
+                'school_id' => $subject->school_id ? (int) $subject->school_id : null,
+                'school_name' => $subject->school_name ?: 'Division-wide / Unassigned',
+                'deped_school_id' => $subject->deped_school_id ? (string) $subject->deped_school_id : '',
+                'enrolled_students' => (int) $subject->enrolled_students,
+                'created_at' => $subject->created_at,
+                'updated_at' => $subject->updated_at,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
      * Build school-scoped trend data using the same filter idea as the admin dashboard.
      */
     private function attendanceTrendsFor(int $schoolId, array $filters): Collection

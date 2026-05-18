@@ -59,6 +59,8 @@
 
         <SystemAdminAccountsDirectory v-else-if="currentPage === 'accounts'" :schools="schools" />
 
+        <SystemAdminLearningAreas v-else-if="currentPage === 'subjects'" />
+
         <SystemAdminScannerMonitor v-else-if="currentPage === 'scanners'" />
 
         <SystemAdminReports
@@ -94,6 +96,7 @@ import {
 } from '../../services/systemAdminService';
 import SystemAdminAccountsDirectory from './SystemAdminAccountsDirectory.vue';
 import SystemAdminDivisionCharts from './SystemAdminDivisionCharts.vue';
+import SystemAdminLearningAreas from './SystemAdminLearningAreas.vue';
 import SystemAdminOverviewCards from './SystemAdminOverviewCards.vue';
 import SystemAdminReports from './SystemAdminReports.vue';
 import SystemAdminScannerMonitor from './SystemAdminScannerMonitor.vue';
@@ -118,6 +121,7 @@ const showDashboardModal = ref(false);
 const pageTitle = computed(() => {
   if (currentPage.value === 'schools') return 'Schools Monitor';
   if (currentPage.value === 'accounts') return 'School Admins';
+  if (currentPage.value === 'subjects') return 'Learning Areas';
   if (currentPage.value === 'scanners') return 'Live Scanners';
   if (currentPage.value === 'reports') return 'Reports';
   return 'Division Dashboard';
@@ -126,6 +130,7 @@ const pageTitle = computed(() => {
 const pageSubtitle = computed(() => {
   if (currentPage.value === 'schools') return 'Monitor each school dashboard in read-only mode';
   if (currentPage.value === 'accounts') return 'School head and assigned admin directory';
+  if (currentPage.value === 'subjects') return 'Review learning areas configured by each school';
   if (currentPage.value === 'scanners') return 'Watch live scanner heartbeats and scan activity';
   if (currentPage.value === 'reports') return 'Export division readiness reports';
   return 'Overview of Ozamiz Schools QR-ID activity';
