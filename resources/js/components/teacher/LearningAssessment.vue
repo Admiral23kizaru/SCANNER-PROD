@@ -334,8 +334,12 @@ import { Bar } from 'vue-chartjs';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-/** Base path for Learning Assessment API (teacher role). */
-const learningAssessmentApiBase = '/api/teacher/learning-assessment';
+const props = defineProps({
+  apiBase: {
+    type: String,
+    default: '/api/teacher/learning-assessment',
+  },
+});
 
 function getAuthHeaders() {
   const token = localStorage.getItem('scan_up_token');
@@ -443,7 +447,7 @@ const difficultyChartOptions = computed(() => ({
 }));
 
 async function loadMeta() {
-  const { data } = await axios.get(`${learningAssessmentApiBase}/meta`, {
+  const { data } = await axios.get(`${props.apiBase}/meta`, {
     params: {
       grade_level: filters.value.grade_level || undefined,
     },
@@ -468,7 +472,7 @@ async function onAnalyzeFile(ev) {
   try {
     const fd = new FormData();
     fd.append('file', file);
-    const { data } = await axios.post(`${learningAssessmentApiBase}/import-analyze`, fd, {
+    const { data } = await axios.post(`${props.apiBase}/import-analyze`, fd, {
       headers: { ...getAuthHeaders(), Accept: 'application/json' },
     });
     analyzeResult.value = data;
@@ -486,7 +490,7 @@ async function exportExcel() {
   exporting.value = true;
   errorMessage.value = '';
   try {
-    const res = await axios.get(`${learningAssessmentApiBase}/export`, {
+    const res = await axios.get(`${props.apiBase}/export`, {
       params: {
         grade_level: filters.value.grade_level || undefined,
         section: filters.value.section || undefined,

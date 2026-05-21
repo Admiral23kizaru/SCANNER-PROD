@@ -62,7 +62,7 @@ class LearningAssessmentAnalyzedExport implements FromArray, WithEvents, WithCol
 
     public function title(): string
     {
-        return GmrcTemplateExport::sanitizeSheetTitle($this->sheetTitle);
+        return LearningAssessmentTemplateExport::sanitizeSheetTitle($this->sheetTitle);
     }
 
     public function array(): array

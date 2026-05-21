@@ -18,14 +18,14 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
  * Clean Learning Assessment Excel template: header row, answer key row, student rows.
  * Columns A + Item 1 … Item N only — no formulas, no Score/%age, no summaries, no instructions.
  */
-class GmrcTemplateExport implements FromArray, WithEvents, WithColumnWidths, WithTitle
+class LearningAssessmentTemplateExport implements FromArray, WithEvents, WithColumnWidths, WithTitle
 {
     private const DEFAULT_SHEET_TITLE = 'Learning Assessment';
 
     private readonly string $sheetTitle;
 
     /**
-     * @param  \Illuminate\Support\Collection<int, \App\Models\Student>  $students
+     * @param  Collection<int, Student>  $students
      */
     public function __construct(
         private readonly Collection $students,
@@ -105,7 +105,6 @@ class GmrcTemplateExport implements FromArray, WithEvents, WithColumnWidths, Wit
 
                 $lastColIndex = 1 + $this->totalItems;
                 $lastColLetter = Coordinate::stringFromColumnIndex($lastColIndex);
-                $firstItemCol = Coordinate::stringFromColumnIndex(2);
                 $lastItemCol = Coordinate::stringFromColumnIndex($this->totalItems + 1);
 
                 $range = "A1:{$lastColLetter}{$lastStudentRow}";

@@ -58,7 +58,35 @@
         @click="updatePage('students')"
       >
         <GraduationCap class="h-4 w-4" />
-        <span>Students</span>
+        <span>Learners List</span>
+      </button>
+
+      <button
+        type="button"
+        class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium transition-all cursor-pointer"
+        :class="
+          currentPage === 'attendance'
+            ? 'bg-white text-slate-950 shadow-sm'
+            : 'text-slate-300 hover:bg-white/10 hover:text-white'
+        "
+        @click="updatePage('attendance')"
+      >
+        <ClipboardList class="h-4 w-4" />
+        <span>Attendance Monitor</span>
+      </button>
+
+      <button
+        type="button"
+        class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium transition-all cursor-pointer"
+        :class="
+          currentPage === 'learningAssessment'
+            ? 'bg-white text-slate-950 shadow-sm'
+            : 'text-slate-300 hover:bg-white/10 hover:text-white'
+        "
+        @click="updatePage('learningAssessment')"
+      >
+        <ClipboardPen class="h-4 w-4" />
+        <span>Learning Assessment</span>
       </button>
 
       <button
@@ -99,7 +127,7 @@
 </template>
 
 <script setup>
-import { LayoutDashboard, Users, GraduationCap, FolderPlus, BookOpen } from 'lucide-vue-next';
+import { LayoutDashboard, Users, GraduationCap, FolderPlus, BookOpen, ClipboardList, ClipboardPen } from 'lucide-vue-next';
 
 defineProps({
   currentPage: {

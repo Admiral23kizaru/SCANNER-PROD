@@ -33,6 +33,8 @@
           <AdminDashboardStats v-if="currentPage === 'dashboard'" @navigate="(page) => { currentPage = page; }" />
           <AdminTeachersPage v-else-if="currentPage === 'teachers'" />
           <AdminStudentsPage v-else-if="currentPage === 'students'" />
+          <AttendanceMonitor v-else-if="currentPage === 'attendance'" api-endpoint="/api/admin/attendance/monitor" />
+          <LearningAssessment v-else-if="currentPage === 'learningAssessment'" api-base="/api/admin/learning-assessment" />
           <ManageSubjects v-else-if="currentPage === 'subjects'" />
           <ManageSections v-else-if="currentPage === 'sections'" />
         </div>
@@ -56,6 +58,8 @@ import AdminStudentsPage from '../admin/AdminStudentsPage.vue';
 import ManageSubjects from '../admin/ManageSubjects.vue';
 import ManageSections from '../admin/ManageSections.vue';
 import AdminProfileModal from '../admin/AdminProfileModal.vue';
+import AttendanceMonitor from '../AttendanceMonitor.vue';
+import LearningAssessment from '../teacher/LearningAssessment.vue';
 
 const currentPage = ref('dashboard');
 const isSidebarOpen = ref(false);
@@ -73,7 +77,9 @@ function onProfileUpdated(updatedProfile) {
 
 const pageTitle = computed(() => {
   if (currentPage.value === 'teachers') return 'TEACHERS';
-  if (currentPage.value === 'students') return 'STUDENTS';
+  if (currentPage.value === 'students') return 'LEARNERS';
+  if (currentPage.value === 'attendance') return 'ATTENDANCE MONITOR';
+  if (currentPage.value === 'learningAssessment') return 'LEARNING ASSESSMENT';
   if (currentPage.value === 'subjects') return 'SUBJECTS';
   if (currentPage.value === 'sections') return 'SECTIONS';
   return 'DASHBOARD';
@@ -81,7 +87,9 @@ const pageTitle = computed(() => {
 
 const pageSubtitle = computed(() => {
   if (currentPage.value === 'teachers') return 'Manage teacher accounts and profiles';
-  if (currentPage.value === 'students') return 'Master list and records for students';
+  if (currentPage.value === 'students') return 'Master list and records for learners';
+  if (currentPage.value === 'attendance') return 'Monitor learner attendance across your school';
+  if (currentPage.value === 'learningAssessment') return 'Export templates and analyze learner assessment results';
   if (currentPage.value === 'subjects') return 'Create and manage subjects';
   if (currentPage.value === 'sections') return 'Create and manage class sections';
   return 'Overview of Ozamiz Schools QR-ID System activity';

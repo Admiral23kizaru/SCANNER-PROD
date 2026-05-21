@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Exports\GmrcTemplateExport;
+use App\Exports\LearningAssessmentTemplateExport;
 use App\Exports\LearningAssessmentAnalyzedExport;
-use App\Models\GmrcScore;
+use App\Models\LearningAssessmentScore;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Services\LearningAssessmentExcelAnalyzer;
@@ -147,12 +147,12 @@ class LearningAssessmentController extends BaseController
     public function recent(Request $request): JsonResponse
     {
         $studentIds = $this->studentScopeQuery($request)->pluck('id');
-        $entries = GmrcScore::with('student:id,first_name,last_name,grade,section', 'subject:id,name')
+        $entries = LearningAssessmentScore::with('student:id,first_name,last_name,grade,section', 'subject:id,name')
             ->whereIn('student_id', $studentIds)
             ->latest()
             ->limit(10)
             ->get()
-            ->map(function (GmrcScore $e) {
+            ->map(function (LearningAssessmentScore $e) {
                 $s = $e->student;
                 $sub = $e->subject;
                 $studentName = $s ? trim(($s->last_name ?? '') . ', ' . ($s->first_name ?? '')) : 'Student';
@@ -210,7 +210,7 @@ class LearningAssessmentController extends BaseController
 
         $score = max(0, $totalItems - count($wrongItemsArr));
 
-        $entry = GmrcScore::create([
+        $entry = LearningAssessmentScore::create([
             'student_id' => $student->id,
             'subject_id' => $subject->id,
             'section' => (string) ($student->section ?? ''),
@@ -276,7 +276,7 @@ class LearningAssessmentController extends BaseController
         $sectionLabel = $request->input('section') ? preg_replace('/\s+/', '', (string) $request->input('section')) : 'AllSections';
         $filename = "Learning_Assessment_Template_{$gradeLabel}_{$sectionLabel}.xlsx";
 
-        return Excel::download(new GmrcTemplateExport($students, $totalItems, $sheetTitle), $filename);
+        return Excel::download(new LearningAssessmentTemplateExport($students, $totalItems, $sheetTitle), $filename);
     }
 
     public function importAnalyze(Request $request): JsonResponse

@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class GmrcScore extends Model
+class LearningAssessmentScore extends Model
 {
     protected $table = 'tbl_scanup_gmrc_scores';
 
@@ -35,4 +35,3 @@ class GmrcScore extends Model
         return $this->belongsTo(Subject::class);
     }
 }
-

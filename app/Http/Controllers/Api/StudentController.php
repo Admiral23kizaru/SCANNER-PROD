@@ -111,7 +111,13 @@ class StudentController extends Controller
         }
 
         $user         = $request->user();
-        $gradeSection = $this->resolveGradeSection($request);
+        $grade = $request->grade ?: ($user->role?->name === 'Teacher' ? $user->grade_level : null);
+        $section = $request->section ?: ($user->role?->name === 'Teacher' ? $user->section : null);
+        $gradeSection = $this->resolveGradeSectionFromValues(
+            $request->grade_section,
+            $grade,
+            $section
+        );
 
         $student = Student::create([
             'first_name'        => $request->first_name,
@@ -120,8 +126,8 @@ class StudentController extends Controller
             'middle_name'       => $request->middle_name ?: null,
             'student_number'    => $request->student_number,
             'grade_section'     => $gradeSection,
-            'grade'             => $request->grade ?: null,
-            'section'           => $request->section ?: null,
+            'grade'             => $grade ?: null,
+            'section'           => $section ?: null,
             'guardian'          => $request->guardian ?: null,
             'guardian_email'    => $request->guardian_email ?: null,
             'contact_number'    => $request->contact_number ?: null,
@@ -260,8 +266,8 @@ class StudentController extends Controller
                 continue;
             }
 
-            $grade        = $get(['grade']);
-            $section      = $get(['section']);
+            $grade        = $get(['grade']) ?: ($user->role?->name === 'Teacher' ? (string) ($user->grade_level ?? '') : '');
+            $section      = $get(['section']) ?: ($user->role?->name === 'Teacher' ? (string) ($user->section ?? '') : '');
             $gradeSection = ($grade && $section) ? "$grade-$section" : ($grade ?: null);
 
             Student::create([
@@ -352,15 +358,28 @@ class StudentController extends Controller
     /** Derive grade_section from input fields with fallback logic. */
     private function resolveGradeSection(Request $request): ?string
     {
-        if ($request->grade_section) {
-            return $request->grade_section;
+        return $this->resolveGradeSectionFromValues(
+            $request->grade_section,
+            $request->grade,
+            $request->section
+        );
+    }
+
+    private function resolveGradeSectionFromValues(?string $gradeSection, ?string $grade, ?string $section): ?string
+    {
+        $gradeSection = trim((string) $gradeSection);
+        $grade = trim((string) $grade);
+        $section = trim((string) $section);
+
+        if ($gradeSection !== '') {
+            return $gradeSection;
         }
 
-        if ($request->grade && $request->section) {
-            return $request->grade . '-' . $request->section;
+        if ($grade !== '' && $section !== '') {
+            return $grade . '-' . $section;
         }
 
-        return $request->grade ?: null;
+        return $grade !== '' ? $grade : null;
     }
 
     /** Serialize a Student model into the standard API response shape. */

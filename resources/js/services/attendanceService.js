@@ -199,8 +199,8 @@ export async function fetchRecentAttendance() {
  *   date: string
  * }>}
  */
-export async function fetchTeacherMonitor() {
-    const { data } = await axios.get('/api/teacher/attendance/monitor', {
+export async function fetchTeacherMonitor(endpoint = '/api/teacher/attendance/monitor') {
+    const { data } = await axios.get(endpoint, {
         headers: { ...getAuthHeaders(), Accept: 'application/json' },
     });
     return data;

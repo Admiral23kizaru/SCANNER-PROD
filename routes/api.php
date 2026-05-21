@@ -144,6 +144,18 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/reports/summary-pdf', 'summaryReportPdf');
         });
 
+        Route::get('/attendance/monitor', [AttendanceController::class, 'getTeacherStudentStatus']);
+
+        Route::controller(LearningAssessmentController::class)->prefix('learning-assessment')->group(function () {
+            Route::get('/meta', 'meta');
+            Route::get('/students', 'students');
+            Route::get('/recent', 'recent');
+            Route::post('/scores', 'store');
+            Route::get('/export', 'export');
+            Route::post('/import-analyze/export', 'importAnalyzeExport');
+            Route::post('/import-analyze', 'importAnalyze');
+        });
+
         Route::controller(TeacherManagementController::class)->prefix('teachers')->group(function () {
             Route::get('/export', 'export');
             Route::get('/ehris', 'ehris');
