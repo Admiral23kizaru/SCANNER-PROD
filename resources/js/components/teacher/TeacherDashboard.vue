@@ -61,11 +61,11 @@
               @change="onBulkImportFile"
             />
             <span v-if="bulkImporting" class="text-sm text-slate-500 mr-2">Importing...</span>
-            <AppButton variant="secondary" @click="triggerBulkImport">
+            <AppButton v-if="canManageLearners" variant="secondary" @click="triggerBulkImport">
               <template #icon><Upload class="h-4 w-4" /></template>
               Bulk Import
             </AppButton>
-            <AppButton @click="openAddModal">
+            <AppButton v-if="canManageLearners" @click="openAddModal">
               <template #icon><Plus class="h-4 w-4" /></template>
               Add Learner
             </AppButton>
@@ -114,7 +114,7 @@
                     <AppIconButton label="Profile" variant="primary" @click="openViewModal(row)">
                       <User class="h-5 w-5" />
                     </AppIconButton>
-                    <AppIconButton label="Edit Profile" @click="openEditModal(row)">
+                    <AppIconButton v-if="canManageLearners" label="Edit Profile" @click="openEditModal(row)">
                       <Pencil class="h-5 w-5" />
                     </AppIconButton>
                   </span>
@@ -176,7 +176,7 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
       <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col border border-stone-200" @click.stop>
-        <h2 class="text-lg font-semibold text-stone-800 p-6 pb-0">{{ editingId ? 'Edit Student' : 'Add Learner' }}</h2>
+        <h2 class="text-lg font-semibold text-stone-800 p-6 pb-0">{{ editingId ? 'Edit Learner' : 'Add Learner' }}</h2>
         <form @submit.prevent="submitForm" class="p-6 overflow-y-auto flex-1">
           <div class="space-y-3">
             <div>
@@ -500,8 +500,13 @@ const pageTitle = computed(() => {
 const pageSubtitle = computed(() => {
   if (currentTab.value === 'monitor') return 'Real-time attendance tracking';
   if (currentTab.value === 'learningAssessment') return 'Roster export and Excel import / analysis';
-  return 'Manage student records';
+  if (isSubjectTeacher.value) return 'View learner records for your assigned class';
+  return 'Manage learner records';
 });
+
+const userRole = computed(() => user.value?.role?.name || user.value?.role_name || '');
+const isSubjectTeacher = computed(() => userRole.value === 'Subject Teacher');
+const canManageLearners = computed(() => ['Teacher', 'Adviser'].includes(userRole.value));
 
 const showFormModal = ref(false);
 const showViewModal = ref(false);
@@ -563,12 +568,14 @@ const canSaveForm = computed(() => {
 let debounceTimer = null;
 
 function triggerBulkImport() {
+  if (!canManageLearners.value) return;
   bulkImportError.value = '';
   bulkImportResult.value = null;
   bulkImportInput.value?.click();
 }
 
 async function onBulkImportFile(e) {
+  if (!canManageLearners.value) return;
   const file = e.target.files?.[0];
   if (!file) return;
   bulkImportInput.value.value = '';
@@ -672,6 +679,7 @@ async function loadStudentSubjectSelection(studentId) {
 }
 
 function openAddModal() {
+  if (!canManageLearners.value) return;
   editingId.value = null;
   form.value = {
     first_name: '', last_name: '', middle_name: '', grade: '', section: '', gender: '',
@@ -695,6 +703,7 @@ function openAddModal() {
  * Function: Routing the alert based on the parent's chosen method (SMS vs Email).
  */
 function openEditModal(row) {
+  if (!canManageLearners.value) return;
   editingId.value = row.id;
   form.value = {
     first_name: row.first_name ?? '',
@@ -738,6 +747,10 @@ function buildFormData() {
 }
 
 async function submitForm() {
+  if (!canManageLearners.value) {
+    formError.value = 'Subject Teachers can view learners but cannot add or edit learner records.';
+    return;
+  }
   formError.value = '';
   try {
     if (editingId.value) {

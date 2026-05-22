@@ -15,7 +15,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 /**
  * StudentController — Teacher-scoped CRUD for student records.
  *
- * Teachers may only view and modify students they own (teacher_id) or created (created_by).
+ * Advisers may add/update learners they handle. Subject Teachers may view only.
  */
 class StudentController extends Controller
 {
@@ -39,14 +39,16 @@ class StudentController extends Controller
         $schoolId = $this->schoolScope();
         $query = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId));
 
-        if ($user->role?->name === 'Teacher') {
+        if (in_array($user->role?->name, ['Teacher', 'Adviser', 'Subject Teacher'], true)) {
             if ($user->grade_level && $user->section) {
                 $query->where('grade', $user->grade_level)
                       ->where('section', $user->section);
-            } else {
+            } elseif ($user->role?->name !== 'Subject Teacher') {
                 $query->where(function ($q) use ($user) {
                     $q->where('teacher_id', $user->id)->orWhere('created_by', $user->id);
                 });
+            } else {
+                $query->whereRaw('1 = 0');
             }
         }
 
@@ -84,6 +86,10 @@ class StudentController extends Controller
     /** Create a new student, linking them to the current teacher's account. */
     public function store(Request $request): JsonResponse
     {
+        if (! $this->canManageLearners($request)) {
+            return response()->json(['message' => 'Subject Teachers can view learners but cannot add or edit learner records.'], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'first_name'     => ['required', 'string', 'max:255'],
             'last_name'      => ['required', 'string', 'max:255'],
@@ -126,7 +132,7 @@ class StudentController extends Controller
             'guardian_email'    => $request->guardian_email ?: null,
             'contact_number'    => $request->contact_number ?: null,
             'emergency_contact' => $request->contact_number ?: null,
-            'teacher_id'        => $user->role?->name === 'Teacher' ? $user->id : null,
+            'teacher_id'        => in_array($user->role?->name, ['Teacher', 'Adviser'], true) ? $user->id : null,
             'created_by'        => $user->id,
             'school_id'         => $user->school_id,
             'notification_preference' => (int) ($request->notification_preference ?? 0),
@@ -143,6 +149,10 @@ class StudentController extends Controller
     /** Update a student record (ownership-checked for teachers). */
     public function update(Request $request, int $id): JsonResponse
     {
+        if (! $this->canManageLearners($request)) {
+            return response()->json(['message' => 'Subject Teachers can view learners but cannot add or edit learner records.'], 403);
+        }
+
         $user    = $request->user();
         $schoolId = $this->schoolScope();
         $student = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->find($id);
@@ -151,7 +161,7 @@ class StudentController extends Controller
             return response()->json(['message' => 'Student not found.'], 404);
         }
 
-        if ($user->role?->name === 'Teacher' && $student->teacher_id !== $user->id && $student->created_by !== $user->id) {
+        if (in_array($user->role?->name, ['Teacher', 'Adviser'], true) && $student->teacher_id !== $user->id && $student->created_by !== $user->id) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -216,6 +226,10 @@ class StudentController extends Controller
      */
     public function import(Request $request): JsonResponse
     {
+        if (! $this->canManageLearners($request)) {
+            return response()->json(['message' => 'Subject Teachers can view learners but cannot import learner records.'], 403);
+        }
+
         $request->validate([
             'file' => ['required', 'file', 'mimes:csv,xlsx,xls', 'max:10240'],
         ]);
@@ -276,7 +290,7 @@ class StudentController extends Controller
                 'guardian_email'    => $get(['guardian_email', 'parent_email']) ?: null,
                 'contact_number'    => $get(['contact_number', 'contact']) ?: null,
                 'emergency_contact' => $get(['contact_number', 'contact']) ?: null,
-                'teacher_id'        => $user->role?->name === 'Teacher' ? $user->id : null,
+                'teacher_id'        => in_array($user->role?->name, ['Teacher', 'Adviser'], true) ? $user->id : null,
                 'created_by'        => $user->id,
                 'school_id'         => $user->school_id,
             ]);
@@ -294,6 +308,10 @@ class StudentController extends Controller
     /** Upload and store a student photo (ownership-checked for teachers). */
     public function uploadPhoto(Request $request, int $id): JsonResponse
     {
+        if (! $this->canManageLearners($request)) {
+            return response()->json(['message' => 'Subject Teachers can view learners but cannot update learner records.'], 403);
+        }
+
         $user    = $request->user();
         $student = Student::find($id);
 
@@ -301,7 +319,7 @@ class StudentController extends Controller
             return response()->json(['message' => 'Student not found.'], 404);
         }
 
-        if ($user->role?->name === 'Teacher' && $student->teacher_id !== $user->id && $student->created_by !== $user->id) {
+        if (in_array($user->role?->name, ['Teacher', 'Adviser'], true) && $student->teacher_id !== $user->id && $student->created_by !== $user->id) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -361,6 +379,11 @@ class StudentController extends Controller
         }
 
         return $request->grade ?: null;
+    }
+
+    private function canManageLearners(Request $request): bool
+    {
+        return in_array($request->user()?->role?->name, ['Teacher', 'Adviser'], true);
     }
 
     /** Serialize a Student model into the standard API response shape. */

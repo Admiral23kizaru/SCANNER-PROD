@@ -88,17 +88,9 @@ async function loginRedirectGuard(to, from, next) {
         const roleName = user.role?.name || user.role_name;
         if (roleName === 'System Admin') next({ path: '/system-admin' });
         else if (roleName === 'Admin') next({ path: '/admin' });
-        else if (roleName === 'Teacher') next({ path: '/teacher' });
+        else if (['Teacher', 'Adviser', 'Subject Teacher'].includes(roleName)) next({ path: '/teacher' });
         else if (roleName === 'Reporting Manager') {
             next({ path: '/admin' });
-            return;
-        }
-        else if (roleName === 'Adviser') {
-            next({ path: '/adviser' });
-            return;
-        }
-        else if (roleName === 'Subject Teacher') {
-            next({ path: '/subject-teacher' });
             return;
         }
         else next({ path: '/scanner' }); // Guard → scanner home
@@ -129,7 +121,7 @@ const routes = [
         path: '/teacher',
         name: 'Teacher',
         component: TeacherDashboard,
-        beforeEnter: roleGuard('Teacher'),
+        beforeEnter: roleGuard(['Teacher', 'Adviser', 'Subject Teacher']),
     },
     {
         path: '/admin',
@@ -171,6 +163,7 @@ const routes = [
     {
         path: '/adviser',
         name: 'Adviser',
+        redirect: '/teacher',
         component: {
             template: `
       <div style="
@@ -196,6 +189,7 @@ const routes = [
     {
         path: '/subject-teacher',
         name: 'SubjectTeacher',
+        redirect: '/teacher',
         component: {
             template: `
       <div style="

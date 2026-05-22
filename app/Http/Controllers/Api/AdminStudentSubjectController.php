@@ -33,6 +33,10 @@ class AdminStudentSubjectController extends Controller
 
     public function sync(Request $request, int $studentId): JsonResponse
     {
+        if ($request->user()?->role?->name === 'Subject Teacher') {
+            return response()->json(['message' => 'Subject Teachers can view learner subjects but cannot edit them.'], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'subject_ids' => ['required', 'array'],
             'subject_ids.*' => ['integer'],
@@ -70,17 +74,18 @@ class AdminStudentSubjectController extends Controller
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
 
         $user = $request->user();
-        if ($user?->role?->name === 'Teacher') {
+        if (in_array($user?->role?->name, ['Teacher', 'Adviser', 'Subject Teacher'], true)) {
             if ($user->grade_level && $user->section) {
                 $query->where('grade', $user->grade_level)->where('section', $user->section);
-            } else {
+            } elseif ($user->role?->name !== 'Subject Teacher') {
                 $query->where(function ($q) use ($user) {
                     $q->where('teacher_id', $user->id)->orWhere('created_by', $user->id);
                 });
+            } else {
+                $query->whereRaw('1 = 0');
             }
         }
 
         return $query->find($studentId);
     }
 }
-

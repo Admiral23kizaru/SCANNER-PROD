@@ -378,3 +378,75 @@ export async function getAdminTeacherIdUrl(id) {
     });
     return data;
 }
+
+export async function fetchAdminSchoolOverview() {
+    const { data } = await axios.get(base + '/school-overview', {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data.data || [];
+}
+
+export async function fetchAdminGuardians() {
+    const { data } = await axios.get(base + '/guardians', {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data.data || [];
+}
+
+export async function createAdminGuardian(payload) {
+    const { data } = await axios.post(base + '/guardians', payload, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json', Accept: 'application/json' },
+    });
+    return data;
+}
+
+export async function fetchAdminAssessmentLogs() {
+    const { data } = await axios.get(base + '/assessment-logs', {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data.data || [];
+}
+
+export async function createAdminAssessmentLog(payload) {
+    const { data } = await axios.post(base + '/assessment-logs', payload, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json', Accept: 'application/json' },
+    });
+    return data;
+}
+
+export async function fetchLeastMasteredSkills(params = {}) {
+    const { data } = await axios.get(base + '/least-mastered-skills', {
+        params,
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data;
+}
+
+export async function fetchAdminAttendanceToday() {
+    const { data } = await axios.get(base + '/attendance/today', {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data.data || [];
+}
+
+export async function fetchAdminCalendarEvents(month) {
+    const { data } = await axios.get(base + '/calendar-events', {
+        params: { month },
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data.data || [];
+}
+
+export async function createAdminCalendarEvent(payload) {
+    const { data } = await axios.post(base + '/calendar-events', payload, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json', Accept: 'application/json' },
+    });
+    return data;
+}
+
+export async function deleteAdminCalendarEvent(id) {
+    const { data } = await axios.delete(base + '/calendar-events/' + id, {
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    return data;
+}

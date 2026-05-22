@@ -1,19 +1,20 @@
 <template>
-  <header class="sticky top-0 z-10" style="background-color: #050517;">
-    <div class="h-16 flex items-center justify-between px-4 lg:px-10 border-b border-slate-700/80">
+  <header class="sticky top-0 z-10" :class="themeMode === 'dark' ? 'bg-[#050517]' : 'bg-white'">
+    <div class="h-16 flex items-center justify-between px-4 lg:px-10 border-b" :class="themeMode === 'dark' ? 'border-slate-700/80' : 'border-slate-200'">
       <div class="flex items-center gap-3">
         <button
           type="button"
-          class="lg:hidden p-2 text-white hover:bg-white/10 rounded-lg transition"
+          class="lg:hidden p-2 rounded-lg transition"
+          :class="themeMode === 'dark' ? 'text-white hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'"
           @click="$emit('open-sidebar')"
         >
           <Menu class="h-5 w-5" />
         </button>
         <div>
-          <p class="text-xs font-medium tracking-[0.25em] text-slate-400 uppercase">
+          <p class="text-xs font-medium tracking-[0.25em] uppercase" :class="themeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'">
             {{ pageTitle }}
           </p>
-          <p class="text-sm font-semibold text-white">
+          <p class="text-sm font-semibold" :class="themeMode === 'dark' ? 'text-white' : 'text-slate-900'">
             {{ pageSubtitle }}
           </p>
         </div>
@@ -122,6 +123,10 @@ const props = defineProps({
   pageSubtitle: {
     type: String,
     required: true
+  },
+  themeMode: {
+    type: String,
+    default: 'light'
   }
 });
 

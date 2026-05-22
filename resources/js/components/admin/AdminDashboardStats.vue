@@ -115,6 +115,85 @@
       </div>
     </div>
 
+    <!-- Attendance snapshot -->
+    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] gap-6">
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <h2 class="text-lg font-semibold text-slate-900">Attendance Pie Chart</h2>
+          <select
+            v-model="attendancePieView"
+            class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 sm:w-36"
+          >
+            <option value="status">Status</option>
+            <option value="gender">Gender</option>
+            <option value="grade">Grade</option>
+          </select>
+        </div>
+        <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_180px] lg:items-center">
+          <div class="h-[300px] relative">
+            <Doughnut v-if="attendancePieData.labels.length" :data="attendancePieData" :options="doughnutOptions" />
+            <div v-else-if="!loading" class="absolute inset-0 flex items-center justify-center text-slate-400 text-sm italic">
+              No attendance data available yet.
+            </div>
+          </div>
+          <div class="space-y-3">
+            <div
+              v-for="(label, index) in attendancePieData.labels"
+              :key="label"
+              class="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
+            >
+              <div class="flex min-w-0 items-center gap-2">
+                <span class="h-2.5 w-2.5 rounded-full" :style="{ backgroundColor: attendancePieData.datasets[0].backgroundColor[index] }"></span>
+                <span class="truncate text-xs font-medium text-slate-600">{{ label }}</span>
+              </div>
+              <span class="text-sm font-bold text-slate-900">{{ attendancePieData.datasets[0].data[index] }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-lg font-semibold text-slate-900">Calendar</h2>
+          <p class="rounded-lg bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">{{ calendarMonthLabel }}</p>
+        </div>
+        <div class="mt-6 grid grid-cols-7 gap-2 text-center text-xs font-semibold text-slate-400">
+          <span v-for="day in weekDays" :key="day">{{ day }}</span>
+        </div>
+        <div class="mt-3 grid grid-cols-7 gap-2">
+          <div
+            v-for="(day, index) in calendarDays"
+            :key="index"
+            class="relative flex aspect-square items-center justify-center rounded-lg text-sm font-medium"
+            :class="[
+              day.inMonth ? 'text-slate-700' : 'text-slate-300',
+              selectedCalendarDate === day.iso ? 'ring-2 ring-teal-500 ring-offset-2' : '',
+              day.isToday ? 'bg-teal-500 text-white shadow-lg shadow-teal-200' : 'hover:bg-slate-50'
+            ]"
+            @click="selectCalendarDate(day.iso)"
+          >
+            {{ day.date }}
+            <span v-if="eventsForDate(day.iso).length" class="absolute bottom-1 h-1.5 w-1.5 rounded-full" :class="day.isToday ? 'bg-white' : 'bg-teal-500'"></span>
+          </div>
+        </div>
+        <form class="mt-5 flex gap-2" @submit.prevent="saveCalendarEvent">
+          <input
+            v-model="newCalendarEventTitle"
+            class="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+            :placeholder="`Add event for ${selectedCalendarDate}`"
+          />
+          <button class="rounded-lg bg-teal-600 px-3 py-2 text-sm font-semibold text-white">Add</button>
+        </form>
+        <div class="mt-3 space-y-2">
+          <div v-for="event in eventsForDate(selectedCalendarDate)" :key="event.id" class="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+            <span class="truncate text-sm font-medium text-slate-700">{{ event.title }}</span>
+            <button class="text-xs font-semibold text-red-600 hover:text-red-700" @click="removeCalendarEvent(event.id)">Delete</button>
+          </div>
+          <p v-if="eventsForDate(selectedCalendarDate).length === 0" class="text-xs text-slate-400">No events on this date.</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Charts Section -->
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
       <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
@@ -308,7 +387,16 @@
 <script setup>
 import { ref, onMounted, reactive, computed, watch } from 'vue';
 import axios from 'axios';
-import { fetchDashboardOverview, fetchSummaryReportPdfBlob, fetchDashboardStats, fetchAttendanceTrends, fetchAdminSections } from '../../services/adminService';
+import {
+  createAdminCalendarEvent,
+  deleteAdminCalendarEvent,
+  fetchAdminCalendarEvents,
+  fetchDashboardOverview,
+  fetchSummaryReportPdfBlob,
+  fetchDashboardStats,
+  fetchAttendanceTrends,
+  fetchAdminSections,
+} from '../../services/adminService';
 import {
   GraduationCap,
   Users,
@@ -331,6 +419,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  ArcElement,
   BarElement,
   CategoryScale,
   LinearScale,
@@ -338,12 +427,13 @@ import {
   LineElement,
   Filler,
 } from 'chart.js';
-import { Bar, Line } from 'vue-chartjs';
+import { Bar, Doughnut, Line } from 'vue-chartjs';
 
 ChartJS.register(
   Title,
   Tooltip,
   Legend,
+  ArcElement,
   BarElement,
   CategoryScale,
   LinearScale,
@@ -358,6 +448,11 @@ const dashboardStats = ref({});
 const recentActivity = ref([]);
 const loading = ref(false);
 const schoolSections = ref([]);
+const attendancePieView = ref('status');
+const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const calendarEvents = ref([]);
+const selectedCalendarDate = ref(toDateInputValue(new Date()));
+const newCalendarEventTitle = ref('');
 
 // ─── Population Modal State ─────────────────────────────────────────────
 // Why: Clicking "Male", "Female", or "Absent" on the status card should
@@ -500,6 +595,123 @@ const trendData = computed(() => ({
   ]
 }));
 
+const attendancePieData = computed(() => {
+  const totals = dashboardStats.value.totals || {};
+  const gradeRows = dashboardStats.value.attendance_by_grade || [];
+
+  if (attendancePieView.value === 'gender') {
+    return makePieData(
+      ['Male', 'Female'],
+      [totals.male_today || 0, totals.female_today || 0],
+      ['#3b82f6', '#ec4899']
+    );
+  }
+
+  if (attendancePieView.value === 'grade') {
+    return makePieData(
+      gradeRows.map(item => `Grade ${item.grade || 'N/A'}`),
+      gradeRows.map(item => item.count || 0),
+      ['#14b8a6', '#8b5cf6', '#f59e0b', '#3b82f6', '#ef4444', '#22c55e', '#06b6d4']
+    );
+  }
+
+  return makePieData(
+    ['Present', 'Absent'],
+    [totals.attendance_today || 0, totals.absent_today || 0],
+    ['#22c55e', '#f97316']
+  );
+});
+
+function makePieData(labels, values, colors) {
+  const filtered = labels
+    .map((label, index) => ({ label, value: values[index] || 0, color: colors[index % colors.length] }))
+    .filter(item => item.value > 0);
+
+  return {
+    labels: filtered.map(item => item.label),
+    datasets: [
+      {
+        data: filtered.map(item => item.value),
+        backgroundColor: filtered.map(item => item.color),
+        borderColor: '#ffffff',
+        borderWidth: 4,
+        hoverOffset: 8,
+      }
+    ]
+  };
+}
+
+const calendarMonthLabel = computed(() => {
+  return new Date().toLocaleDateString([], { month: 'long', year: 'numeric' });
+});
+
+const calendarDays = computed(() => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const start = new Date(year, month, 1 - firstDay.getDay());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+
+    return {
+      date: date.getDate(),
+      iso: toDateInputValue(date),
+      inMonth: date.getMonth() === month,
+      isToday:
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth() &&
+        date.getDate() === now.getDate(),
+    };
+  });
+});
+
+function toDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function calendarMonthValue() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function eventsForDate(date) {
+  return calendarEvents.value.filter(event => String(event.event_date).slice(0, 10) === date);
+}
+
+function selectCalendarDate(date) {
+  selectedCalendarDate.value = date;
+}
+
+async function loadCalendarEvents() {
+  try {
+    calendarEvents.value = await fetchAdminCalendarEvents(calendarMonthValue());
+  } catch {
+    calendarEvents.value = [];
+  }
+}
+
+async function saveCalendarEvent() {
+  const title = newCalendarEventTitle.value.trim();
+  if (!title) return;
+  await createAdminCalendarEvent({
+    title,
+    event_date: selectedCalendarDate.value,
+  });
+  newCalendarEventTitle.value = '';
+  await loadCalendarEvents();
+}
+
+async function removeCalendarEvent(id) {
+  await deleteAdminCalendarEvent(id);
+  await loadCalendarEvents();
+}
+
 const gradeData = computed(() => {
   const data = dashboardStats.value.attendance_by_grade || [];
   return {
@@ -541,6 +753,24 @@ const lineOptions = {
     x: {
       grid: { display: false },
       ticks: { font: { size: 10 }, color: '#94a3b8' }
+    }
+  }
+};
+
+const doughnutOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '62%',
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: '#fff',
+      titleColor: '#1e293b',
+      bodyColor: '#64748b',
+      borderColor: '#e2e8f0',
+      borderWidth: 1,
+      padding: 12,
+      displayColors: false,
     }
   }
 };
@@ -664,7 +894,8 @@ async function loadData() {
       }
     })(),
     loadOverview(),
-    loadTrends()
+    loadTrends(),
+    loadCalendarEvents()
   ]);
   loading.value = false;
 }

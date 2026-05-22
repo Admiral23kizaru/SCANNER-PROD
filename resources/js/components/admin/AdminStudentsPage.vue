@@ -6,7 +6,7 @@
         <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <AppButton @click="openCreateModal">
             <template #icon><Plus class="h-4 w-4" /></template>
-            Create Student
+            Create Learner
           </AppButton>
           <AppButton
             variant="secondary"
@@ -25,7 +25,7 @@
             <input
               v-model="searchQuery"
               type="search"
-              placeholder="Search students..."
+              placeholder="Search learners..."
               class="w-full md:w-72 rounded-lg border border-slate-300 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-500"
               @input="debouncedFetch"
             />
@@ -145,10 +145,10 @@
                   <AppIconButton label="Generate QR Code (LRN)" variant="soft" size="sm" @click="openQrModal(row)">
                     <QrCode class="h-4 w-4" />
                   </AppIconButton>
-                  <AppIconButton label="Edit student" size="sm" @click="openEditModal(row)">
+                  <AppIconButton label="Edit learner" size="sm" @click="openEditModal(row)">
                     <PencilLine class="h-4 w-4" />
                   </AppIconButton>
-                  <AppIconButton label="Delete student" variant="danger" size="sm" @click="confirmDelete(row)">
+                  <AppIconButton label="Delete learner" variant="danger" size="sm" @click="confirmDelete(row)">
                     <Trash2 class="h-4 w-4" />
                   </AppIconButton>
                 </span>
@@ -159,7 +159,7 @@
             </tr>
             <tr v-if="!loading && students.length === 0">
               <td colspan="7">
-                <AppEmptyState title="No students found." message="Try adjusting the search or filter options." />
+                <AppEmptyState title="No learners found." message="Try adjusting the search or filter options." />
               </td>
             </tr>
           </tbody>
@@ -200,7 +200,7 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
       <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col border border-stone-200" @click.stop>
-        <h2 class="text-lg font-semibold p-6 pb-0">{{ editingId ? 'Edit Student' : 'Create Student' }}</h2>
+        <h2 class="text-lg font-semibold p-6 pb-0">{{ editingId ? 'Edit Learner' : 'Create Learner' }}</h2>
         <form @submit.prevent="submitForm" class="p-6 overflow-y-auto flex-1">
           <div class="space-y-3">
             <div class="grid grid-cols-2 gap-3">
@@ -275,7 +275,7 @@
 
             <div class="rounded-lg border border-stone-200 bg-stone-50/60 p-4">
               <div class="text-sm font-semibold text-stone-800 mb-2">Subject Enrollment</div>
-              <p class="text-xs text-stone-500 mb-3">Select the subjects this student is enrolled in.</p>
+              <p class="text-xs text-stone-500 mb-3">Select the subjects this learner is enrolled in.</p>
               <div v-if="availableSubjects.length === 0" class="text-sm text-stone-500">No subjects available. Add subjects in Manage Subjects.</div>
               <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <label
@@ -312,7 +312,7 @@
       @click.self="closeQrModal"
     >
       <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 border border-slate-200" @click.stop>
-        <h2 class="text-lg font-semibold text-slate-900 mb-1">Student QR Code</h2>
+        <h2 class="text-lg font-semibold text-slate-900 mb-1">Learner QR Code</h2>
         <p class="text-xs text-slate-500 mb-4">Encodes LRN only (for scanner compatibility).</p>
         <div v-if="qrLoading" class="py-12 text-center text-slate-500 text-sm">Loading...</div>
         <div v-else-if="qrError" class="text-sm text-red-600 mb-4">{{ qrError }}</div>
@@ -350,10 +350,10 @@
       @click.self="showDeleteModal = false"
     >
       <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6" @click.stop>
-        <h2 class="text-lg font-semibold text-stone-800 mb-2">Delete Student</h2>
+        <h2 class="text-lg font-semibold text-stone-800 mb-2">Delete Learner</h2>
         <p class="text-sm text-stone-600 mb-4">
           Are you sure you want to delete <strong>{{ deleteTarget?.full_name }}</strong> ({{ deleteTarget?.student_number }})?
-          All attendance records for this student will be permanently deleted.
+          All attendance records for this learner will be permanently deleted.
         </p>
         <div class="flex justify-end gap-2">
           <button type="button" class="rounded-md border border-stone-300 px-4 py-2 text-sm" @click="showDeleteModal = false">Cancel</button>
@@ -550,12 +550,12 @@ async function handleExport() {
     const a = document.createElement('a');
     a.style.display = 'none';
     a.href = url;
-    a.download = 'students_export.csv';
+    a.download = 'learners_export.csv';
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
   } catch (err) {
-    alert('Failed to export students.');
+    alert('Failed to export learners.');
   } finally {
     exporting.value = false;
   }
@@ -725,7 +725,7 @@ async function openQrModal(row) {
     const ctx = await fetchStudentQrContext(row.id);
     const lrn = String(ctx.student_number || '').trim();
     if (!lrn) {
-      qrError.value = 'This student has no LRN (student_number) on file.';
+      qrError.value = 'This learner has no LRN (student_number) on file.';
       return;
     }
     qrLrn.value = lrn;
@@ -736,7 +736,7 @@ async function openQrModal(row) {
       errorCorrectionLevel: 'M',
     });
   } catch (err) {
-    qrError.value = err.response?.data?.message || 'Could not load student for QR.';
+    qrError.value = err.response?.data?.message || 'Could not load learner for QR.';
   } finally {
     qrLoading.value = false;
   }
