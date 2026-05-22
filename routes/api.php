@@ -152,6 +152,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/recent', 'recent');
             Route::post('/scores', 'store');
             Route::get('/export', 'export');
+            Route::get('/files', 'files');
+            Route::post('/files', 'saveAnalyzedFile');
+            Route::get('/files/{id}/download', 'downloadAnalyzedFile');
+            Route::delete('/files/{id}', 'deleteAnalyzedFile');
             Route::post('/import-analyze/export', 'importAnalyzeExport');
             Route::post('/import-analyze', 'importAnalyze');
         });
@@ -262,6 +266,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/recent', 'recent');
             Route::post('/scores', 'store');
             Route::get('/export', 'export');
+            Route::get('/files', 'files');
+            Route::post('/files', 'saveAnalyzedFile');
+            Route::get('/files/{id}/download', 'downloadAnalyzedFile');
+            Route::delete('/files/{id}', 'deleteAnalyzedFile');
             Route::post('/import-analyze/export', 'importAnalyzeExport');
             Route::post('/import-analyze', 'importAnalyze');
         });

@@ -4,15 +4,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Exports\LearningAssessmentTemplateExport;
 use App\Exports\LearningAssessmentAnalyzedExport;
+use App\Models\LearningAssessmentFile;
 use App\Models\LearningAssessmentScore;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Services\LearningAssessmentExcelAnalyzer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use InvalidArgumentException;
 use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Excel as ExcelWriter;
 
 class LearningAssessmentController extends BaseController
 {
@@ -307,6 +310,115 @@ class LearningAssessmentController extends BaseController
 
     public function importAnalyzeExport(Request $request)
     {
+        $result = $this->validatedAnalyzePayload($request);
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
+        [$validated, $sheetTitle] = $result;
+        $filename = 'Learning_Assessment_Analyzed_' . now()->format('Y-m-d_His') . '.xlsx';
+
+        return Excel::download(new LearningAssessmentAnalyzedExport($validated, $sheetTitle), $filename);
+    }
+
+    public function files(Request $request): JsonResponse
+    {
+        $schoolId = $this->schoolScope();
+
+        $files = LearningAssessmentFile::query()
+            ->where('school_id', $schoolId)
+            ->latest('analyzed_at')
+            ->latest('id')
+            ->limit(100)
+            ->get()
+            ->map(fn (LearningAssessmentFile $file) => $this->fileToArray($file));
+
+        return response()->json(['data' => $files]);
+    }
+
+    public function saveAnalyzedFile(Request $request): JsonResponse
+    {
+        $metaValidator = Validator::make($request->all(), [
+            'title' => ['required', 'string', 'max:255'],
+            'analyzed_at' => ['required', 'date'],
+            'subject_id' => ['nullable', 'integer'],
+            'grade_level' => ['nullable', 'string', 'max:50'],
+            'section' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        if ($metaValidator->fails()) {
+            return response()->json(['message' => 'Validation failed.', 'errors' => $metaValidator->errors()], 422);
+        }
+
+        $result = $this->validatedAnalyzePayload($request);
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
+        [$validated, $sheetTitle] = $result;
+        $schoolId = $this->schoolScope();
+        $title = trim((string) $request->input('title'));
+        $safeTitle = preg_replace('/[^A-Za-z0-9_-]+/', '_', $title) ?: 'Learning_Assessment';
+        $filename = $safeTitle . '_Analyzed_' . now()->format('Y-m-d_His') . '.xlsx';
+        $path = 'learning-assessment/analyzed/' . $schoolId . '/' . $filename;
+
+        $contents = Excel::raw(
+            new LearningAssessmentAnalyzedExport($validated, $sheetTitle),
+            ExcelWriter::XLSX
+        );
+        Storage::disk('local')->put($path, $contents);
+
+        $file = LearningAssessmentFile::create([
+            'school_id' => $schoolId,
+            'created_by' => $request->user()?->id,
+            'subject_id' => $request->input('subject_id'),
+            'title' => $title,
+            'analyzed_at' => $request->date('analyzed_at')?->toDateString() ?? now()->toDateString(),
+            'sheet_title' => $sheetTitle,
+            'grade_level' => $request->input('grade_level'),
+            'section' => $request->input('section'),
+            'student_count' => count($validated['students']),
+            'item_count' => count($validated['item_numbers']),
+            'filename' => $filename,
+            'file_path' => $path,
+            'analysis_payload' => $validated,
+        ]);
+
+        return response()->json([
+            'message' => 'Analyzed Excel file saved.',
+            'file' => $this->fileToArray($file),
+        ], 201);
+    }
+
+    public function downloadAnalyzedFile(Request $request, int $id)
+    {
+        $file = LearningAssessmentFile::where('school_id', $this->schoolScope())->find($id);
+        if (! $file) {
+            return response()->json(['message' => 'Analyzed file not found.'], 404);
+        }
+
+        if (! Storage::disk('local')->exists($file->file_path)) {
+            return response()->json(['message' => 'Saved Excel file is missing from storage.'], 404);
+        }
+
+        return Storage::disk('local')->download($file->file_path, $file->filename);
+    }
+
+    public function deleteAnalyzedFile(Request $request, int $id): JsonResponse
+    {
+        $file = LearningAssessmentFile::where('school_id', $this->schoolScope())->find($id);
+        if (! $file) {
+            return response()->json(['message' => 'Analyzed file not found.'], 404);
+        }
+
+        Storage::disk('local')->delete($file->file_path);
+        $file->delete();
+
+        return response()->json(['message' => 'Analyzed file deleted.']);
+    }
+
+    private function validatedAnalyzePayload(Request $request): array|JsonResponse
+    {
         $validator = Validator::make($request->all(), [
             'sheet_title' => ['nullable', 'string', 'max:100'],
             'item_numbers' => ['required', 'array', 'min:1', 'max:200'],
@@ -352,8 +464,22 @@ class LearningAssessmentController extends BaseController
             }
         }
 
-        $filename = 'Learning_Assessment_Analyzed_' . now()->format('Y-m-d_His') . '.xlsx';
+        return [$validated, $sheetTitle];
+    }
 
-        return Excel::download(new LearningAssessmentAnalyzedExport($validated, $sheetTitle), $filename);
+    private function fileToArray(LearningAssessmentFile $file): array
+    {
+        return [
+            'id' => $file->id,
+            'title' => $file->title,
+            'analyzed_at' => $file->analyzed_at?->toDateString(),
+            'sheet_title' => $file->sheet_title,
+            'grade_level' => $file->grade_level,
+            'section' => $file->section,
+            'student_count' => $file->student_count,
+            'item_count' => $file->item_count,
+            'filename' => $file->filename,
+            'created_at' => $file->created_at?->toIso8601String(),
+        ];
     }
 }

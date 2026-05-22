@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithCharts;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithTitle;
@@ -27,7 +28,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * @phpstan-type StudentRow array{name: string, answers: list<string>, score: int, percentage: float}
  * @phpstan-type ItemStat array{item: int, total_correct: int, examinees: int, p_value: float|null, difficulty_pct: float|null, difficulty_level: string, interpretation: string, what_it_means?: string, recommended_action?: string}
  */
-class LearningAssessmentAnalyzedExport implements FromArray, WithEvents, WithColumnWidths, WithTitle
+class LearningAssessmentAnalyzedExport implements FromArray, WithCharts, WithEvents, WithColumnWidths, WithTitle
 {
     private int $firstAnalysisRow = 0;
 
@@ -46,6 +47,8 @@ class LearningAssessmentAnalyzedExport implements FromArray, WithEvents, WithCol
     private int $guideHeaderRow = 0;
 
     private int $guideDataFirstRow = 0;
+
+    private int $guideEndColIndex = 14;
 
     /**
      * @param  array{
@@ -69,7 +72,7 @@ class LearningAssessmentAnalyzedExport implements FromArray, WithEvents, WithCol
     {
         $items = $this->payload['item_numbers'];
         $n = count($items);
-        $lastCol = 1 + $n + 2;
+        $lastCol = max(1 + $n + 2, $this->guideEndColIndex);
         $this->lastDataColIndex = $lastCol;
 
         $header = array_merge(
@@ -139,9 +142,9 @@ class LearningAssessmentAnalyzedExport implements FromArray, WithEvents, WithCol
 
         $rows[] = [];
         $this->guideTitleRow = count($rows) + 1;
-        $rows[] = ['Difficulty Index (Percentage-Based) Interpretation Guide', '', '', ''];
+        $rows[] = ['Difficulty Index (Percentage-Based) Interpretation Guide'];
         $this->guideHeaderRow = count($rows) + 1;
-        $rows[] = ['Difficulty Index (%)', 'Interpretation', 'What It Means', 'Recommended Action'];
+        $rows[] = ['Difficulty Index (%)', '', 'Interpretation', '', '', 'What It Means', '', '', '', 'Recommended Action'];
         $this->guideDataFirstRow = count($rows) + 1;
         $rows[] = ['80% – 100%', 'Too Easy', 'Most students got the item.', 'Consider revising or removing if appropriate.'];
         $rows[] = ['50% – 79%', 'Ideal / Moderately Easy', 'Good item – well balanced.', 'Usually no change needed.'];
@@ -173,6 +176,11 @@ class LearningAssessmentAnalyzedExport implements FromArray, WithEvents, WithCol
         return $widths;
     }
 
+    public function charts(): array
+    {
+        return [];
+    }
+
     private function quotedSheetTitle(Worksheet $sheet): string
     {
         return "'" . str_replace("'", "''", $sheet->getTitle()) . "'";
@@ -187,17 +195,17 @@ class LearningAssessmentAnalyzedExport implements FromArray, WithEvents, WithCol
 
         $itemCol = Coordinate::stringFromColumnIndex($this->lastDataColIndex + 1);
         $pCol = Coordinate::stringFromColumnIndex($this->lastDataColIndex + 2);
-        $r0 = $this->chartTitleRow + 18;
+        $r0 = $this->chartTitleRow + 24;
         $i = 0;
         foreach ($this->payload['item_stats'] as $stat) {
             $r = $r0 + $i++;
             $sheet->setCellValue($itemCol . $r, $stat['item']);
             $pv = $stat['p_value'];
-            $sheet->setCellValue($pCol . $r, $pv !== null ? (float) $pv : 0.0);
+            $sheet->setCellValue($pCol . $r, $pv !== null ? round((float) $pv, 4) : 0.0);
         }
         $lastR = $r0 + $n - 1;
-        $sheet->getColumnDimension($itemCol)->setWidth(2.5);
-        $sheet->getColumnDimension($pCol)->setWidth(2.5);
+        $sheet->getColumnDimension($itemCol)->setWidth(2.5)->setVisible(false);
+        $sheet->getColumnDimension($pCol)->setWidth(2.5)->setVisible(false);
 
         $q = $this->quotedSheetTitle($sheet);
         $catRef = "{$q}!\${$itemCol}\${$r0}:\${$itemCol}\${$lastR}";
@@ -250,7 +258,7 @@ class LearningAssessmentAnalyzedExport implements FromArray, WithEvents, WithCol
             new Title('Difficulty Index Chart'),
             null,
             $plotArea,
-            true,
+            false,
             DataSeries::EMPTY_AS_GAP,
             new Title('Item Number'),
             new Title('Difficulty Index'),
@@ -262,9 +270,11 @@ class LearningAssessmentAnalyzedExport implements FromArray, WithEvents, WithCol
 
         $topRow = $this->chartTitleRow + 1;
         $chart->setTopLeftPosition('A' . $topRow, 0, 10);
-        $chartRight = Coordinate::stringFromColumnIndex(min(16, max(10, 2 + min($n, 50))));
-        $chart->setBottomRightPosition($chartRight . ($topRow + 14), 0, -10);
-        $sheet->getRowDimension($topRow)->setRowHeight(200);
+        $chartRight = Coordinate::stringFromColumnIndex(max(20, $this->lastDataColIndex));
+        $chart->setBottomRightPosition($chartRight . ($topRow + 20), 0, -10);
+        for ($r = $topRow; $r <= $topRow + 20; $r++) {
+            $sheet->getRowDimension($r)->setRowHeight(18);
+        }
         $sheet->addChart($chart);
     }
 
@@ -278,6 +288,7 @@ class LearningAssessmentAnalyzedExport implements FromArray, WithEvents, WithCol
                 $scoreCi = $n + 2;
                 $pctCi = $n + 3;
                 $lastLetter = Coordinate::stringFromColumnIndex($this->lastDataColIndex);
+                $guideEndLetter = Coordinate::stringFromColumnIndex($this->guideEndColIndex);
                 $lastItemLetter = Coordinate::stringFromColumnIndex($lastItemCi);
                 $scoreLetter = Coordinate::stringFromColumnIndex($scoreCi);
                 $pctLetter = Coordinate::stringFromColumnIndex($pctCi);
@@ -359,7 +370,7 @@ class LearningAssessmentAnalyzedExport implements FromArray, WithEvents, WithCol
                     $sheet->getStyle("A{$this->instructionRedRow}")->getFont()->getColor()->setARGB('FFFF0000');
                 }
 
-                $sheet->mergeCells("A{$this->guideTitleRow}:D{$this->guideTitleRow}");
+                $sheet->mergeCells("A{$this->guideTitleRow}:{$guideEndLetter}{$this->guideTitleRow}");
                 $sheet->getStyle("A{$this->guideTitleRow}")->applyFromArray([
                     'font' => ['bold' => true, 'size' => 11],
                     'alignment' => [
@@ -367,8 +378,9 @@ class LearningAssessmentAnalyzedExport implements FromArray, WithEvents, WithCol
                         'vertical' => Alignment::VERTICAL_CENTER,
                     ],
                 ]);
+                $sheet->getRowDimension($this->guideTitleRow)->setRowHeight(24);
 
-                $sheet->getStyle("A{$this->guideHeaderRow}:D{$this->guideHeaderRow}")->applyFromArray([
+                $sheet->getStyle("A{$this->guideHeaderRow}:{$guideEndLetter}{$this->guideHeaderRow}")->applyFromArray([
                     'font' => ['bold' => true],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
                     'fill' => [
@@ -376,21 +388,48 @@ class LearningAssessmentAnalyzedExport implements FromArray, WithEvents, WithCol
                         'startColor' => ['argb' => 'FFF2F2F2'],
                     ],
                 ]);
+                $sheet->getRowDimension($this->guideHeaderRow)->setRowHeight(24);
 
                 $interpretationBg = ['FFE6D9F2', 'FFFFF9C4', 'FFC6EFCE', 'FF6BB6FF'];
                 foreach ($interpretationBg as $idx => $argb) {
                     $r = $this->guideDataFirstRow + $idx;
-                    $sheet->getStyle("B{$r}")->applyFromArray([
+                    $interpretation = $sheet->getCell("B{$r}")->getValue();
+                    $meaning = $sheet->getCell("C{$r}")->getValue();
+                    $action = $sheet->getCell("D{$r}")->getValue();
+                    $sheet->setCellValue("C{$r}", $interpretation);
+                    $sheet->setCellValue("F{$r}", $meaning);
+                    $sheet->setCellValue("J{$r}", $action);
+                    $sheet->setCellValue("B{$r}", '');
+                    $sheet->setCellValue("D{$r}", '');
+
+                    $sheet->getStyle("C{$r}:E{$r}")->applyFromArray([
                         'fill' => [
                             'fillType' => Fill::FILL_SOLID,
                             'startColor' => ['argb' => $argb],
                         ],
                         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
                     ]);
-                    $sheet->getStyle("A{$r}:D{$r}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+                    $sheet->getStyle("A{$r}:{$guideEndLetter}{$r}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
                     $sheet->getStyle("A{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                    $sheet->getStyle("C{$r}:D{$r}")->getAlignment()->setWrapText(true);
+                    $sheet->getStyle("F{$r}:{$guideEndLetter}{$r}")->getAlignment()->setWrapText(true);
+                    $sheet->getRowDimension($r)->setRowHeight(28);
                 }
+
+                foreach ([$this->guideHeaderRow, $this->guideDataFirstRow, $this->guideDataFirstRow + 1, $this->guideDataFirstRow + 2, $this->guideDataFirstRow + 3] as $r) {
+                    $sheet->mergeCells("A{$r}:B{$r}");
+                    $sheet->mergeCells("C{$r}:E{$r}");
+                    $sheet->mergeCells("F{$r}:I{$r}");
+                    $sheet->mergeCells("J{$r}:{$guideEndLetter}{$r}");
+                }
+
+                $sheet->getStyle("A{$this->guideHeaderRow}:{$guideEndLetter}" . ($this->guideDataFirstRow + 3))->applyFromArray([
+                    'borders' => [
+                        'allBorders' => [
+                            'borderStyle' => Border::BORDER_THIN,
+                            'color' => ['argb' => 'FFD9D9D9'],
+                        ],
+                    ],
+                ]);
 
                 if ($this->chartTitleRow > 0) {
                     $sheet->mergeCells("A{$this->chartTitleRow}:{$lastLetter}{$this->chartTitleRow}");

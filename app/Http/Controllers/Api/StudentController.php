@@ -274,6 +274,7 @@ class StudentController extends Controller
                 'first_name'        => $firstName,
                 'last_name'         => $lastName,
                 'middle_name'       => $get(['middle_name', 'middlename']) ?: null,
+                'gender'            => $this->normalizeGender($get(['gender', 'sex'])),
                 'student_number'    => $lrn,
                 'grade_section'     => $gradeSection,
                 'grade'             => $grade ?: null,
@@ -380,6 +381,25 @@ class StudentController extends Controller
         }
 
         return $grade !== '' ? $grade : null;
+    }
+
+    private function normalizeGender(?string $gender): ?string
+    {
+        $value = strtolower(trim((string) $gender));
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (in_array($value, ['m', 'male'], true)) {
+            return 'Male';
+        }
+
+        if (in_array($value, ['f', 'female'], true)) {
+            return 'Female';
+        }
+
+        return null;
     }
 
     /** Serialize a Student model into the standard API response shape. */
