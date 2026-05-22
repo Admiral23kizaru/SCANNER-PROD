@@ -660,18 +660,21 @@ class AttendanceController extends Controller
                 ], 401);
             }
 
-            // Fetch all students belonging to this teacher
+            // Fetch students in the caller's school. Teachers are narrowed to
+            // their own class/records; admins can monitor the whole school.
             $query = Student::query()
                 ->when($schoolId, function ($q) use ($schoolId) {
                     $q->where('school_id', $schoolId);
                 });
-            if ($user->grade_level && $user->section) {
-                $query->where('grade', $user->grade_level)
-                      ->where('section', $user->section);
-            } else {
-                $query->where(function ($q) use ($user) {
-                    $q->where('teacher_id', $user->id)->orWhere('created_by', $user->id);
-                });
+            if ($user->role?->name === 'Teacher') {
+                if ($user->grade_level && $user->section) {
+                    $query->where('grade', $user->grade_level)
+                          ->where('section', $user->section);
+                } else {
+                    $query->where(function ($q) use ($user) {
+                        $q->where('teacher_id', $user->id)->orWhere('created_by', $user->id);
+                    });
+                }
             }
             
             $students = $query->orderBy('last_name')

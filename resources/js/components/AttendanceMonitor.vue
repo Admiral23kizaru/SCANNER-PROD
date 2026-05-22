@@ -265,6 +265,13 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { fetchTeacherMonitor } from '../services/attendanceService';
 
+const props = defineProps({
+  apiEndpoint: {
+    type: String,
+    default: '/api/teacher/attendance/monitor',
+  },
+});
+
 // ─── State ───────────────────────────────────────────────────────────────────
 
 const loading = ref(false);
@@ -316,7 +323,7 @@ async function loadData() {
   loading.value = true;
   errorMsg.value = '';
   try {
-    const res = await fetchTeacherMonitor();
+    const res = await fetchTeacherMonitor(props.apiEndpoint);
     presentStudents.value = res.presentStudents || [];
     absentStudents.value = res.absentStudents || [];
     totalStudents.value = res.totalStudents || 0;

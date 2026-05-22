@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\AdminController;
-use App\Http\Controllers\Api\AdminFeatureController;
 use App\Http\Controllers\Api\AdminProfileController;
 use App\Http\Controllers\Api\AdminStudentController;
 use App\Http\Controllers\Api\AdminStudentSubjectController;
@@ -107,7 +106,7 @@ Route::middleware('auth:sanctum')->group(function () {
     /* ------------------------------------------------------------------ */
 
     Route::controller(IdCardController::class)->group(function () {
-        Route::get('/teacher/students/{id}/id-url', 'getSignedUrl')->middleware('role:Teacher,Adviser,Subject Teacher');
+        Route::get('/teacher/students/{id}/id-url', 'getSignedUrl')->middleware('role:Teacher');
         Route::get('/admin/students/{id}/id-url', 'getSignedUrl')->middleware('role:Admin');
         Route::get('/admin/teachers/{id}/id-url', 'getTeacherSignedUrl')->middleware('role:Admin');
     });
@@ -145,17 +144,20 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/reports/summary-pdf', 'summaryReportPdf');
         });
 
-        Route::controller(AdminFeatureController::class)->group(function () {
-            Route::get('/school-overview', 'schoolOverview');
-            Route::get('/guardians', 'guardians');
-            Route::post('/guardians', 'storeGuardian');
-            Route::get('/assessment-logs', 'assessmentLogs');
-            Route::post('/assessment-logs', 'storeAssessmentLog');
-            Route::get('/least-mastered-skills', 'leastMasteredSkills');
-            Route::get('/attendance/today', 'attendanceToday');
-            Route::get('/calendar-events', 'calendarEvents');
-            Route::post('/calendar-events', 'storeCalendarEvent');
-            Route::delete('/calendar-events/{id}', 'deleteCalendarEvent');
+        Route::get('/attendance/monitor', [AttendanceController::class, 'getTeacherStudentStatus']);
+
+        Route::controller(LearningAssessmentController::class)->prefix('learning-assessment')->group(function () {
+            Route::get('/meta', 'meta');
+            Route::get('/students', 'students');
+            Route::get('/recent', 'recent');
+            Route::post('/scores', 'store');
+            Route::get('/export', 'export');
+            Route::get('/files', 'files');
+            Route::post('/files', 'saveAnalyzedFile');
+            Route::get('/files/{id}/download', 'downloadAnalyzedFile');
+            Route::delete('/files/{id}', 'deleteAnalyzedFile');
+            Route::post('/import-analyze/export', 'importAnalyzeExport');
+            Route::post('/import-analyze', 'importAnalyze');
         });
 
         Route::controller(TeacherManagementController::class)->prefix('teachers')->group(function () {
@@ -217,7 +219,7 @@ Route::middleware('auth:sanctum')->group(function () {
     /*  Teacher panel                                                      */
     /* ------------------------------------------------------------------ */
 
-    Route::middleware('role:Teacher,Adviser,Subject Teacher')->prefix('teacher')->group(function () {
+    Route::middleware('role:Teacher')->prefix('teacher')->group(function () {
 
         Route::get('/dashboard', fn () => response()->json(['message' => 'Teacher dashboard']));
 
@@ -264,6 +266,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/recent', 'recent');
             Route::post('/scores', 'store');
             Route::get('/export', 'export');
+            Route::get('/files', 'files');
+            Route::post('/files', 'saveAnalyzedFile');
+            Route::get('/files/{id}/download', 'downloadAnalyzedFile');
+            Route::delete('/files/{id}', 'deleteAnalyzedFile');
             Route::post('/import-analyze/export', 'importAnalyzeExport');
             Route::post('/import-analyze', 'importAnalyze');
         });
