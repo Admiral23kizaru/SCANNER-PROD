@@ -992,11 +992,11 @@ class SystemAdminDashboardService
     {
         $lower = strtolower($name);
 
-        if (str_contains($lower, 'integrated')) {
+        if (strpos($lower, 'integrated') !== false) {
             return 'Integrated';
         }
 
-        if (str_contains($lower, 'national high') || str_contains($lower, 'arts and trades')) {
+        if (strpos($lower, 'national high') !== false || strpos($lower, 'arts and trades') !== false) {
             return 'Secondary';
         }
 

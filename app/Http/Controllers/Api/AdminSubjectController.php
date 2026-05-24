@@ -16,6 +16,11 @@ use Throwable;
 
 class AdminSubjectController extends Controller
 {
+    private function normalizeSubjectName(string $name): string
+    {
+        return strtolower(trim($name));
+    }
+
     private function schoolScope(Request $request): ?int
     {
         return $request->user()?->school_id;
@@ -54,19 +59,54 @@ class AdminSubjectController extends Controller
         }
 
         $schoolId = $this->schoolScope($request);
-        $exists = Subject::query()
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->whereRaw('LOWER(name) = ?', [mb_strtolower(trim((string) $request->name))])
-            ->exists();
+        $name = trim((string) $request->name);
+
+        if ($name === '') {
+            return response()->json(['message' => 'Subject name is required.'], 422);
+        }
+
+        if ($schoolId && !School::whereKey($schoolId)->exists()) {
+            Log::error('Admin subject create failed because user school_id is invalid.', [
+                'method' => __METHOD__,
+                'user_id' => $request->user()?->id,
+                'school_id' => $schoolId,
+            ]);
+
+            return response()->json(['message' => 'Your Admin account is not linked to a valid school. Sync or recreate the school record first.'], 422);
+        }
+
+        try {
+            $exists = Subject::query()
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+                ->whereRaw('LOWER(name) = ?', [$this->normalizeSubjectName($name)])
+                ->exists();
+        } catch (Throwable $exception) {
+            Log::error('Admin subject duplicate check failed.', [
+                'method' => __METHOD__,
+                'school_id' => $schoolId,
+                'table' => 'tbl_scanup_subjects',
+                'error' => $exception->getMessage(),
+            ]);
+
+            return response()->json(['message' => 'Unable to check existing subjects. Check laravel.log for Admin subject duplicate check failed.'], 500);
+        }
 
         if ($exists) {
             return response()->json(['message' => 'Subject already exists.'], 422);
         }
 
-        $subject = Subject::create([
-            'name' => trim((string) $request->name),
-            'school_id' => $schoolId,
-        ]);
+        try {
+            $subject = $this->createSubjectRecord($name, $schoolId);
+        } catch (Throwable $exception) {
+            Log::error('Admin subject create failed.', [
+                'method' => __METHOD__,
+                'school_id' => $schoolId,
+                'table' => 'tbl_scanup_subjects',
+                'error' => $exception->getMessage(),
+            ]);
+
+            return response()->json(['message' => 'Unable to create subject. Check laravel.log for Admin subject create failed.'], 500);
+        }
 
         return response()->json(['message' => 'Subject created.', 'data' => $subject], 201);
     }
@@ -90,17 +130,41 @@ class AdminSubjectController extends Controller
         }
 
         $name = trim((string) $request->name);
-        $exists = Subject::query()
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
-            ->where('id', '!=', $subject->id)
-            ->exists();
+        try {
+            $exists = Subject::query()
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+                ->whereRaw('LOWER(name) = ?', [$this->normalizeSubjectName($name)])
+                ->where('id', '!=', $subject->id)
+                ->exists();
+        } catch (Throwable $exception) {
+            Log::error('Admin subject update duplicate check failed.', [
+                'method' => __METHOD__,
+                'school_id' => $schoolId,
+                'subject_id' => $id,
+                'table' => 'tbl_scanup_subjects',
+                'error' => $exception->getMessage(),
+            ]);
+
+            return response()->json(['message' => 'Unable to check existing subjects. Check laravel.log for Admin subject update duplicate check failed.'], 500);
+        }
 
         if ($exists) {
             return response()->json(['message' => 'Subject already exists.'], 422);
         }
 
-        $subject->update(['name' => $name]);
+        try {
+            $subject->update(['name' => $name]);
+        } catch (Throwable $exception) {
+            Log::error('Admin subject update failed.', [
+                'method' => __METHOD__,
+                'school_id' => $schoolId,
+                'subject_id' => $id,
+                'table' => 'tbl_scanup_subjects',
+                'error' => $exception->getMessage(),
+            ]);
+
+            return response()->json(['message' => 'Unable to update subject. Check laravel.log for Admin subject update failed.'], 500);
+        }
 
         return response()->json(['message' => 'Subject updated.', 'data' => $subject]);
     }
@@ -116,7 +180,19 @@ class AdminSubjectController extends Controller
             return response()->json(['message' => 'Subject not found.'], 404);
         }
 
-        $subject->delete();
+        try {
+            $subject->delete();
+        } catch (Throwable $exception) {
+            Log::error('Admin subject delete failed.', [
+                'method' => __METHOD__,
+                'school_id' => $schoolId,
+                'subject_id' => $id,
+                'table' => 'tbl_scanup_subjects',
+                'error' => $exception->getMessage(),
+            ]);
+
+            return response()->json(['message' => 'Unable to delete subject. Check laravel.log for Admin subject delete failed.'], 500);
+        }
 
         return response()->json(['message' => 'Subject deleted.']);
     }
@@ -132,7 +208,7 @@ class AdminSubjectController extends Controller
             $subjects = $this->ehrisSubjectRowsForSchool($school);
             $existingNames = Subject::where('school_id', $school->id)
                 ->pluck('name')
-                ->map(fn ($name) => mb_strtolower(trim((string) $name)))
+                ->map(fn ($name) => $this->normalizeSubjectName((string) $name))
                 ->all();
             $existingMap = array_fill_keys($existingNames, true);
         } catch (Throwable $exception) {
@@ -158,7 +234,7 @@ class AdminSubjectController extends Controller
                 'teacher_count' => $row['teacher_count'],
                 'sample_teachers' => $row['sample_teachers'],
                 'source' => $row['source'],
-                'is_synced' => isset($existingMap[mb_strtolower(trim($row['name']))]),
+                'is_synced' => isset($existingMap[$this->normalizeSubjectName($row['name'])]),
             ])->values(),
         ]);
     }
@@ -178,7 +254,7 @@ class AdminSubjectController extends Controller
         try {
             $ehrisSubjects = $this->ehrisSubjectRowsForSchool($school);
             $allowedMap = $ehrisSubjects
-                ->mapWithKeys(fn ($row) => [mb_strtolower(trim($row['name'])) => $row['name']]);
+                ->mapWithKeys(fn ($row) => [$this->normalizeSubjectName($row['name']) => $row['name']]);
         } catch (Throwable $exception) {
             Log::error('Admin EHRIS subject sync source failed.', [
                 'method' => __METHOD__,
@@ -198,7 +274,7 @@ class AdminSubjectController extends Controller
 
         $targetNames = $requested->isNotEmpty()
             ? $requested
-                ->map(fn ($name) => $allowedMap[mb_strtolower($name)] ?? null)
+                ->map(fn ($name) => $allowedMap[$this->normalizeSubjectName($name)] ?? null)
                 ->filter()
                 ->values()
             : $allowedMap->values();
@@ -208,7 +284,7 @@ class AdminSubjectController extends Controller
 
         foreach ($targetNames as $name) {
             $exists = Subject::where('school_id', $school->id)
-                ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+                ->whereRaw('LOWER(name) = ?', [$this->normalizeSubjectName($name)])
                 ->exists();
 
             if ($exists) {
@@ -216,10 +292,7 @@ class AdminSubjectController extends Controller
                 continue;
             }
 
-            Subject::create([
-                'school_id' => $school->id,
-                'name' => $name,
-            ]);
+            $this->createSubjectRecord($name, $school->id);
             $created++;
         }
 
@@ -271,9 +344,36 @@ class AdminSubjectController extends Controller
 
         return $assignedSubjects
             ->merge($subjectLibrary)
-            ->unique(fn ($row) => mb_strtolower($row['name']))
+            ->unique(fn ($row) => $this->normalizeSubjectName($row['name']))
             ->sortBy('name')
             ->values();
+    }
+
+    private function createSubjectRecord(string $name, ?int $schoolId): Subject
+    {
+        try {
+            return Subject::create([
+                'name' => $name,
+                'school_id' => $schoolId,
+            ]);
+        } catch (Throwable $exception) {
+            if (strpos($exception->getMessage(), "Field 'id' doesn't have a default value") === false) {
+                throw $exception;
+            }
+
+            $id = ((int) Subject::max('id')) + 1;
+            $now = now();
+
+            Subject::query()->insert([
+                'id' => $id,
+                'name' => $name,
+                'school_id' => $schoolId,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            return Subject::findOrFail($id);
+        }
     }
 
     private function assignedSubjectRows($db, $schema, $hrids)
