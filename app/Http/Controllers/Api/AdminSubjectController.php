@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Ehris\EhrisUser;
+use App\Models\School;
 use App\Models\Subject;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
 class AdminSubjectController extends Controller
@@ -102,5 +106,156 @@ class AdminSubjectController extends Controller
 
         return response()->json(['message' => 'Subject deleted.']);
     }
-}
 
+    public function ehris(Request $request): JsonResponse
+    {
+        $school = $this->authSchool($request);
+        if (!$school || !$school->deped_school_id) {
+            return response()->json(['message' => 'School is not linked to a DepEd School ID.'], 422);
+        }
+
+        $subjects = $this->ehrisSubjectRowsForSchool($school);
+        $existingNames = Subject::where('school_id', $school->id)
+            ->pluck('name')
+            ->map(fn ($name) => mb_strtolower(trim((string) $name)))
+            ->all();
+        $existingMap = array_fill_keys($existingNames, true);
+
+        return response()->json([
+            'deped_school_id' => (string) $school->deped_school_id,
+            'data' => $subjects->map(fn ($row) => [
+                'name' => $row['name'],
+                'teacher_count' => $row['teacher_count'],
+                'sample_teachers' => $row['sample_teachers'],
+                'source' => $row['source'],
+                'is_synced' => isset($existingMap[mb_strtolower(trim($row['name']))]),
+            ])->values(),
+        ]);
+    }
+
+    public function syncEhris(Request $request): JsonResponse
+    {
+        $school = $this->authSchool($request);
+        if (!$school || !$school->deped_school_id) {
+            return response()->json(['message' => 'School is not linked to a DepEd School ID.'], 422);
+        }
+
+        $validated = $request->validate([
+            'subjects' => ['nullable', 'array'],
+            'subjects.*' => ['string', 'max:150'],
+        ]);
+
+        $ehrisSubjects = $this->ehrisSubjectRowsForSchool($school);
+        $allowedMap = $ehrisSubjects
+            ->mapWithKeys(fn ($row) => [mb_strtolower(trim($row['name'])) => $row['name']]);
+
+        $requested = collect($validated['subjects'] ?? [])
+            ->map(fn ($name) => trim((string) $name))
+            ->filter()
+            ->values();
+
+        $targetNames = $requested->isNotEmpty()
+            ? $requested
+                ->map(fn ($name) => $allowedMap[mb_strtolower($name)] ?? null)
+                ->filter()
+                ->values()
+            : $allowedMap->values();
+
+        $created = 0;
+        $skipped = 0;
+
+        foreach ($targetNames as $name) {
+            $exists = Subject::where('school_id', $school->id)
+                ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+                ->exists();
+
+            if ($exists) {
+                $skipped++;
+                continue;
+            }
+
+            Subject::create([
+                'school_id' => $school->id,
+                'name' => $name,
+            ]);
+            $created++;
+        }
+
+        return response()->json([
+            'message' => 'EHRIS subjects synced.',
+            'created' => $created,
+            'skipped' => $skipped,
+        ]);
+    }
+
+    private function authSchool(Request $request): ?School
+    {
+        $schoolId = $this->schoolScope($request);
+
+        return $schoolId ? School::find($schoolId) : null;
+    }
+
+    private function ehrisSubjectRowsForSchool(School $school)
+    {
+        $deped = trim((string) $school->deped_school_id);
+
+        $hrids = EhrisUser::active()
+            ->where('role', 'Teacher')
+            ->where(function ($query) use ($deped) {
+                $query->where('department_id', $deped);
+                if (ctype_digit($deped)) {
+                    $query->orWhere('department_id', (int) $deped);
+                }
+            })
+            ->pluck('hrId')
+            ->map(fn ($hrid) => trim((string) $hrid))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $assignedSubjects = $hrids->isEmpty()
+            ? collect()
+            : DB::table('tbl_emp_official_subject_taught as taught')
+                ->leftJoin('tbl_user as users', 'taught.hrid', '=', 'users.hrId')
+                ->whereIn('taught.hrid', $hrids)
+                ->whereRaw("TRIM(COALESCE(taught.subject_name, '')) <> ''")
+                ->select([
+                    'taught.subject_name as name',
+                    DB::raw('COUNT(DISTINCT taught.hrid) as teacher_count'),
+                    DB::raw("GROUP_CONCAT(DISTINCT TRIM(CONCAT(COALESCE(users.firstname, ''), ' ', COALESCE(users.lastname, ''))) ORDER BY users.lastname SEPARATOR ', ') as sample_teachers"),
+                ])
+                ->groupBy('taught.subject_name')
+                ->orderBy('taught.subject_name')
+                ->get()
+                ->map(fn ($row) => [
+                    'name' => trim((string) $row->name),
+                    'teacher_count' => (int) $row->teacher_count,
+                    'sample_teachers' => (string) $row->sample_teachers,
+                    'source' => 'teacher_assignment',
+                ])
+                ->filter(fn ($row) => $row['name'] !== '')
+                ->values();
+
+        $subjectLibrary = Schema::hasTable('tbl_subject_library')
+            ? DB::table('tbl_subject_library')
+                ->where('is_active', 1)
+                ->whereRaw("TRIM(COALESCE(name, '')) <> ''")
+                ->orderBy('name')
+                ->get(['name'])
+                ->map(fn ($row) => [
+                    'name' => trim((string) $row->name),
+                    'teacher_count' => 0,
+                    'sample_teachers' => '',
+                    'source' => 'subject_library',
+                ])
+                ->filter(fn ($row) => $row['name'] !== '')
+                ->values()
+            : collect();
+
+        return $assignedSubjects
+            ->merge($subjectLibrary)
+            ->unique(fn ($row) => mb_strtolower($row['name']))
+            ->sortBy('name')
+            ->values();
+    }
+}

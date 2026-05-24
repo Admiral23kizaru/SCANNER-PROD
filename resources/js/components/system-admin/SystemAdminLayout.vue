@@ -1,12 +1,12 @@
 <template>
-  <div class="flex h-screen overflow-hidden bg-[#f4f7fb] text-slate-900">
+  <div class="flex h-screen overflow-hidden text-slate-900" :class="themeMode === 'dark' ? 'admin-theme-dark' : 'admin-theme-light'">
     <SystemAdminSidebar
       :current-page="currentPage"
       :logo-src="logoSrc"
       @update:current-page="currentPage = $event"
     />
 
-    <div class="flex min-w-0 flex-1 flex-col">
+    <div class="admin-main-surface flex min-w-0 flex-1 flex-col">
       <header class="border-b border-slate-200 bg-white">
         <div class="flex flex-col gap-4 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -61,7 +61,17 @@
 
         <SystemAdminLearningAreas v-else-if="currentPage === 'subjects'" />
 
+        <SystemAdminLearners v-else-if="currentPage === 'learners'" />
+
+        <SystemAdminTeachers v-else-if="currentPage === 'teachers'" />
+
+        <SystemAdminGuardians v-else-if="currentPage === 'parents' || currentPage === 'guardians'" />
+
         <SystemAdminClasses v-else-if="currentPage === 'classes'" />
+
+        <SystemAdminAssessmentLogs v-else-if="currentPage === 'assessment'" />
+
+        <SystemAdminLeastMasteredSkills v-else-if="currentPage === 'least-mastered-skills'" />
 
         <SystemAdminAttendance v-else-if="currentPage === 'attendance'" />
 
@@ -88,7 +98,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { assetPath } from '../../composables/useAsset';
 import { fetchUser } from '../../services/authService';
 import { useLogout } from '../../composables/useLogout';
@@ -99,11 +109,16 @@ import {
   fetchSystemAdminSchools,
 } from '../../services/systemAdminService';
 import SystemAdminAccountsDirectory from './SystemAdminAccountsDirectory.vue';
+import SystemAdminAssessmentLogs from './SystemAdminAssessmentLogs.vue';
 import SystemAdminAttendance from './SystemAdminAttendance.vue';
 import SystemAdminClasses from './SystemAdminClasses.vue';
 import SystemAdminDivisionCharts from './SystemAdminDivisionCharts.vue';
+import SystemAdminGuardians from './SystemAdminGuardians.vue';
 import SystemAdminLearningAreas from './SystemAdminLearningAreas.vue';
 import SystemAdminLearningAssessment from './SystemAdminLearningAssessment.vue';
+import SystemAdminLearners from './SystemAdminLearners.vue';
+import SystemAdminLeastMasteredSkills from './SystemAdminLeastMasteredSkills.vue';
+import SystemAdminTeachers from './SystemAdminTeachers.vue';
 import SystemAdminOverviewCards from './SystemAdminOverviewCards.vue';
 import SystemAdminSchoolDashboardModal from './SystemAdminSchoolDashboardModal.vue';
 import SystemAdminSchoolTable from './SystemAdminSchoolTable.vue';
@@ -122,7 +137,9 @@ const dashboardPreview = ref(null);
 const dashboardError = ref('');
 const dashboardLoading = ref(false);
 const showDashboardModal = ref(false);
-const schoolTablePages = ['school', 'schools', 'learners', 'teachers'];
+const schoolTablePages = ['school', 'schools'];
+const themeMode = ref(resolveTimeTheme());
+let themeTimer = null;
 
 const pageTitle = computed(() => {
   if (currentPage.value === 'school' || currentPage.value === 'schools') return 'Schools Monitor';
@@ -209,5 +226,19 @@ async function downloadExport() {
   }
 }
 
-onMounted(loadDashboard);
+function resolveTimeTheme() {
+  const hour = new Date().getHours();
+  return hour >= 18 || hour < 6 ? 'dark' : 'light';
+}
+
+onMounted(() => {
+  themeTimer = window.setInterval(() => {
+    themeMode.value = resolveTimeTheme();
+  }, 60_000);
+  loadDashboard();
+});
+
+onBeforeUnmount(() => {
+  if (themeTimer) window.clearInterval(themeTimer);
+});
 </script>

@@ -37,6 +37,20 @@ class SystemAdminController extends Controller
         ]);
     }
 
+    public function learners(): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->dashboard->learners(),
+        ]);
+    }
+
+    public function teachers(): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->dashboard->teachers(),
+        ]);
+    }
+
     /**
      * Return all learning areas configured by schools.
      */
@@ -59,6 +73,31 @@ class SystemAdminController extends Controller
         return response()->json([
             'data' => $this->dashboard->attendance(),
         ]);
+    }
+
+    public function guardians(): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->dashboard->guardians(),
+        ]);
+    }
+
+    public function assessmentLogs(): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->dashboard->assessmentLogs(),
+        ]);
+    }
+
+    public function leastMasteredSkills(Request $request): JsonResponse
+    {
+        return response()->json($this->dashboard->leastMasteredSkills($request->only([
+            'school_id',
+            'school_year',
+            'subject_id',
+            'grade_level',
+            'section',
+        ])));
     }
 
     /**

@@ -17,6 +17,16 @@ export async function fetchSystemAdminSchools() {
   return data.data || [];
 }
 
+export async function fetchSystemAdminLearners() {
+  const { data } = await axios.get(`${base}/learners`, { headers: authHeaders() });
+  return data.data || [];
+}
+
+export async function fetchSystemAdminTeachers() {
+  const { data } = await axios.get(`${base}/teachers`, { headers: authHeaders() });
+  return data.data || [];
+}
+
 export async function fetchSystemAdminSubjects() {
   const { data } = await axios.get(`${base}/subjects`, { headers: authHeaders() });
   return data.data || [];
@@ -30,6 +40,24 @@ export async function fetchSystemAdminClasses() {
 export async function fetchSystemAdminAttendance() {
   const { data } = await axios.get(`${base}/attendance`, { headers: authHeaders() });
   return data.data || { summary: [], recent: [] };
+}
+
+export async function fetchSystemAdminGuardians() {
+  const { data } = await axios.get(`${base}/guardians`, { headers: authHeaders() });
+  return data.data || [];
+}
+
+export async function fetchSystemAdminAssessmentLogs() {
+  const { data } = await axios.get(`${base}/assessment-logs`, { headers: authHeaders() });
+  return data.data || [];
+}
+
+export async function fetchSystemAdminLeastMasteredSkills(params = {}) {
+  const { data } = await axios.get(`${base}/least-mastered-skills`, {
+    headers: authHeaders(),
+    params,
+  });
+  return data || { filters: {}, data: [] };
 }
 
 export async function fetchSystemAdminSchoolDetail(depedSchoolId) {

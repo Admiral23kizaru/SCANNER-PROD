@@ -65,9 +65,11 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardList,
+  ClipboardPen,
   FolderPlus,
   GraduationCap,
   LayoutDashboard,
+  UserRoundCheck,
   Users,
 } from 'lucide-vue-next';
 
@@ -89,12 +91,16 @@ const dashboardItems = [
   { key: 'school', label: 'School' },
   { key: 'learners', label: 'Learner' },
   { key: 'teachers', label: 'Teacher' },
+  { key: 'parents', label: 'Parent' },
+  { key: 'least-mastered-skills', label: 'Least Mastered Skills' },
 ];
 
 const mainItems = [
   { key: 'learners', label: 'Learners', icon: GraduationCap },
   { key: 'teachers', label: 'Teachers', icon: Users },
+  { key: 'guardians', label: 'Guardian', icon: UserRoundCheck },
   { key: 'classes', label: 'Classes', icon: FolderPlus },
+  { key: 'assessment', label: 'Semestral Assessment', icon: ClipboardPen },
   { key: 'attendance', label: 'Attendance', icon: CalendarCheck },
   { key: 'learningAssessment', label: 'Learning Assessment', icon: ClipboardList },
 ];

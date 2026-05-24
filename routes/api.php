@@ -118,9 +118,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('role:System Admin')->prefix('system-admin')->group(function () {
         Route::get('/overview', [SystemAdminController::class, 'overview']);
+        Route::get('/learners', [SystemAdminController::class, 'learners']);
+        Route::get('/teachers', [SystemAdminController::class, 'teachers']);
         Route::get('/subjects', [SystemAdminController::class, 'subjects']);
         Route::get('/classes', [SystemAdminController::class, 'classes']);
         Route::get('/attendance', [SystemAdminController::class, 'attendance']);
+        Route::get('/guardians', [SystemAdminController::class, 'guardians']);
+        Route::get('/assessment-logs', [SystemAdminController::class, 'assessmentLogs']);
+        Route::get('/least-mastered-skills', [SystemAdminController::class, 'leastMasteredSkills']);
         Route::get('/schools', [SystemAdminController::class, 'schools']);
         Route::get('/schools/export', [SystemAdminController::class, 'exportSchools']);
         Route::get('/schools/{depedSchoolId}', [SystemAdminController::class, 'schoolDetail']);
@@ -211,6 +216,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Subjects management
         Route::controller(AdminSubjectController::class)->prefix('subjects')->group(function () {
+            Route::get('/ehris', 'ehris');
+            Route::post('/sync-ehris', 'syncEhris');
             Route::get('/', 'index');
             Route::post('/', 'store');
             Route::put('/{id}', 'update');

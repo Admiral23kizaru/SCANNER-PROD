@@ -3,9 +3,12 @@
 namespace App\Services;
 
 use App\Models\Attendance;
+use App\Models\AssessmentLog;
 use App\Models\Ehris\EhrisDepartment;
 use App\Models\Ehris\EhrisReportingManager;
 use App\Models\Ehris\EhrisUser;
+use App\Models\LearningAssessmentFile;
+use App\Models\ParentGuardian;
 use App\Models\Role;
 use App\Models\School;
 use App\Models\Section;
@@ -14,6 +17,7 @@ use App\Models\Subject;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Builds read-only division monitoring data for the System Admin dashboard.
@@ -112,6 +116,279 @@ class SystemAdminDashboardService
                 'health' => $this->healthFor($schoolId, $studentTotal, $teacherTotal, $scanTotal),
             ];
         })->values()->all();
+    }
+
+    /**
+     * Return division-wide learner records from tbl_scanup_students.
+     */
+    public function learners(): array
+    {
+        $schoolIds = $this->scanupSchoolIds();
+
+        return Student::query()
+            ->from('tbl_scanup_students as students')
+            ->leftJoin('tbl_scanup_schools as schools', 'students.school_id', '=', 'schools.id')
+            ->leftJoin('tbl_scanup_users as advisers', 'students.teacher_id', '=', 'advisers.id')
+            ->whereIn('students.school_id', $schoolIds)
+            ->whereNull('students.deleted_at')
+            ->select([
+                'students.id',
+                'students.student_number',
+                'students.first_name',
+                'students.middle_name',
+                'students.last_name',
+                'students.gender',
+                'students.grade',
+                'students.section',
+                'students.school_id',
+                'schools.name as school_name',
+                'schools.deped_school_id',
+                'advisers.name as adviser_name',
+            ])
+            ->orderBy('schools.name')
+            ->orderBy('students.grade')
+            ->orderBy('students.section')
+            ->orderBy('students.last_name')
+            ->limit(1000)
+            ->get()
+            ->map(fn ($row) => [
+                'id' => (int) $row->id,
+                'school_id' => (int) $row->school_id,
+                'deped_school_id' => (string) $row->deped_school_id,
+                'school_name' => (string) $row->school_name,
+                'student_number' => $row->student_number,
+                'name' => trim(($row->last_name ?? '') . ', ' . ($row->first_name ?? '') . ' ' . ($row->middle_name ?? '')),
+                'gender' => $row->gender,
+                'grade' => $row->grade,
+                'section' => $row->section,
+                'adviser_name' => $row->adviser_name ?: 'Not assigned',
+            ])
+            ->values()
+            ->all();
+    }
+
+    public function teachers(): array
+    {
+        $teacherRoleIds = Role::whereIn('name', ['Teacher', 'Adviser', 'Subject Teacher'])->pluck('id');
+        $schoolRows = collect($this->schools());
+        $schoolIds = $schoolRows->pluck('school_id')->filter()->values();
+
+        $teachers = User::query()
+            ->with('role:id,name')
+            ->whereIn('school_id', $schoolIds)
+            ->whereIn('role_id', $teacherRoleIds)
+            ->orderBy('name')
+            ->get(['id', 'role_id', 'name', 'email', 'employee_id', 'school_id', 'grade_level', 'section', 'ehris_user_id', 'job_title'])
+            ->groupBy('school_id');
+
+        $learnerCounts = Student::whereIn('school_id', $schoolIds)
+            ->whereNull('deleted_at')
+            ->select('teacher_id', DB::raw('COUNT(*) as total'))
+            ->groupBy('teacher_id')
+            ->pluck('total', 'teacher_id');
+
+        $schoolSubjects = Subject::whereIn('school_id', $schoolIds)
+            ->select('school_id', DB::raw("GROUP_CONCAT(name ORDER BY name SEPARATOR ', ') as subjects"))
+            ->groupBy('school_id')
+            ->pluck('subjects', 'school_id');
+
+        $subjectsByHrid = Schema::hasTable('tbl_emp_official_subject_taught')
+            ? DB::table('tbl_emp_official_subject_taught')
+                ->select('hrid', DB::raw("GROUP_CONCAT(subject_name ORDER BY sort_order SEPARATOR ', ') as subjects"))
+                ->whereNotNull('hrid')
+                ->whereRaw("TRIM(COALESCE(subject_name, '')) <> ''")
+                ->groupBy('hrid')
+                ->pluck('subjects', 'hrid')
+            : collect();
+
+        return $schoolRows->map(function (array $school) use ($teachers, $learnerCounts, $subjectsByHrid, $schoolSubjects) {
+            $schoolSubjectList = (string) ($schoolSubjects[$school['school_id']] ?? '');
+            $schoolTeachers = collect($teachers->get($school['school_id'], collect()))
+                ->map(function (User $teacher) use ($learnerCounts, $subjectsByHrid, $schoolSubjectList) {
+                    $hrid = trim((string) ($teacher->employee_id ?: $teacher->ehris_user_id));
+                    $teacherSubjects = $hrid !== '' ? (string) ($subjectsByHrid[$hrid] ?? '') : '';
+
+                    return [
+                        'id' => $teacher->id,
+                        'name' => $teacher->name,
+                        'email' => $teacher->email,
+                        'role' => $teacher->role?->name ?? 'Teacher',
+                        'hrid' => $hrid,
+                        'job_title' => $teacher->job_title,
+                        'grade_level' => $teacher->grade_level,
+                        'section' => $teacher->section,
+                        'subjects' => $teacherSubjects !== '' ? $teacherSubjects : $schoolSubjectList,
+                        'subjects_source' => $teacherSubjects !== ''
+                            ? 'teacher_assignment'
+                            : ($schoolSubjectList !== '' ? 'school_subjects' : 'none'),
+                        'learner_count' => (int) ($learnerCounts[$teacher->id] ?? 0),
+                    ];
+                })
+                ->values()
+                ->all();
+
+            return [
+                ...$school,
+                'school_subjects' => $schoolSubjectList,
+                'teacher_count' => count($schoolTeachers),
+                'learner_count' => (int) ($school['students'] ?? 0),
+                'teacher_rows' => $schoolTeachers,
+            ];
+        })->values()->all();
+    }
+
+    public function guardians(): array
+    {
+        $schoolIds = $this->scanupSchoolIds();
+
+        return ParentGuardian::query()
+            ->from('tbl_scanup_parent_guardians as guardians')
+            ->leftJoin('tbl_scanup_schools as schools', 'guardians.school_id', '=', 'schools.id')
+            ->leftJoin('tbl_scanup_students as students', 'guardians.student_id', '=', 'students.id')
+            ->whereIn('guardians.school_id', $schoolIds)
+            ->select([
+                'guardians.id',
+                'guardians.name',
+                'guardians.relationship',
+                'guardians.contact_number',
+                'guardians.email',
+                'guardians.is_primary',
+                'schools.name as school_name',
+                'schools.deped_school_id',
+                'students.first_name',
+                'students.last_name',
+                'students.grade',
+                'students.section',
+            ])
+            ->orderBy('schools.name')
+            ->orderByDesc('guardians.is_primary')
+            ->orderBy('guardians.name')
+            ->limit(1000)
+            ->get()
+            ->map(fn ($row) => [
+                'id' => (int) $row->id,
+                'school_name' => (string) $row->school_name,
+                'deped_school_id' => (string) $row->deped_school_id,
+                'name' => (string) $row->name,
+                'relationship' => (string) $row->relationship,
+                'contact_number' => $row->contact_number,
+                'email' => $row->email,
+                'is_primary' => (bool) $row->is_primary,
+                'learner_name' => trim(($row->last_name ?? '') . ', ' . ($row->first_name ?? '')) ?: 'Unlinked',
+                'grade' => $row->grade,
+                'section' => $row->section,
+            ])
+            ->values()
+            ->all();
+    }
+
+    public function assessmentLogs(): array
+    {
+        $schoolIds = $this->scanupSchoolIds();
+
+        $logs = AssessmentLog::query()
+            ->from('tbl_scanup_assessment_logs as logs')
+            ->leftJoin('tbl_scanup_schools as schools', 'logs.school_id', '=', 'schools.id')
+            ->leftJoin('tbl_scanup_students as students', 'logs.student_id', '=', 'students.id')
+            ->leftJoin('tbl_scanup_subjects as subjects', 'logs.subject_id', '=', 'subjects.id')
+            ->whereIn('logs.school_id', $schoolIds)
+            ->select([
+                'logs.id',
+                'logs.school_year',
+                'logs.grade_level',
+                'logs.section',
+                'logs.assessment_type',
+                'logs.score',
+                'logs.total_items',
+                'logs.least_mastered_skills',
+                'logs.remarks',
+                'logs.created_at',
+                'schools.name as school_name',
+                'schools.deped_school_id',
+                'students.first_name',
+                'students.last_name',
+                'subjects.name as subject_name',
+            ])
+            ->orderByDesc('logs.created_at')
+            ->limit(1000)
+            ->get();
+
+        return $logs->map(fn ($row) => [
+            'id' => (int) $row->id,
+            'school_name' => (string) $row->school_name,
+            'deped_school_id' => (string) $row->deped_school_id,
+            'learner_name' => trim(($row->last_name ?? '') . ', ' . ($row->first_name ?? '')) ?: 'Class summary',
+            'subject_name' => $row->subject_name ?: 'Unspecified',
+            'school_year' => $row->school_year,
+            'grade_level' => $row->grade_level,
+            'section' => $row->section,
+            'assessment_type' => $row->assessment_type,
+            'score' => (int) $row->score,
+            'total_items' => (int) $row->total_items,
+            'least_mastered_skills' => $row->least_mastered_skills,
+            'remarks' => $row->remarks,
+            'created_at' => $row->created_at,
+        ])->values()->all();
+    }
+
+    public function leastMasteredSkills(array $filters = []): array
+    {
+        $schoolIds = $this->scanupSchoolIds();
+        $skillCounts = [];
+
+        $logs = AssessmentLog::query()
+            ->whereIn('school_id', $schoolIds)
+            ->when($filters['school_id'] ?? null, fn ($q, $value) => $q->where('school_id', $value))
+            ->when($filters['subject_id'] ?? null, fn ($q, $value) => $q->where('subject_id', $value))
+            ->when($filters['grade_level'] ?? null, fn ($q, $value) => $q->where('grade_level', $value))
+            ->when($filters['section'] ?? null, fn ($q, $value) => $q->where('section', $value))
+            ->when($filters['school_year'] ?? null, fn ($q, $value) => $q->where('school_year', $value))
+            ->get(['least_mastered_skills']);
+
+        foreach ($logs as $log) {
+            foreach (($log->least_mastered_skills ?? []) as $skill) {
+                $label = trim((string) $skill);
+                if ($label !== '') {
+                    $skillCounts[$label] = ($skillCounts[$label] ?? 0) + 1;
+                }
+            }
+        }
+
+        $files = LearningAssessmentFile::query()
+            ->whereIn('school_id', $schoolIds)
+            ->when($filters['school_id'] ?? null, fn ($q, $value) => $q->where('school_id', $value))
+            ->when($filters['subject_id'] ?? null, fn ($q, $value) => $q->where('subject_id', $value))
+            ->when($filters['grade_level'] ?? null, fn ($q, $value) => $q->where('grade_level', $value))
+            ->when($filters['section'] ?? null, fn ($q, $value) => $q->where('section', $value))
+            ->latest('analyzed_at')
+            ->limit(200)
+            ->get(['analysis_payload']);
+
+        foreach ($files as $file) {
+            foreach (($file->analysis_payload['item_stats'] ?? []) as $item) {
+                $difficulty = (float) ($item['difficulty_pct'] ?? 100);
+                if ($difficulty < 50) {
+                    $label = 'Item ' . ($item['item'] ?? '?');
+                    $skillCounts[$label] = ($skillCounts[$label] ?? 0) + 1;
+                }
+            }
+        }
+
+        arsort($skillCounts);
+
+        return [
+            'filters' => [
+                'schools' => School::whereIn('id', $schoolIds)->orderBy('name')->get(['id', 'name']),
+                'school_years' => AssessmentLog::whereIn('school_id', $schoolIds)->whereNotNull('school_year')->distinct()->orderBy('school_year')->pluck('school_year')->values(),
+                'subjects' => Subject::whereIn('school_id', $schoolIds)->orWhereNull('school_id')->orderBy('name')->get(['id', 'name']),
+                'grades' => Student::whereIn('school_id', $schoolIds)->whereNotNull('grade')->distinct()->orderBy('grade')->pluck('grade')->values(),
+                'sections' => Student::whereIn('school_id', $schoolIds)->whereNotNull('section')->distinct()->orderBy('section')->pluck('section')->values(),
+            ],
+            'data' => collect($skillCounts)->take(12)->map(fn ($count, $skill) => [
+                'skill' => $skill,
+                'count' => $count,
+            ])->values()->all(),
+        ];
     }
 
     /**
@@ -458,6 +735,13 @@ class SystemAdminDashboardService
             'summary' => $summary,
             'recent' => $recent,
         ];
+    }
+
+    private function scanupSchoolIds(): Collection
+    {
+        $schoolCodes = $this->schoolDepartments()->pluck('department_id')->map(fn ($id) => (string) $id);
+
+        return School::whereIn('deped_school_id', $schoolCodes)->pluck('id');
     }
 
     /**

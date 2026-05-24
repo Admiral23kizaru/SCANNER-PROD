@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen overflow-hidden bg-[#f4f7fb] text-slate-900 flex">
+  <div class="h-screen overflow-hidden text-slate-900 flex" :class="themeMode === 'dark' ? 'admin-theme-dark' : 'admin-theme-light'">
     <TeacherSidebar
       :currentTab="currentTab"
       :isSidebarOpen="isSidebarOpen"
@@ -10,7 +10,7 @@
 
     <div v-if="isSidebarOpen" class="fixed inset-0 z-40 bg-black/50 lg:hidden" @click="isSidebarOpen = false" />
 
-    <div class="flex-1 flex flex-col bg-[#f4f7fb] min-w-0 h-full overflow-hidden">
+    <div class="admin-main-surface flex-1 flex flex-col min-w-0 h-full overflow-hidden">
       <TeacherHeader
         :user="user"
         :pageTitle="pageTitle"
@@ -27,7 +27,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import TeacherHeader from '../teacher/TeacherHeader.vue';
 import TeacherSidebar from '../teacher/TeacherSidebar.vue';
 
@@ -42,4 +42,21 @@ defineProps({
 defineEmits(['update:currentTab', 'open-profile-modal', 'logout']);
 
 const isSidebarOpen = ref(false);
+const themeMode = ref(resolveTimeTheme());
+let themeTimer = null;
+
+function resolveTimeTheme() {
+  const hour = new Date().getHours();
+  return hour >= 18 || hour < 6 ? 'dark' : 'light';
+}
+
+onMounted(() => {
+  themeTimer = window.setInterval(() => {
+    themeMode.value = resolveTimeTheme();
+  }, 60_000);
+});
+
+onBeforeUnmount(() => {
+  if (themeTimer) window.clearInterval(themeTimer);
+});
 </script>
