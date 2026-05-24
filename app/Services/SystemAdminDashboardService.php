@@ -17,6 +17,7 @@ use App\Models\Subject;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
@@ -237,7 +238,13 @@ class SystemAdminDashboardService
                 ->select('school_id', DB::raw("GROUP_CONCAT(name ORDER BY name SEPARATOR ', ') as subjects"))
                 ->groupBy('school_id')
                 ->pluck('subjects', 'school_id');
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            Log::warning('System Admin school subject lookup failed.', [
+                'method' => __METHOD__,
+                'table' => 'tbl_scanup_subjects',
+                'error' => $exception->getMessage(),
+            ]);
+
             return collect();
         }
     }
@@ -245,25 +252,41 @@ class SystemAdminDashboardService
     private function teacherSubjectsByHrid(): Collection
     {
         try {
+            $connection = (new EhrisUser())->getConnectionName() ?: config('database.default');
+            $schema = Schema::connection($connection);
+
             if (
-                !Schema::hasTable('tbl_emp_official_subject_taught') ||
-                !Schema::hasColumn('tbl_emp_official_subject_taught', 'hrid') ||
-                !Schema::hasColumn('tbl_emp_official_subject_taught', 'subject_name')
+                !$schema->hasTable('tbl_emp_official_subject_taught') ||
+                !$schema->hasColumn('tbl_emp_official_subject_taught', 'hrid') ||
+                !$schema->hasColumn('tbl_emp_official_subject_taught', 'subject_name')
             ) {
+                Log::warning('System Admin teacher subject table/columns missing.', [
+                    'method' => __METHOD__,
+                    'connection' => $connection,
+                    'database' => config("database.connections.$connection.database"),
+                    'table' => 'tbl_emp_official_subject_taught',
+                ]);
+
                 return collect();
             }
 
-            $orderColumn = Schema::hasColumn('tbl_emp_official_subject_taught', 'sort_order')
+            $orderColumn = $schema->hasColumn('tbl_emp_official_subject_taught', 'sort_order')
                 ? 'sort_order'
                 : 'subject_name';
 
-            return DB::table('tbl_emp_official_subject_taught')
+            return DB::connection($connection)->table('tbl_emp_official_subject_taught')
                 ->select('hrid', DB::raw("GROUP_CONCAT(subject_name ORDER BY {$orderColumn} SEPARATOR ', ') as subjects"))
                 ->whereNotNull('hrid')
                 ->whereRaw("TRIM(COALESCE(subject_name, '')) <> ''")
                 ->groupBy('hrid')
                 ->pluck('subjects', 'hrid');
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            Log::error('System Admin teacher subject lookup failed.', [
+                'method' => __METHOD__,
+                'table' => 'tbl_emp_official_subject_taught',
+                'error' => $exception->getMessage(),
+            ]);
+
             return collect();
         }
     }
@@ -317,32 +340,51 @@ class SystemAdminDashboardService
     {
         $schoolIds = $this->scanupSchoolIds();
 
-        $logs = AssessmentLog::query()
-            ->from('tbl_scanup_assessment_logs as logs')
-            ->leftJoin('tbl_scanup_schools as schools', 'logs.school_id', '=', 'schools.id')
-            ->leftJoin('tbl_scanup_students as students', 'logs.student_id', '=', 'students.id')
-            ->leftJoin('tbl_scanup_subjects as subjects', 'logs.subject_id', '=', 'subjects.id')
-            ->whereIn('logs.school_id', $schoolIds)
-            ->select([
-                'logs.id',
-                'logs.school_year',
-                'logs.grade_level',
-                'logs.section',
-                'logs.assessment_type',
-                'logs.score',
-                'logs.total_items',
-                'logs.least_mastered_skills',
-                'logs.remarks',
-                'logs.created_at',
-                'schools.name as school_name',
-                'schools.deped_school_id',
-                'students.first_name',
-                'students.last_name',
-                'subjects.name as subject_name',
-            ])
-            ->orderByDesc('logs.created_at')
-            ->limit(1000)
-            ->get();
+        if (!Schema::hasTable('tbl_scanup_assessment_logs')) {
+            Log::warning('System Admin assessment logs table missing.', [
+                'method' => __METHOD__,
+                'table' => 'tbl_scanup_assessment_logs',
+            ]);
+
+            return [];
+        }
+
+        try {
+            $logs = AssessmentLog::query()
+                ->from('tbl_scanup_assessment_logs as logs')
+                ->leftJoin('tbl_scanup_schools as schools', 'logs.school_id', '=', 'schools.id')
+                ->leftJoin('tbl_scanup_students as students', 'logs.student_id', '=', 'students.id')
+                ->leftJoin('tbl_scanup_subjects as subjects', 'logs.subject_id', '=', 'subjects.id')
+                ->whereIn('logs.school_id', $schoolIds)
+                ->select([
+                    'logs.id',
+                    'logs.school_year',
+                    'logs.grade_level',
+                    'logs.section',
+                    'logs.assessment_type',
+                    'logs.score',
+                    'logs.total_items',
+                    'logs.least_mastered_skills',
+                    'logs.remarks',
+                    'logs.created_at',
+                    'schools.name as school_name',
+                    'schools.deped_school_id',
+                    'students.first_name',
+                    'students.last_name',
+                    'subjects.name as subject_name',
+                ])
+                ->orderByDesc('logs.created_at')
+                ->limit(1000)
+                ->get();
+        } catch (Throwable $exception) {
+            Log::error('System Admin assessment logs failed.', [
+                'method' => __METHOD__,
+                'table' => 'tbl_scanup_assessment_logs',
+                'error' => $exception->getMessage(),
+            ]);
+
+            return [];
+        }
 
         return $logs->map(fn ($row) => [
             'id' => (int) $row->id,

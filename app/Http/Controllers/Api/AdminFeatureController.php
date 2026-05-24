@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Models\AdminCalendarEvent;
 use App\Models\AssessmentLog;
 use App\Models\Attendance;
-use App\Models\GmrcScore;
 use App\Models\ParentGuardian;
 use App\Models\Section;
 use App\Models\Student;
@@ -13,7 +12,9 @@ use App\Models\Subject;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Throwable;
 
 class AdminFeatureController extends BaseController
 {
@@ -76,11 +77,10 @@ class AdminFeatureController extends BaseController
             }
         }
 
-        $guardian = ParentGuardian::create([
-            ...$validator->validated(),
+        $guardian = ParentGuardian::create(array_merge($validator->validated(), [
             'school_id' => $schoolId,
             'is_primary' => $request->boolean('is_primary'),
-        ]);
+        ]));
 
         return response()->json(['message' => 'Guardian saved.', 'data' => $guardian->load('student:id,first_name,last_name,grade,section')], 201);
     }
@@ -89,33 +89,20 @@ class AdminFeatureController extends BaseController
     {
         $schoolId = $this->getAuthSchoolId();
 
-        $logs = AssessmentLog::with('student:id,first_name,last_name,grade,section', 'subject:id,name')
-            ->where('school_id', $schoolId)
-            ->latest()
-            ->limit(100)
-            ->get();
-
-        if ($logs->isEmpty()) {
-            $studentIds = Student::where('school_id', $schoolId)->pluck('id');
-            $logs = GmrcScore::with('student:id,first_name,last_name,grade,section', 'subject:id,name')
-                ->whereIn('student_id', $studentIds)
+        try {
+            $logs = AssessmentLog::with('student:id,first_name,last_name,grade,section', 'subject:id,name')
+                ->where('school_id', $schoolId)
                 ->latest()
                 ->limit(100)
-                ->get()
-                ->map(fn (GmrcScore $score) => [
-                    'id' => 'gmrc-' . $score->id,
-                    'student' => $score->student,
-                    'subject' => $score->subject,
-                    'school_year' => null,
-                    'grade_level' => $score->grade_level,
-                    'section' => $score->section,
-                    'assessment_type' => 'GMRC Score',
-                    'score' => $score->score,
-                    'total_items' => $score->total_items,
-                    'least_mastered_skills' => $score->wrong_items ?? [],
-                    'remarks' => null,
-                    'created_at' => $score->created_at,
-                ]);
+                ->get();
+        } catch (Throwable $exception) {
+            Log::error('Admin assessment logs failed.', [
+                'method' => __METHOD__,
+                'school_id' => $schoolId,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return response()->json(['data' => [], 'message' => 'Unable to read assessment logs. Check laravel.log for Admin assessment logs failed.']);
         }
 
         return response()->json(['data' => $logs]);
@@ -142,11 +129,10 @@ class AdminFeatureController extends BaseController
             return response()->json(['message' => 'Validation failed.', 'errors' => $validator->errors()], 422);
         }
 
-        $log = AssessmentLog::create([
-            ...$validator->validated(),
+        $log = AssessmentLog::create(array_merge($validator->validated(), [
             'school_id' => $schoolId,
             'created_by' => $request->user()?->id,
-        ]);
+        ]));
 
         return response()->json(['message' => 'Assessment log saved.', 'data' => $log], 201);
     }
@@ -159,38 +145,30 @@ class AdminFeatureController extends BaseController
         $section = $request->input('section');
         $schoolYear = $request->input('school_year');
 
-        $logs = AssessmentLog::query()
-            ->where('school_id', $schoolId)
-            ->when($subjectId, fn ($q) => $q->where('subject_id', $subjectId))
-            ->when($grade, fn ($q) => $q->where('grade_level', $grade))
-            ->when($section, fn ($q) => $q->where('section', $section))
-            ->when($schoolYear, fn ($q) => $q->where('school_year', $schoolYear))
-            ->get(['least_mastered_skills']);
+        try {
+            $logs = AssessmentLog::query()
+                ->where('school_id', $schoolId)
+                ->when($subjectId, fn ($q) => $q->where('subject_id', $subjectId))
+                ->when($grade, fn ($q) => $q->where('grade_level', $grade))
+                ->when($section, fn ($q) => $q->where('section', $section))
+                ->when($schoolYear, fn ($q) => $q->where('school_year', $schoolYear))
+                ->get(['least_mastered_skills']);
+        } catch (Throwable $exception) {
+            Log::error('Admin least mastered skills failed.', [
+                'method' => __METHOD__,
+                'school_id' => $schoolId,
+                'table' => 'tbl_scanup_assessment_logs',
+                'error' => $exception->getMessage(),
+            ]);
+
+            $logs = collect();
+        }
 
         $items = [];
         foreach ($logs as $log) {
             foreach (($log->least_mastered_skills ?? []) as $skill) {
                 $label = trim((string) $skill);
                 if ($label !== '') {
-                    $items[$label] = ($items[$label] ?? 0) + 1;
-                }
-            }
-        }
-
-        if (empty($items)) {
-            $studentIds = Student::where('school_id', $schoolId)
-                ->when($grade, fn ($q) => $q->where('grade', $grade))
-                ->when($section, fn ($q) => $q->where('section', $section))
-                ->pluck('id');
-
-            $scores = GmrcScore::query()
-                ->whereIn('student_id', $studentIds)
-                ->when($subjectId, fn ($q) => $q->where('subject_id', $subjectId))
-                ->get(['wrong_items']);
-
-            foreach ($scores as $score) {
-                foreach (($score->wrong_items ?? []) as $item) {
-                    $label = 'Item ' . $item;
                     $items[$label] = ($items[$label] ?? 0) + 1;
                 }
             }
@@ -252,12 +230,11 @@ class AdminFeatureController extends BaseController
             return response()->json(['message' => 'Validation failed.', 'errors' => $validator->errors()], 422);
         }
 
-        $event = AdminCalendarEvent::create([
-            ...$validator->validated(),
+        $event = AdminCalendarEvent::create(array_merge($validator->validated(), [
             'school_id' => $schoolId,
             'created_by' => $request->user()?->id,
             'color' => $request->input('color', '#14b8a6'),
-        ]);
+        ]));
 
         return response()->json(['message' => 'Event saved.', 'data' => $event], 201);
     }
