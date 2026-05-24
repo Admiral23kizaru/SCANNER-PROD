@@ -396,6 +396,24 @@
             </div>
 
             <div>
+              <h4 class="text-sm font-semibold text-stone-800 mb-2">Quick analysis</h4>
+              <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <div class="rounded-lg border border-stone-200 bg-white p-3">
+                  <p class="text-xs font-semibold uppercase tracking-wide text-stone-500">Mastery level</p>
+                  <div class="mt-2 h-64">
+                    <Pie :data="masteryPieData" :options="pieChartOptions" />
+                  </div>
+                </div>
+                <div class="rounded-lg border border-stone-200 bg-white p-3">
+                  <p class="text-xs font-semibold uppercase tracking-wide text-stone-500">Item difficulty</p>
+                  <div class="mt-2 h-64">
+                    <Pie :data="difficultyPieData" :options="pieChartOptions" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
               <h4 class="text-sm font-semibold text-stone-800 mb-2">Difficulty Index chart</h4>
               <p class="text-xs text-stone-500 mb-2">Y-axis: index 0.00–1.00 (0.10 steps). X-axis: item numbers.</p>
               <div class="h-72 w-full min-h-[220px] rounded-lg border border-stone-200 bg-white p-2">
@@ -429,16 +447,20 @@
 
 <script setup>
 import axios from 'axios';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { computed, onMounted, ref } from 'vue';
-import { Bar } from 'vue-chartjs';
+import { Bar, Pie } from 'vue-chartjs';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const props = defineProps({
   apiBase: {
     type: String,
     default: '/api/teacher/learning-assessment',
+  },
+  requestParams: {
+    type: Object,
+    default: () => ({}),
   },
 });
 
@@ -558,11 +580,80 @@ const difficultyChartOptions = computed(() => ({
   },
 }));
 
+const masteryPieData = computed(() => {
+  const students = analyzeResult.value?.students || [];
+  const buckets = { Mastered: 0, 'Nearly Mastered': 0, 'Least Mastered': 0 };
+
+  students.forEach((student) => {
+    const percentage = Number(student.percentage || 0);
+    if (percentage >= 75) buckets.Mastered += 1;
+    else if (percentage >= 50) buckets['Nearly Mastered'] += 1;
+    else buckets['Least Mastered'] += 1;
+  });
+
+  return {
+    labels: Object.keys(buckets),
+    datasets: [
+      {
+        data: Object.values(buckets),
+        backgroundColor: ['#16a34a', '#f59e0b', '#dc2626'],
+        borderColor: '#ffffff',
+        borderWidth: 2,
+      },
+    ],
+  };
+});
+
+const difficultyPieData = computed(() => {
+  const stats = analyzeResult.value?.item_stats || [];
+  const buckets = { Easy: 0, Average: 0, Difficult: 0 };
+
+  stats.forEach((item) => {
+    const value = Number(item.difficulty_pct ?? 0);
+    if (value >= 80) buckets.Easy += 1;
+    else if (value >= 30) buckets.Average += 1;
+    else buckets.Difficult += 1;
+  });
+
+  return {
+    labels: Object.keys(buckets),
+    datasets: [
+      {
+        data: Object.values(buckets),
+        backgroundColor: ['#3b82f6', '#a855f7', '#ef4444'],
+        borderColor: '#ffffff',
+        borderWidth: 2,
+      },
+    ],
+  };
+});
+
+const pieChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'bottom',
+      labels: {
+        boxWidth: 12,
+        padding: 14,
+      },
+    },
+  },
+};
+
+function mergedParams(extra = {}) {
+  return {
+    ...props.requestParams,
+    ...extra,
+  };
+}
+
 async function loadMeta() {
   const { data } = await axios.get(`${props.apiBase}/meta`, {
-    params: {
+    params: mergedParams({
       grade_level: filters.value.grade_level || undefined,
-    },
+    }),
     headers: { ...getAuthHeaders(), Accept: 'application/json' },
   });
   meta.value = data;
@@ -606,6 +697,7 @@ async function loadSavedFiles() {
   loadingSavedFiles.value = true;
   try {
     const { data } = await axios.get(`${props.apiBase}/files`, {
+      params: mergedParams(),
       headers: { ...getAuthHeaders(), Accept: 'application/json' },
     });
     savedFiles.value = data?.data || [];
@@ -672,6 +764,7 @@ async function saveAnalyzedFile() {
       subject_id: filters.value.subject_id || null,
       grade_level: filters.value.grade_level || null,
       section: filters.value.section || null,
+      ...props.requestParams,
     }, {
       headers: {
         ...getAuthHeaders(),
@@ -691,6 +784,7 @@ async function saveAnalyzedFile() {
 async function downloadSavedFile(file) {
   try {
     const res = await axios.get(`${props.apiBase}/files/${file.id}/download`, {
+      params: mergedParams(),
       responseType: 'blob',
       headers: { ...getAuthHeaders(), Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
     });
@@ -707,6 +801,7 @@ async function deleteSavedFile(file) {
 
   try {
     await axios.delete(`${props.apiBase}/files/${file.id}`, {
+      params: mergedParams(),
       headers: { ...getAuthHeaders(), Accept: 'application/json' },
     });
     savedFiles.value = savedFiles.value.filter((f) => f.id !== file.id);
@@ -785,6 +880,7 @@ async function exportExcel() {
   try {
     const res = await axios.get(`${props.apiBase}/export`, {
       params: {
+        ...props.requestParams,
         grade_level: filters.value.grade_level || undefined,
         section: filters.value.section || undefined,
         subject_id: filters.value.subject_id || undefined,

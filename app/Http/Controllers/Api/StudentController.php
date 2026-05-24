@@ -117,8 +117,9 @@ class StudentController extends Controller
         }
 
         $user         = $request->user();
-        $grade = $request->grade ?: ($user->role?->name === 'Teacher' ? $user->grade_level : null);
-        $section = $request->section ?: ($user->role?->name === 'Teacher' ? $user->section : null);
+        $canDefaultClass = in_array($user->role?->name, ['Teacher', 'Adviser'], true);
+        $grade = $request->grade ?: ($canDefaultClass ? $user->grade_level : null);
+        $section = $request->section ?: ($canDefaultClass ? $user->section : null);
         $gradeSection = $this->resolveGradeSectionFromValues(
             $request->grade_section,
             $grade,
@@ -280,8 +281,9 @@ class StudentController extends Controller
                 continue;
             }
 
-            $grade        = $get(['grade']) ?: ($user->role?->name === 'Teacher' ? (string) ($user->grade_level ?? '') : '');
-            $section      = $get(['section']) ?: ($user->role?->name === 'Teacher' ? (string) ($user->section ?? '') : '');
+            $canDefaultClass = in_array($user->role?->name, ['Teacher', 'Adviser'], true);
+            $grade        = $get(['grade']) ?: ($canDefaultClass ? (string) ($user->grade_level ?? '') : '');
+            $section      = $get(['section']) ?: ($canDefaultClass ? (string) ($user->section ?? '') : '');
             $gradeSection = ($grade && $section) ? "$grade-$section" : ($grade ?: null);
 
             Student::create([

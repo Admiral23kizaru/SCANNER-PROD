@@ -38,22 +38,26 @@ class SystemAdminController extends Controller
     }
 
     /**
-     * Return scanner terminal live cards.
-     */
-    public function scannerMonitor(): JsonResponse
-    {
-        return response()->json([
-            'data' => $this->dashboard->scannerMonitor(),
-        ]);
-    }
-
-    /**
      * Return all learning areas configured by schools.
      */
     public function subjects(): JsonResponse
     {
         return response()->json([
             'data' => $this->dashboard->subjects(),
+        ]);
+    }
+
+    public function classes(): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->dashboard->classes(),
+        ]);
+    }
+
+    public function attendance(): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->dashboard->attendance(),
         ]);
     }
 

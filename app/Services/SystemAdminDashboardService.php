@@ -8,7 +8,6 @@ use App\Models\Ehris\EhrisReportingManager;
 use App\Models\Ehris\EhrisUser;
 use App\Models\Role;
 use App\Models\School;
-use App\Models\ScannerHeartbeat;
 use App\Models\Section;
 use App\Models\Student;
 use App\Models\Subject;
@@ -261,70 +260,6 @@ class SystemAdminDashboardService
     }
 
     /**
-     * Return scanner terminal cards for all schools.
-     */
-    public function scannerMonitor(): array
-    {
-        $schools = collect($this->schools());
-        $heartbeats = ScannerHeartbeat::with('school')->get()->keyBy('school_id');
-        $today = now()->toDateString();
-
-        return $schools->map(function (array $school) use ($heartbeats, $today) {
-            $heartbeat = $school['school_id'] ? $heartbeats->get($school['school_id']) : null;
-            $latestScan = Attendance::with('student')
-                ->when($school['school_id'], fn ($query) => $query->where('school_id', $school['school_id']))
-                ->when(!$school['school_id'], fn ($query) => $query->whereRaw('1 = 0'))
-                ->latest('scanned_at')
-                ->first();
-            $scansToday = $school['school_id']
-                ? Attendance::where('school_id', $school['school_id'])->whereDate('scanned_at', $today)->count()
-                : 0;
-            $presentToday = $school['school_id']
-                ? Attendance::where('school_id', $school['school_id'])
-                    ->whereDate('scanned_at', $today)
-                    ->where('session', 'morning')
-                    ->distinct('student_id')
-                    ->count('student_id')
-                : 0;
-            $lateToday = $school['school_id']
-                ? Attendance::where('school_id', $school['school_id'])
-                    ->whereDate('scanned_at', $today)
-                    ->where('session', 'morning')
-                    ->where('status', 'late')
-                    ->count()
-                : 0;
-            $absentToday = max(0, (int) ($school['students'] ?? 0) - $presentToday);
-            $lastSeen = $heartbeat?->last_seen_at;
-
-            return [
-                'school_id' => $school['school_id'],
-                'deped_school_id' => $school['deped_school_id'],
-                'school_name' => $school['school_name'],
-                'scanner_key' => $heartbeat?->scanner_key ?? 'main-terminal',
-                'camera_status' => $heartbeat?->camera_status,
-                'last_seen_at' => $lastSeen?->toIso8601String(),
-                'connection_status' => $this->connectionStatusFor($lastSeen),
-                'scans_today' => $scansToday,
-                'stats' => [
-                    'total_today' => (int) ($school['students'] ?? 0),
-                    'present_count' => $presentToday,
-                    'late_count' => $lateToday,
-                    'absent_count' => $absentToday,
-                ],
-                'latest_scan' => $latestScan ? [
-                    'student_name' => trim(($latestScan->student?->first_name ?? '') . ' ' . ($latestScan->student?->last_name ?? '')) ?: 'Unknown student',
-                    'grade_section' => $latestScan->student?->grade_section ?? '',
-                    'status' => $latestScan->status ?? 'on_time',
-                    'scanned_at' => $latestScan->scanned_at?->toIso8601String(),
-                ] : null,
-            ];
-        })
-            ->sortBy('school_name')
-            ->values()
-            ->all();
-    }
-
-    /**
      * Return all ScanUp learning areas across schools for read-only System Admin review.
      */
     public function subjects(): array
@@ -378,6 +313,151 @@ class SystemAdminDashboardService
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Return division-wide classes/sections from tbl_scanup_sections.
+     */
+    public function classes(): array
+    {
+        $schoolCodes = $this->schoolDepartments()->pluck('department_id')->map(fn ($id) => (string) $id);
+        $schoolIds = School::whereIn('deped_school_id', $schoolCodes)->pluck('id');
+
+        return Section::query()
+            ->from('tbl_scanup_sections as sections')
+            ->leftJoin('tbl_scanup_schools as schools', 'sections.school_id', '=', 'schools.id')
+            ->leftJoin('tbl_scanup_users as advisers', 'sections.teacher_id', '=', 'advisers.id')
+            ->leftJoin('tbl_scanup_students as students', function ($join) {
+                $join->on('sections.id', '=', 'students.section_id')
+                    ->whereNull('students.deleted_at');
+            })
+            ->whereIn('sections.school_id', $schoolIds)
+            ->select([
+                'sections.id',
+                'sections.name',
+                'sections.grade_level',
+                'sections.school_id',
+                'sections.teacher_id',
+                'schools.name as school_name',
+                'schools.deped_school_id',
+                'advisers.name as adviser_name',
+                DB::raw('COUNT(students.id) as learner_count'),
+            ])
+            ->groupBy([
+                'sections.id',
+                'sections.name',
+                'sections.grade_level',
+                'sections.school_id',
+                'sections.teacher_id',
+                'schools.name',
+                'schools.deped_school_id',
+                'advisers.name',
+            ])
+            ->orderBy('schools.name')
+            ->orderBy('sections.grade_level')
+            ->orderBy('sections.name')
+            ->get()
+            ->map(fn ($row) => [
+                'id' => (int) $row->id,
+                'school_id' => (int) $row->school_id,
+                'deped_school_id' => (string) $row->deped_school_id,
+                'school_name' => (string) $row->school_name,
+                'grade_level' => (string) $row->grade_level,
+                'section' => (string) $row->name,
+                'teacher_id' => $row->teacher_id ? (int) $row->teacher_id : null,
+                'adviser_name' => $row->adviser_name ?: 'Not assigned',
+                'learner_count' => (int) $row->learner_count,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Return division-wide attendance summaries and recent scan rows.
+     */
+    public function attendance(): array
+    {
+        $today = now()->toDateString();
+        $schoolCodes = $this->schoolDepartments()->pluck('department_id')->map(fn ($id) => (string) $id);
+        $schoolIds = School::whereIn('deped_school_id', $schoolCodes)->pluck('id');
+
+        $summary = Attendance::query()
+            ->from('tbl_scanup_attendance as attendance')
+            ->leftJoin('tbl_scanup_schools as schools', 'attendance.school_id', '=', 'schools.id')
+            ->whereIn('attendance.school_id', $schoolIds)
+            ->whereDate('attendance.scanned_at', $today)
+            ->select([
+                'attendance.school_id',
+                'schools.name as school_name',
+                'schools.deped_school_id',
+                DB::raw('COUNT(*) as scans_today'),
+                DB::raw('COUNT(DISTINCT attendance.student_id) as learners_scanned'),
+                DB::raw("SUM(CASE WHEN attendance.status = 'late' THEN 1 ELSE 0 END) as late_count"),
+                DB::raw("SUM(CASE WHEN attendance.status <> 'late' OR attendance.status IS NULL THEN 1 ELSE 0 END) as on_time_count"),
+                DB::raw('MAX(attendance.scanned_at) as last_scan_at'),
+            ])
+            ->groupBy([
+                'attendance.school_id',
+                'schools.name',
+                'schools.deped_school_id',
+            ])
+            ->orderByDesc('scans_today')
+            ->get()
+            ->map(fn ($row) => [
+                'school_id' => (int) $row->school_id,
+                'deped_school_id' => (string) $row->deped_school_id,
+                'school_name' => (string) $row->school_name,
+                'scans_today' => (int) $row->scans_today,
+                'learners_scanned' => (int) $row->learners_scanned,
+                'on_time_count' => (int) $row->on_time_count,
+                'late_count' => (int) $row->late_count,
+                'last_scan_at' => $row->last_scan_at,
+            ])
+            ->values()
+            ->all();
+
+        $recent = Attendance::query()
+            ->from('tbl_scanup_attendance as attendance')
+            ->leftJoin('tbl_scanup_schools as schools', 'attendance.school_id', '=', 'schools.id')
+            ->leftJoin('tbl_scanup_students as students', 'attendance.student_id', '=', 'students.id')
+            ->whereIn('attendance.school_id', $schoolIds)
+            ->select([
+                'attendance.id',
+                'attendance.school_id',
+                'attendance.scanned_at',
+                'attendance.session',
+                'attendance.status',
+                'schools.name as school_name',
+                'schools.deped_school_id',
+                'students.first_name',
+                'students.last_name',
+                'students.student_number',
+                'students.grade',
+                'students.section',
+            ])
+            ->orderByDesc('attendance.scanned_at')
+            ->limit(100)
+            ->get()
+            ->map(fn ($row) => [
+                'id' => (int) $row->id,
+                'school_id' => (int) $row->school_id,
+                'deped_school_id' => (string) $row->deped_school_id,
+                'school_name' => (string) $row->school_name,
+                'learner_name' => trim(($row->last_name ?? '') . ', ' . ($row->first_name ?? '')) ?: 'Unknown learner',
+                'student_number' => $row->student_number,
+                'grade' => $row->grade,
+                'section' => $row->section,
+                'session' => $row->session,
+                'status' => $row->status,
+                'scanned_at' => $row->scanned_at,
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'summary' => $summary,
+            'recent' => $recent,
+        ];
     }
 
     /**
@@ -608,28 +688,6 @@ class SystemAdminDashboardService
             'label' => 'Active today',
             'severity' => 'success',
         ];
-    }
-
-    /**
-     * Convert heartbeat timestamp into online/idle/offline.
-     */
-    private function connectionStatusFor($lastSeen): string
-    {
-        if (!$lastSeen) {
-            return 'offline';
-        }
-
-        $seconds = now()->diffInSeconds($lastSeen);
-
-        if ($seconds <= 75) {
-            return 'online';
-        }
-
-        if ($seconds <= 300) {
-            return 'idle';
-        }
-
-        return 'offline';
     }
 
     /**

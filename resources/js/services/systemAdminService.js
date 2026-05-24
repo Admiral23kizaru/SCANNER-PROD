@@ -17,14 +17,19 @@ export async function fetchSystemAdminSchools() {
   return data.data || [];
 }
 
-export async function fetchSystemAdminScannerMonitor() {
-  const { data } = await axios.get(`${base}/scanner-monitor`, { headers: authHeaders() });
-  return data.data || [];
-}
-
 export async function fetchSystemAdminSubjects() {
   const { data } = await axios.get(`${base}/subjects`, { headers: authHeaders() });
   return data.data || [];
+}
+
+export async function fetchSystemAdminClasses() {
+  const { data } = await axios.get(`${base}/classes`, { headers: authHeaders() });
+  return data.data || [];
+}
+
+export async function fetchSystemAdminAttendance() {
+  const { data } = await axios.get(`${base}/attendance`, { headers: authHeaders() });
+  return data.data || { summary: [], recent: [] };
 }
 
 export async function fetchSystemAdminSchoolDetail(depedSchoolId) {

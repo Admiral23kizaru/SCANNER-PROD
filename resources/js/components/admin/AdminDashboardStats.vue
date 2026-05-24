@@ -2,8 +2,8 @@
   <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-xl sm:text-2xl font-semibold text-slate-900">Dashboard Overview</h1>
-        <p class="text-sm text-slate-500 mt-1">Welcome to the Ozamiz Schools QR-ID Management System</p>
+        <h1 class="text-xl sm:text-2xl font-semibold text-slate-900">Project TEA - Tracking Engagement and Assessment</h1>
+        <p class="text-sm text-slate-500 mt-1">Dashboard overview for engagement, attendance, and assessment activity</p>
       </div>
       <div class="flex items-center gap-2">
         <button 
@@ -33,11 +33,11 @@
         </div>
       </div>
 
-      <!-- Total Students (Now 2nd) -->
+      <!-- Total Learners (Now 2nd) -->
       <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm transition-all hover:shadow-md">
         <div class="flex items-start justify-between gap-4">
           <div>
-            <p class="text-sm font-medium text-slate-500 uppercase tracking-wider">Total Students</p>
+            <p class="text-sm font-medium text-slate-500 uppercase tracking-wider">Total Learners</p>
             <p class="mt-2 text-3xl font-bold text-slate-900">{{ dashboardStats.totals?.students ?? '—' }}</p>
             <p class="mt-2 text-xs text-slate-400">Enrolled learners in system</p>
           </div>
@@ -50,7 +50,7 @@
       <!-- Animated Status Card (3rd) -->
       <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm transition-all hover:shadow-md overflow-hidden relative group">
         <div class="flex justify-between items-start mb-2">
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Student Status Today</p>
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Learner Status Today</p>
             <transition name="slide-fade" mode="out-in">
               <p :key="activeStatusKey" 
                  class="text-lg font-bold text-slate-900 cursor-pointer hover:text-indigo-600 hover:underline transition-color"
@@ -306,7 +306,7 @@
                 <QrCode class="h-6 w-6" />
               </div>
               <div>
-                <p class="text-sm font-semibold text-slate-900">Add Student</p>
+                <p class="text-sm font-semibold text-slate-900">Add Learner</p>
                 <p class="text-xs text-slate-500 mt-1">Enroll a new learner</p>
               </div>
             </div>
@@ -339,7 +339,7 @@
               </div>
               <div>
                 <p class="text-sm font-semibold text-slate-900">Master List</p>
-                <p class="text-xs text-slate-500 mt-1">Manage all students</p>
+                <p class="text-xs text-slate-500 mt-1">Manage all learners</p>
               </div>
             </div>
           </button>
@@ -361,10 +361,10 @@
         <div class="flex-1 overflow-auto p-5">
           <div v-if="modalLoading" class="flex flex-col items-center justify-center py-12">
             <div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-            <p class="mt-4 text-sm font-medium text-slate-500">Loading students...</p>
+            <p class="mt-4 text-sm font-medium text-slate-500">Loading learners...</p>
           </div>
           <div v-else-if="modalStudents.length === 0" class="text-center py-12 text-slate-500">
-            No students found for this category.
+            No learners found for this category.
           </div>
           <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div v-for="student in modalStudents" :key="student.id" class="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50">
@@ -456,7 +456,7 @@ const newCalendarEventTitle = ref('');
 
 // ─── Population Modal State ─────────────────────────────────────────────
 // Why: Clicking "Male", "Female", or "Absent" on the status card should
-//      open a detailed modal listing those specific students.
+//      open a detailed modal listing those specific learners.
 // How: openPopulationModal() sends a GET to /api/admin/dashboard/analytics
 //      with ?type=male|female|absent and renders the result in a modal.
 
@@ -466,7 +466,7 @@ const modalStudents = ref([]);
 const modalLoading = ref(false);
 
 /**
- * // Description: openPopulationModal - Fetches and displays a filtered student
+ * // Description: openPopulationModal - Fetches and displays a filtered learner
  * //   list in a modal based on the clicked category (Male, Female, Absent).
  * // Author: Antigravity System Agent
  *
@@ -476,7 +476,7 @@ async function openPopulationModal(category) {
   if (!category) return;
   
   isModalOpen.value = true;
-  modalTitle.value = `${category} Students List`;
+  modalTitle.value = `${category} Learners List`;
   modalLoading.value = true;
   modalStudents.value = [];
   
@@ -485,7 +485,7 @@ async function openPopulationModal(category) {
     const response = await axios.get(`/api/admin/dashboard/analytics?type=${type}`);
     modalStudents.value = response.data.data;
   } catch (error) {
-    console.error('Failed to load students', error);
+    console.error('Failed to load learners', error);
   } finally {
     modalLoading.value = false;
   }
@@ -500,7 +500,7 @@ function closeModal() {
 }
 
 // ─── Status Slider Logic ───────────────────────────────────────────────
-// Why: The animated "Student Status Today" card cycles through Male/Female/Absent
+// Why: The animated "Learner Status Today" card cycles through Male/Female/Absent
 //      with a sliding highlight. Each category is also clickable to open its modal.
 // How: activeStatusKey drives the label, count, and slider position via computed props.
 

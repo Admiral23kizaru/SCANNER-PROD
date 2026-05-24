@@ -9,3 +9,83 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+.admin-theme-light .admin-main-surface {
+    background: #f4f7fb;
+    color: #0f172a;
+}
+
+.admin-theme-dark .admin-main-surface {
+    background: #111827;
+    color: #e5e7eb;
+}
+
+.admin-theme-dark .admin-main-surface .bg-white {
+    background-color: #1f2937 !important;
+}
+
+.admin-theme-dark .admin-main-surface .bg-slate-50,
+.admin-theme-dark .admin-main-surface .bg-slate-50\/50,
+.admin-theme-dark .admin-main-surface .bg-slate-50\/60,
+.admin-theme-dark .admin-main-surface .bg-slate-50\/70,
+.admin-theme-dark .admin-main-surface .bg-slate-100 {
+    background-color: #111827 !important;
+}
+
+.admin-theme-dark .admin-main-surface .border-slate-100,
+.admin-theme-dark .admin-main-surface .border-slate-200,
+.admin-theme-dark .admin-main-surface .border-slate-200\/80,
+.admin-theme-dark .admin-main-surface .border-stone-200 {
+    border-color: #374151 !important;
+}
+
+.admin-theme-dark .admin-main-surface .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.admin-theme-dark .admin-main-surface .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #374151 !important;
+}
+
+.admin-theme-dark .admin-main-surface .text-slate-900,
+.admin-theme-dark .admin-main-surface .text-slate-950,
+.admin-theme-dark .admin-main-surface .text-stone-800,
+.admin-theme-dark .admin-main-surface .text-slate-800 {
+    color: #f8fafc !important;
+}
+
+.admin-theme-dark .admin-main-surface .text-slate-700,
+.admin-theme-dark .admin-main-surface .text-stone-700,
+.admin-theme-dark .admin-main-surface .text-slate-600 {
+    color: #cbd5e1 !important;
+}
+
+.admin-theme-dark .admin-main-surface .text-slate-500,
+.admin-theme-dark .admin-main-surface .text-stone-500,
+.admin-theme-dark .admin-main-surface .text-slate-400 {
+    color: #94a3b8 !important;
+}
+
+.admin-theme-dark .admin-main-surface input,
+.admin-theme-dark .admin-main-surface select,
+.admin-theme-dark .admin-main-surface textarea {
+    background-color: #111827 !important;
+    border-color: #374151 !important;
+    color: #e5e7eb !important;
+}
+
+.admin-theme-dark .admin-main-surface input::placeholder,
+.admin-theme-dark .admin-main-surface textarea::placeholder {
+    color: #64748b !important;
+}
+
+.admin-theme-dark .admin-main-surface table thead {
+    background-color: #111827 !important;
+}
+
+.admin-theme-dark .admin-main-surface tbody tr:hover {
+    background-color: rgba(20, 184, 166, 0.08) !important;
+}
+
+.admin-theme-dark .admin-main-surface .shadow-sm,
+.admin-theme-dark .admin-main-surface .shadow-lg,
+.admin-theme-dark .admin-main-surface .shadow-xl {
+    box-shadow: 0 16px 35px rgba(0, 0, 0, 0.25) !important;
+}

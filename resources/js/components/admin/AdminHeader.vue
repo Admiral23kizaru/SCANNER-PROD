@@ -26,10 +26,11 @@
           <button
             type="button"
             class="hidden sm:flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/10 transition-colors cursor-pointer"
+            :class="themeMode === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-100'"
             @click.stop="isProfileOpen = !isProfileOpen"
           >
             <div class="text-right">
-              <p class="text-xs font-medium text-white">{{ user.name }}</p>
+              <p class="text-xs font-medium" :class="themeMode === 'dark' ? 'text-white' : 'text-slate-900'">{{ user.name }}</p>
               <p class="text-[10px] text-slate-400 uppercase tracking-wider">{{ user.role?.name || 'Admin' }}</p>
             </div>
             <div class="w-9 h-9 rounded-full overflow-hidden border border-white/20 bg-slate-800 shrink-0">

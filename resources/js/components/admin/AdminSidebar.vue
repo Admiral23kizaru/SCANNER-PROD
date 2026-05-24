@@ -11,110 +11,61 @@
           class="h-11 w-11 rounded-xl object-contain bg-white p-1 shadow-sm"
         />
         <div class="leading-tight">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-200">ScanUp</p>
-          <h1 class="text-sm font-semibold tracking-tight text-white">Admin Workspace</h1>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-200">Project TEA</p>
+          <h1 class="text-sm font-semibold tracking-tight text-white">Tracking Engagement and Assessment</h1>
         </div>
       </div>
     </div>
 
-    <nav class="flex-1 px-3 py-4 space-y-1.5 text-sm overflow-y-auto border-r border-white/10">
+    <nav class="flex-1 px-3 py-4 space-y-1.5 text-sm overflow-visible border-r border-white/10">
       <p class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Management</p>
       <button
         type="button"
         class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium transition-all cursor-pointer"
         :class="
-          currentPage === 'dashboard'
+          isDashboardActive
             ? 'bg-white text-slate-950 shadow-sm'
             : 'text-slate-300 hover:bg-white/10 hover:text-white'
         "
-        @click="updatePage('dashboard')"
+        @click="toggleDashboard"
       >
         <LayoutDashboard class="h-4 w-4" />
-        <span>Dashboard</span>
+        <span class="flex-1 text-left">Dashboard</span>
+        <ChevronDown class="h-4 w-4 transition-transform duration-200" :class="isDashboardOpen ? 'rotate-180' : ''" />
       </button>
 
+      <div v-if="isDashboardOpen" class="ml-6 space-y-1 border-l border-white/10 py-1.5 pl-4">
+        <button
+          v-for="item in dashboardItems"
+          :key="item.key"
+          type="button"
+          class="group flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium transition"
+          :class="currentPage === item.key ? 'text-white' : 'text-slate-300 hover:text-white'"
+          @click="updatePage(item.key)"
+        >
+          <span
+            class="h-2 w-2 rounded-full"
+            :class="currentPage === item.key ? 'bg-white' : 'bg-slate-400 group-hover:bg-white'"
+          ></span>
+          <span>{{ item.label }}</span>
+        </button>
+      </div>
+
       <button
+        v-for="item in mainItems"
+        :key="item.key"
         type="button"
         class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium transition-all cursor-pointer"
         :class="
-          currentPage === 'teachers'
+          currentPage === item.key
             ? 'bg-white text-slate-950 shadow-sm'
             : 'text-slate-300 hover:bg-white/10 hover:text-white'
         "
-        @click="updatePage('teachers')"
+        @click="updatePage(item.key)"
       >
-        <Users class="h-4 w-4" />
-        <span>Manage Teachers</span>
-      </button>
-
-      <button
-        type="button"
-        class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium transition-all cursor-pointer"
-        :class="
-          currentPage === 'students'
-            ? 'bg-white text-slate-950 shadow-sm'
-            : 'text-slate-300 hover:bg-white/10 hover:text-white'
-        "
-        @click="updatePage('students')"
-      >
-        <GraduationCap class="h-4 w-4" />
-        <span>Learners List</span>
-      </button>
-
-      <button
-        type="button"
-        class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium transition-all cursor-pointer"
-        :class="
-          currentPage === 'attendance'
-            ? 'bg-white text-slate-950 shadow-sm'
-            : 'text-slate-300 hover:bg-white/10 hover:text-white'
-        "
-        @click="updatePage('attendance')"
-      >
-        <ClipboardList class="h-4 w-4" />
-        <span>Attendance Monitor</span>
-      </button>
-
-      <button
-        type="button"
-        class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium transition-all cursor-pointer"
-        :class="
-          currentPage === 'learningAssessment'
-            ? 'bg-white text-slate-950 shadow-sm'
-            : 'text-slate-300 hover:bg-white/10 hover:text-white'
-        "
-        @click="updatePage('learningAssessment')"
-      >
-        <ClipboardPen class="h-4 w-4" />
-        <span>Learning Assessment</span>
-      </button>
-
-      <button
-        type="button"
-        class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium transition-all cursor-pointer"
-        :class="
-          currentPage === 'subjects'
-            ? 'bg-white text-slate-950 shadow-sm'
-            : 'text-slate-300 hover:bg-white/10 hover:text-white'
-        "
-        @click="updatePage('subjects')"
-      >
-        <BookOpen class="h-4 w-4" />
-        <span>Manage Subjects</span>
-      </button>
-
-      <button
-        type="button"
-        class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium transition-all cursor-pointer"
-        :class="
-          currentPage === 'sections'
-            ? 'bg-white text-slate-950 shadow-sm'
-            : 'text-slate-300 hover:bg-white/10 hover:text-white'
-        "
-        @click="updatePage('sections')"
-      >
-        <FolderPlus class="h-4 w-4" />
-        <span>Manage Sections</span>
+        <component :is="item.icon" class="h-4 w-4" />
+        <span class="flex-1 text-left">{{ item.label }}</span>
+        <ChevronRight class="h-4 w-4 opacity-70" />
       </button>
     </nav>
     <div class="border-r border-white/10 p-4">
@@ -127,9 +78,22 @@
 </template>
 
 <script setup>
-import { LayoutDashboard, Users, GraduationCap, FolderPlus, BookOpen, ClipboardList, ClipboardPen } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
+import {
+  BookOpen,
+  CalendarCheck,
+  ChevronDown,
+  ChevronRight,
+  ClipboardList,
+  ClipboardPen,
+  FolderPlus,
+  GraduationCap,
+  LayoutDashboard,
+  UserRoundCheck,
+  Users,
+} from 'lucide-vue-next';
 
-defineProps({
+const props = defineProps({
   currentPage: {
     type: String,
     required: true
@@ -141,10 +105,41 @@ defineProps({
   logoSrc: {
     type: String,
     required: true
+  },
+  user: {
+    type: Object,
+    default: null
   }
 });
 
 const emit = defineEmits(['update:currentPage', 'update:isSidebarOpen']);
+const isDashboardOpen = ref(true);
+
+const dashboardItems = [
+  { key: 'school', label: 'School' },
+  { key: 'students', label: 'Learner' },
+  { key: 'teachers', label: 'Teacher' },
+  { key: 'parents', label: 'Parent' },
+  { key: 'least-mastered-skills', label: 'Least Mastered Skills' },
+];
+
+const mainItems = [
+  { key: 'students', label: 'Learners', icon: GraduationCap },
+  { key: 'teachers', label: 'Teachers', icon: Users },
+  { key: 'guardians', label: 'Guardian', icon: UserRoundCheck },
+  { key: 'sections', label: 'Classes', icon: FolderPlus },
+  { key: 'assessment', label: 'Semestral Assessment', icon: ClipboardPen },
+  { key: 'attendance', label: 'Attendance', icon: CalendarCheck },
+  { key: 'subjects', label: 'Manage Subjects', icon: BookOpen },
+  { key: 'learningAssessment', label: 'Learning Assessment', icon: ClipboardList },
+];
+
+const isDashboardActive = computed(() => ['dashboard', ...dashboardItems.map((item) => item.key)].includes(props.currentPage));
+
+function toggleDashboard() {
+  isDashboardOpen.value = !isDashboardOpen.value;
+  updatePage('dashboard');
+}
 
 function updatePage(page) {
   emit('update:currentPage', page);
