@@ -18,6 +18,7 @@ use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 /**
  * Builds read-only division monitoring data for the System Admin dashboard.
@@ -187,19 +188,8 @@ class SystemAdminDashboardService
             ->groupBy('teacher_id')
             ->pluck('total', 'teacher_id');
 
-        $schoolSubjects = Subject::whereIn('school_id', $schoolIds)
-            ->select('school_id', DB::raw("GROUP_CONCAT(name ORDER BY name SEPARATOR ', ') as subjects"))
-            ->groupBy('school_id')
-            ->pluck('subjects', 'school_id');
-
-        $subjectsByHrid = Schema::hasTable('tbl_emp_official_subject_taught')
-            ? DB::table('tbl_emp_official_subject_taught')
-                ->select('hrid', DB::raw("GROUP_CONCAT(subject_name ORDER BY sort_order SEPARATOR ', ') as subjects"))
-                ->whereNotNull('hrid')
-                ->whereRaw("TRIM(COALESCE(subject_name, '')) <> ''")
-                ->groupBy('hrid')
-                ->pluck('subjects', 'hrid')
-            : collect();
+        $schoolSubjects = $this->schoolSubjectsBySchoolId($schoolIds);
+        $subjectsByHrid = $this->teacherSubjectsByHrid();
 
         return $schoolRows->map(function (array $school) use ($teachers, $learnerCounts, $subjectsByHrid, $schoolSubjects) {
             $schoolSubjectList = (string) ($schoolSubjects[$school['school_id']] ?? '');
@@ -227,14 +217,55 @@ class SystemAdminDashboardService
                 ->values()
                 ->all();
 
-            return [
-                ...$school,
+            return array_merge($school, [
                 'school_subjects' => $schoolSubjectList,
                 'teacher_count' => count($schoolTeachers),
                 'learner_count' => (int) ($school['students'] ?? 0),
                 'teacher_rows' => $schoolTeachers,
-            ];
+            ]);
         })->values()->all();
+    }
+
+    private function schoolSubjectsBySchoolId(Collection $schoolIds): Collection
+    {
+        try {
+            if ($schoolIds->isEmpty() || !Schema::hasTable('tbl_scanup_subjects')) {
+                return collect();
+            }
+
+            return Subject::whereIn('school_id', $schoolIds)
+                ->select('school_id', DB::raw("GROUP_CONCAT(name ORDER BY name SEPARATOR ', ') as subjects"))
+                ->groupBy('school_id')
+                ->pluck('subjects', 'school_id');
+        } catch (Throwable) {
+            return collect();
+        }
+    }
+
+    private function teacherSubjectsByHrid(): Collection
+    {
+        try {
+            if (
+                !Schema::hasTable('tbl_emp_official_subject_taught') ||
+                !Schema::hasColumn('tbl_emp_official_subject_taught', 'hrid') ||
+                !Schema::hasColumn('tbl_emp_official_subject_taught', 'subject_name')
+            ) {
+                return collect();
+            }
+
+            $orderColumn = Schema::hasColumn('tbl_emp_official_subject_taught', 'sort_order')
+                ? 'sort_order'
+                : 'subject_name';
+
+            return DB::table('tbl_emp_official_subject_taught')
+                ->select('hrid', DB::raw("GROUP_CONCAT(subject_name ORDER BY {$orderColumn} SEPARATOR ', ') as subjects"))
+                ->whereNotNull('hrid')
+                ->whereRaw("TRIM(COALESCE(subject_name, '')) <> ''")
+                ->groupBy('hrid')
+                ->pluck('subjects', 'hrid');
+        } catch (Throwable) {
+            return collect();
+        }
     }
 
     public function guardians(): array
