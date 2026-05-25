@@ -20,7 +20,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
  */
 class LearningAssessmentTemplateExport implements FromArray, WithEvents, WithColumnWidths, WithTitle
 {
-    private const DEFAULT_SHEET_TITLE = 'Learning Assessment';
+    private const DEFAULT_SHEET_TITLE = 'Semestral Assessment';
 
     private readonly string $sheetTitle;
 

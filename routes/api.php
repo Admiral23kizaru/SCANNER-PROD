@@ -293,7 +293,7 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
         /* ------------------------------------------------------------------ */
-        /*  Learning Assessment (scores + Excel export)                        */
+        /*  Semestral Assessment (scores + Excel export)                       */
         /* ------------------------------------------------------------------ */
 
         Route::controller(LearningAssessmentController::class)->prefix('learning-assessment')->group(function () {

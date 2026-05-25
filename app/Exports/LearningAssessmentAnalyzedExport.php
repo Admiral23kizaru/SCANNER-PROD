@@ -60,7 +60,7 @@ class LearningAssessmentAnalyzedExport implements FromArray, WithCharts, WithEve
      */
     public function __construct(
         private array $payload,
-        private readonly string $sheetTitle = 'Learning Assessment',
+        private readonly string $sheetTitle = 'Semestral Assessment',
     ) {}
 
     public function title(): string

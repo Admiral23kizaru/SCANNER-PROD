@@ -38,8 +38,7 @@
           <AdminStudentsPage v-else-if="currentPage === 'students'" />
           <AdminGuardiansPage v-else-if="currentPage === 'guardians' || currentPage === 'parents'" />
           <AttendanceMonitor v-else-if="currentPage === 'attendance'" api-endpoint="/api/admin/attendance/monitor" />
-          <LearningAssessment v-else-if="currentPage === 'learningAssessment'" api-base="/api/admin/learning-assessment" />
-          <AdminAssessmentLogsPage v-else-if="currentPage === 'assessment'" />
+          <LearningAssessment v-else-if="currentPage === 'semestralAssessment'" api-base="/api/admin/learning-assessment" />
           <AdminLeastMasteredSkillsPage v-else-if="currentPage === 'least-mastered-skills'" />
           <ManageSubjects v-else-if="currentPage === 'subjects'" />
           <ManageSections v-else-if="currentPage === 'sections'" />
@@ -69,7 +68,6 @@ import LearningAssessment from '../teacher/LearningAssessment.vue';
 import AdminSchoolPage from '../admin/AdminSchoolPage.vue';
 import AdminGuardiansPage from '../admin/AdminGuardiansPage.vue';
 import AdminLeastMasteredSkillsPage from '../admin/AdminLeastMasteredSkillsPage.vue';
-import AdminAssessmentLogsPage from '../admin/AdminAssessmentLogsPage.vue';
 
 const currentPage = ref('dashboard');
 const isSidebarOpen = ref(false);
@@ -95,8 +93,7 @@ const pageTitle = computed(() => {
   if (currentPage.value === 'guardians') return 'GUARDIANS';
   if (currentPage.value === 'least-mastered-skills') return 'LEAST MASTERED SKILLS';
   if (currentPage.value === 'attendance') return 'ATTENDANCE MONITOR';
-  if (currentPage.value === 'assessment') return 'SEMESTRAL ASSESSMENT';
-  if (currentPage.value === 'learningAssessment') return 'LEARNING ASSESSMENT';
+  if (currentPage.value === 'semestralAssessment') return 'SEMESTRAL ASSESSMENT';
   if (currentPage.value === 'subjects') return 'SUBJECTS';
   if (currentPage.value === 'sections') return 'SECTIONS';
   return 'Project TEA - Tracking Engagement and Assessment';
@@ -110,8 +107,7 @@ const pageSubtitle = computed(() => {
   if (currentPage.value === 'guardians') return 'Guardian contact records';
   if (currentPage.value === 'least-mastered-skills') return 'Assessment pie chart results by filters';
   if (currentPage.value === 'attendance') return 'Monitor learner attendance across your school';
-  if (currentPage.value === 'assessment') return 'View and update assessment result logs';
-  if (currentPage.value === 'learningAssessment') return 'Export templates and analyze learner assessment results';
+  if (currentPage.value === 'semestralAssessment') return 'Export templates and analyze semestral assessment results';
   if (currentPage.value === 'subjects') return 'Create and manage subjects';
   if (currentPage.value === 'sections') return 'Create and manage class sections';
   return 'Dashboard overview for engagement, attendance, and assessment activity';

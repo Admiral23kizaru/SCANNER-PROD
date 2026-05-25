@@ -21,7 +21,7 @@ use Maatwebsite\Excel\Excel as ExcelWriter;
 class LearningAssessmentController extends BaseController
 {
     /**
-     * Return the authenticated school_id for Learning Assessment operations.
+     * Return the authenticated school_id for Semestral Assessment operations.
      */
     private function schoolScope(?Request $request = null): int
     {
@@ -31,7 +31,7 @@ class LearningAssessmentController extends BaseController
         if ($user?->role?->name === 'System Admin') {
             $schoolId = (int) $request->input('school_id');
             if (! $schoolId || ! School::whereKey($schoolId)->exists()) {
-                abort(422, 'Select a valid school before using Learning Assessment.');
+                abort(422, 'Select a valid school before using Semestral Assessment.');
             }
 
             return $schoolId;
@@ -273,7 +273,7 @@ class LearningAssessmentController extends BaseController
         $totalItems = (int) ($request->input('total_items') ?? 50);
 
         $schoolId = $this->schoolScope($request);
-        $sheetTitle = 'Learning Assessment';
+        $sheetTitle = 'Semestral Assessment';
         if ($request->filled('subject_id')) {
             $subjectName = $this->subjectName($request, (int) $request->input('subject_id'), $schoolId);
             if (trim($subjectName) !== '') {
@@ -283,7 +283,7 @@ class LearningAssessmentController extends BaseController
 
         $gradeLabel = $request->input('grade_level') ? ('G' . preg_replace('/\D+/', '', (string) $request->input('grade_level'))) : 'AllGrades';
         $sectionLabel = $request->input('section') ? preg_replace('/\s+/', '', (string) $request->input('section')) : 'AllSections';
-        $filename = "Learning_Assessment_Template_{$gradeLabel}_{$sectionLabel}.xlsx";
+        $filename = "Semestral_Assessment_Template_{$gradeLabel}_{$sectionLabel}.xlsx";
 
         return Excel::download(new LearningAssessmentTemplateExport($students, $totalItems, $sheetTitle), $filename);
     }
@@ -322,7 +322,7 @@ class LearningAssessmentController extends BaseController
         }
 
         [$validated, $sheetTitle] = $result;
-        $filename = 'Learning_Assessment_Analyzed_' . now()->format('Y-m-d_His') . '.xlsx';
+        $filename = 'Semestral_Assessment_Analyzed_' . now()->format('Y-m-d_His') . '.xlsx';
 
         return Excel::download(new LearningAssessmentAnalyzedExport($validated, $sheetTitle), $filename);
     }
@@ -364,7 +364,7 @@ class LearningAssessmentController extends BaseController
         [$validated, $sheetTitle] = $result;
         $schoolId = $this->schoolScope($request);
         $title = trim((string) $request->input('title'));
-        $safeTitle = preg_replace('/[^A-Za-z0-9_-]+/', '_', $title) ?: 'Learning_Assessment';
+        $safeTitle = preg_replace('/[^A-Za-z0-9_-]+/', '_', $title) ?: 'Semestral_Assessment';
         $filename = $safeTitle . '_Analyzed_' . now()->format('Y-m-d_His') . '.xlsx';
         $path = 'learning-assessment/analyzed/' . $schoolId . '/' . $filename;
 
@@ -452,7 +452,7 @@ class LearningAssessmentController extends BaseController
         }
 
         $validated = $validator->validated();
-        $sheetTitle = (string) ($validated['sheet_title'] ?? 'Learning Assessment');
+        $sheetTitle = (string) ($validated['sheet_title'] ?? 'Semestral Assessment');
         unset($validated['sheet_title']);
 
         $n = count($validated['item_numbers']);

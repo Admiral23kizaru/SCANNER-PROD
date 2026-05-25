@@ -167,8 +167,8 @@
         </div>
       </div>
     </div>
-    <!-- ═══ Learning Assessment Tab ═══ -->
-    <div v-show="currentTab === 'learningAssessment'" class="w-full">
+    <!-- ═══ Semestral Assessment Tab ═══ -->
+    <div v-show="currentTab === 'semestralAssessment'" class="w-full">
       <LearningAssessment />
     </div>
     <!-- 
@@ -446,13 +446,13 @@ function onProfileUpdated(updatedProfile) {
 
 const pageTitle = computed(() => {
   if (currentTab.value === 'monitor') return 'ATTENDANCE MONITOR';
-  if (currentTab.value === 'learningAssessment') return 'LEARNING ASSESSMENT';
+  if (currentTab.value === 'semestralAssessment') return 'SEMESTRAL ASSESSMENT';
   return 'LEARNERS';
 });
 
 const pageSubtitle = computed(() => {
   if (currentTab.value === 'monitor') return 'Real-time attendance tracking';
-  if (currentTab.value === 'learningAssessment') return 'Roster export and Excel import / analysis';
+  if (currentTab.value === 'semestralAssessment') return 'Roster export and Excel import / analysis';
   if (isSubjectTeacher.value) return assignedClassLabel.value === 'Not assigned'
     ? 'View learner records'
     : `View ${assignedClassLabel.value} learner records`;

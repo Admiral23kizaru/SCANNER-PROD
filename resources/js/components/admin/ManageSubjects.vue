@@ -3,7 +3,7 @@
     <div class="p-4 sm:p-5 border-b border-slate-200 bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
       <div>
         <h2 class="text-lg font-semibold text-slate-900">Manage Subjects</h2>
-        <p class="text-sm text-slate-500 mt-1">Add, edit, delete subjects and use them for Learning Assessment</p>
+        <p class="text-sm text-slate-500 mt-1">Add, edit, delete subjects and use them for Semestral Assessment</p>
       </div>
       <div class="flex flex-wrap gap-2">
         <button

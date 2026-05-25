@@ -43,11 +43,11 @@
       <button
         type="button"
         class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all cursor-pointer"
-        :class="currentTab === 'learningAssessment' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-300 hover:bg-white/10 hover:text-white'"
-        @click="$emit('update:currentTab', 'learningAssessment'); $emit('update:isSidebarOpen', false)"
+        :class="currentTab === 'semestralAssessment' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-300 hover:bg-white/10 hover:text-white'"
+        @click="$emit('update:currentTab', 'semestralAssessment'); $emit('update:isSidebarOpen', false)"
       >
         <ClipboardPen class="h-4 w-4" />
-        <span>Learning Assessment</span>
+        <span>Semestral Assessment</span>
       </button>
     </nav>
     <div class="p-4">

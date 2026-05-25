@@ -128,10 +128,9 @@ const mainItems = [
   { key: 'teachers', label: 'Teachers', icon: Users },
   { key: 'guardians', label: 'Guardian', icon: UserRoundCheck },
   { key: 'sections', label: 'Classes', icon: FolderPlus },
-  { key: 'assessment', label: 'Semestral Assessment', icon: ClipboardPen },
   { key: 'attendance', label: 'Attendance', icon: CalendarCheck },
   { key: 'subjects', label: 'Manage Subjects', icon: BookOpen },
-  { key: 'learningAssessment', label: 'Learning Assessment', icon: ClipboardList },
+  { key: 'semestralAssessment', label: 'Semestral Assessment', icon: ClipboardList },
 ];
 
 const isDashboardActive = computed(() => ['dashboard', ...dashboardItems.map((item) => item.key)].includes(props.currentPage));

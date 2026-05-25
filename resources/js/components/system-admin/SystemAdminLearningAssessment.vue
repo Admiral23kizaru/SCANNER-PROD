@@ -3,7 +3,7 @@
     <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div class="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_220px_220px] lg:items-end">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600">Division Learning Assessment</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600">Division Semestral Assessment</p>
           <h2 class="mt-1 text-xl font-bold text-slate-950">All-school assessment workflow</h2>
           <p class="mt-1 text-sm text-slate-500">
             Select one school, then export templates, analyze Excel files, and review mastery charts for that school.
@@ -38,7 +38,7 @@
     />
 
     <div v-else class="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">
-      Select a school to start the System Admin learning assessment workflow.
+      Select a school to start the System Admin semestral assessment workflow.
     </div>
   </div>
 </template>

@@ -2,7 +2,7 @@
   <section class="rounded-lg border border-slate-200 bg-white shadow-sm">
     <div class="border-b border-slate-200 p-4">
       <h2 class="text-lg font-bold text-slate-950">Least Mastered Skills</h2>
-      <p class="text-sm text-slate-500">Pie chart from saved Learning Assessment analysis files.</p>
+      <p class="text-sm text-slate-500">Pie chart from saved Semestral Assessment analysis files.</p>
       <div class="mt-3 grid gap-2 md:grid-cols-5">
         <select v-model="filters.school_id" class="rounded-md border border-slate-300 px-3 py-2 text-sm" @change="loadData"><option value="">All schools</option><option v-for="s in options.schools" :key="s.id" :value="s.id">{{ s.name }}</option></select>
         <select v-model="filters.school_year" class="rounded-md border border-slate-300 px-3 py-2 text-sm" @change="loadData"><option value="">All SY</option><option v-for="sy in options.school_years" :key="sy" :value="sy">{{ sy }}</option></select>
@@ -15,7 +15,7 @@
     <div class="grid gap-5 p-4 lg:grid-cols-[420px_1fr]">
       <div class="h-80 rounded-lg border border-slate-200 bg-white p-3">
         <Pie v-if="chartRows.length" :data="chartData" :options="chartOptions" />
-        <div v-else class="flex h-full items-center justify-center text-sm text-slate-500">No Learning Assessment analysis yet.</div>
+        <div v-else class="flex h-full items-center justify-center text-sm text-slate-500">No Semestral Assessment analysis yet.</div>
       </div>
       <div class="overflow-auto rounded-lg border border-slate-200">
         <div v-if="selectedSkill" class="border-b border-slate-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">

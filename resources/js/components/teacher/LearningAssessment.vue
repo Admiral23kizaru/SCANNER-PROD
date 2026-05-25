@@ -1,13 +1,13 @@
 <template>
   <div class="w-full mx-auto p-4 sm:p-6 lg:max-w-4xl">
     <div class="mb-5">
-      <h2 class="text-xl font-bold text-stone-900 tracking-tight">Learning Assessment</h2>
+      <h2 class="text-xl font-bold text-stone-900 tracking-tight">Semestral Assessment</h2>
       <p class="text-sm text-stone-500 mt-0.5">Select class filters, export a roster template, then upload for scoring and item analysis</p>
     </div>
 
     <div class="bg-white rounded-xl shadow-md border border-stone-200 overflow-hidden">
       <div class="px-5 py-4 border-b border-stone-200 bg-blue-50/70">
-        <h3 class="text-sm font-bold text-blue-900 uppercase tracking-wide">Learning Assessment Workflow</h3>
+        <h3 class="text-sm font-bold text-blue-900 uppercase tracking-wide">Semestral Assessment Workflow</h3>
       </div>
 
       <div class="p-5 space-y-4">
@@ -61,7 +61,7 @@
         <div class="rounded-lg border border-stone-200 overflow-hidden">
           <div class="px-4 py-2.5 bg-stone-50 border-b border-stone-200 text-sm font-semibold text-stone-700 flex items-center gap-2">
             <span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-stone-900 text-white text-xs font-bold">2</span>
-            Export Learning Assessment Excel template
+            Export Semestral Assessment Excel template
           </div>
           <div class="p-4 space-y-4">
             <p class="text-sm text-stone-600 rounded-lg border border-stone-200 bg-stone-50/40 px-4 py-3">
@@ -680,7 +680,7 @@ async function onAnalyzeFile(ev) {
     });
     analyzeResult.value = data;
     const subject = meta.value.subjects?.find((s) => s.id === filters.value.subject_id);
-    saveTitle.value = subject?.name ? `${subject.name} Item Analysis` : 'Learning Assessment Item Analysis';
+    saveTitle.value = subject?.name ? `${subject.name} Item Analysis` : 'Semestral Assessment Item Analysis';
     saveAnalyzedAt.value = todayInputValue();
     saveMessage.value = '';
     previewOpen.value = true;
@@ -715,7 +715,7 @@ function buildAnalyzeExportPayload() {
   }
 
   const subject = meta.value.subjects?.find((s) => s.id === filters.value.subject_id);
-  const sheetTitle = subject?.name?.trim() || 'Learning Assessment';
+  const sheetTitle = subject?.name?.trim() || 'Semestral Assessment';
 
   return {
     sheet_title: sheetTitle,
@@ -788,7 +788,7 @@ async function downloadSavedFile(file) {
       responseType: 'blob',
       headers: { ...getAuthHeaders(), Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
     });
-    await downloadBlobResponse(res, file.filename || 'Learning_Assessment_Analyzed.xlsx');
+    await downloadBlobResponse(res, file.filename || 'Semestral_Assessment_Analyzed.xlsx');
   } catch (err) {
     errorMessage.value = await parseBlobError(err, 'Could not download saved analyzed file.');
   }
@@ -865,7 +865,7 @@ async function downloadAnalyzedExcel() {
         'Content-Type': 'application/json',
       },
     });
-    await downloadBlobResponse(res, 'Learning_Assessment_Analyzed.xlsx');
+    await downloadBlobResponse(res, 'Semestral_Assessment_Analyzed.xlsx');
   } catch (err) {
     const msg = await parseBlobError(err, 'Download failed.');
     analyzeError.value = msg;
@@ -890,7 +890,7 @@ async function exportExcel() {
       headers: { ...getAuthHeaders(), Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
     });
 
-    await downloadBlobResponse(res, 'Learning_Assessment_Template.xlsx');
+    await downloadBlobResponse(res, 'Semestral_Assessment_Template.xlsx');
   } catch (err) {
     errorMessage.value = await parseBlobError(err, 'Export failed.');
   } finally {
