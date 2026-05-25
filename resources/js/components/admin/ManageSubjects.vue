@@ -72,12 +72,17 @@
           <label class="block text-sm font-medium text-slate-700 mb-1">Subject area</label>
           <select
             v-model="form.name"
-            class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200"
+            class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:bg-slate-50"
+            :disabled="subjectAreas.length === 0"
             required
           >
             <option value="" disabled>Select subject area</option>
             <option v-for="area in subjectAreas" :key="area" :value="area">{{ area }}</option>
           </select>
+          <p v-if="areasLoading" class="mt-1 text-xs text-slate-500">Loading subject areas from EHRIS…</p>
+          <p v-else-if="subjectAreas.length === 0" class="mt-1 text-xs text-amber-700">
+            No subject areas found. Check EHRIS connection and that <code class="text-[11px]">tbl_subject_area</code> has data, then click Add Subject again.
+          </p>
         </div>
         <div v-if="formError" class="text-sm text-red-600">{{ formError }}</div>
         <div class="flex items-center justify-end gap-2 pt-2">
@@ -85,7 +90,7 @@
           <button
             type="submit"
             class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-            :disabled="saving"
+            :disabled="saving || (!editingId && subjectAreas.length === 0)"
           >
             {{ saving ? 'Saving...' : 'Save' }}
           </button>
@@ -125,6 +130,7 @@ function getAuthHeaders() {
 
 const subjects = ref([]);
 const subjectAreas = ref([]);
+const areasLoading = ref(false);
 const loading = ref(false);
 const errorMsg = ref('');
 
@@ -142,6 +148,21 @@ function formatTime(iso) {
   return d.toLocaleString();
 }
 
+async function loadSubjectAreas() {
+  areasLoading.value = true;
+  try {
+    const res = await axios.get('/api/admin/subjects/areas', {
+      headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    subjectAreas.value = res.data.areas || res.data.data || [];
+  } catch (e) {
+    subjectAreas.value = [];
+    formError.value = e?.response?.data?.message || 'Could not load subject areas from EHRIS.';
+  } finally {
+    areasLoading.value = false;
+  }
+}
+
 async function load() {
   loading.value = true;
   errorMsg.value = '';
@@ -149,6 +170,9 @@ async function load() {
     const res = await axios.get('/api/admin/subjects', { headers: { ...getAuthHeaders(), Accept: 'application/json' } });
     subjects.value = res.data.data || [];
     subjectAreas.value = res.data.areas || [];
+    if (subjectAreas.value.length === 0) {
+      await loadSubjectAreas();
+    }
   } catch (e) {
     subjects.value = [];
     errorMsg.value = e?.response?.data?.message || 'Failed to load subjects.';
@@ -157,17 +181,22 @@ async function load() {
   }
 }
 
-function openCreate() {
+async function openCreate() {
   editingId.value = null;
-  form.value = { name: subjectAreas.value[0] || '' };
   formError.value = '';
+  await loadSubjectAreas();
+  form.value = { name: subjectAreas.value[0] || '' };
   showModal.value = true;
 }
 
-function openEdit(s) {
+async function openEdit(s) {
   editingId.value = s.id;
   form.value = { name: s.name || '' };
   formError.value = '';
+  await loadSubjectAreas();
+  if (s.name && !subjectAreas.value.includes(s.name)) {
+    subjectAreas.value = [...subjectAreas.value, s.name].sort((a, b) => a.localeCompare(b));
+  }
   showModal.value = true;
 }
 
