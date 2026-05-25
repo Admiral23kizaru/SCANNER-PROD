@@ -216,8 +216,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Subjects management
         Route::controller(AdminSubjectController::class)->prefix('subjects')->group(function () {
-            Route::get('/ehris', 'ehris');
-            Route::post('/sync-ehris', 'syncEhris');
+            Route::get('/areas', 'subjectAreas');
             Route::get('/', 'index');
             Route::post('/', 'store');
             Route::put('/{id}', 'update');
