@@ -8,9 +8,33 @@
     @open-profile-modal="showProfileModal = true"
     @logout="logout"
   >
+        <div v-if="currentTab !== 'subjectHandled'" class="w-full px-4 pt-4 sm:px-6">
+          <div class="mx-auto flex flex-col gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm lg:max-w-[1400px] sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Workspace context</p>
+              <p class="text-sm font-semibold text-slate-900">{{ selectedContextLabel }}</p>
+            </div>
+            <label class="flex flex-col gap-1 text-xs font-medium text-slate-500 sm:min-w-[320px]">
+              View as
+              <select
+                v-model="selectedContextKey"
+                class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-100"
+              >
+                <option value="own">Advisory class</option>
+                <option
+                  v-for="context in handledContexts"
+                  :key="contextKey(context)"
+                  :value="contextKey(context)"
+                >
+                  {{ contextLabel(context) }}
+                </option>
+              </select>
+            </label>
+          </div>
+        </div>
         <!-- ═══ Attendance Monitor Tab ═══ -->
         <div v-show="currentTab === 'monitor'" class="w-full">
-          <AttendanceMonitor ref="attendanceMonitorRef" />
+          <AttendanceMonitor ref="attendanceMonitorRef" :requestParams="activeRequestParams" />
         </div>
 
         <div v-show="currentTab === 'learners'" class="w-full">
@@ -30,7 +54,7 @@
               <h2 class="text-lg font-semibold text-slate-900">Learner Master List</h2>
               <p class="mt-1 text-sm text-slate-500">Search, import, and maintain learner records for your assigned class.</p>
               <p class="mt-2 inline-flex items-center rounded-md border border-sky-100 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-800">
-                Assigned class: {{ assignedClassLabel }}
+                {{ selectedContextLabel }}
               </p>
             </div>
           </div>
@@ -169,7 +193,74 @@
     </div>
     <!-- ═══ Semestral Assessment Tab ═══ -->
     <div v-show="currentTab === 'semestralAssessment'" class="w-full">
-      <LearningAssessment />
+      <LearningAssessment :key="selectedContextKey" :requestParams="activeRequestParams" />
+    </div>
+
+    <div v-show="currentTab === 'subjectHandled'" class="w-full">
+      <div class="w-full mx-auto p-4 sm:p-6 lg:max-w-5xl">
+        <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div class="border-b border-slate-200 p-5">
+            <h2 class="text-lg font-semibold text-slate-900">Subject Handled</h2>
+            <p class="mt-1 text-sm text-slate-500">Add same-grade sections you handle as a subject teacher.</p>
+          </div>
+
+          <div class="grid gap-4 p-5 lg:grid-cols-[1fr_1.2fr]">
+            <form class="rounded-lg border border-slate-200 bg-slate-50/60 p-4" @submit.prevent="submitHandledSubject">
+              <div class="space-y-3">
+                <div>
+                  <label class="mb-1 block text-xs font-medium text-slate-600">Subject</label>
+                  <select v-model.number="handledForm.subject_id" required class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">
+                    <option :value="null" disabled>Select subject</option>
+                    <option v-for="subject in handledOptions.subjects" :key="subject.id" :value="subject.id">{{ subject.name }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="mb-1 block text-xs font-medium text-slate-600">Section</label>
+                  <select v-model.number="handledForm.section_id" required class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">
+                    <option :value="null" disabled>Select same-grade section</option>
+                    <option v-for="section in handledOptions.sections" :key="section.id" :value="section.id">
+                      {{ section.grade_level }} / {{ section.name }}
+                    </option>
+                  </select>
+                </div>
+                <p v-if="handledError" class="text-sm text-red-600">{{ handledError }}</p>
+                <button type="submit" class="inline-flex w-full items-center justify-center rounded-lg bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50" :disabled="savingHandled">
+                  {{ savingHandled ? 'Saving...' : 'Add handled subject' }}
+                </button>
+              </div>
+            </form>
+
+            <div class="overflow-hidden rounded-lg border border-slate-200">
+              <table class="w-full text-left text-sm">
+                <thead class="bg-slate-100 text-xs uppercase text-slate-600">
+                  <tr>
+                    <th class="border-b border-slate-200 px-3 py-2">Subject</th>
+                    <th class="border-b border-slate-200 px-3 py-2">Grade / Section</th>
+                    <th class="border-b border-slate-200 px-3 py-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="context in handledContexts" :key="context.id" class="border-b border-slate-100">
+                    <td class="px-3 py-3 font-medium text-slate-900">{{ context.subject_name }}</td>
+                    <td class="px-3 py-3 text-slate-600">{{ context.grade_level }} / {{ context.section_name }}</td>
+                    <td class="px-3 py-3 text-right">
+                      <button type="button" class="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100" @click="removeHandledSubject(context)">
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                  <tr v-if="!loadingHandled && handledContexts.length === 0">
+                    <td colspan="3" class="px-3 py-10 text-center text-slate-400">No handled subjects yet.</td>
+                  </tr>
+                  <tr v-if="loadingHandled">
+                    <td colspan="3" class="px-3 py-10 text-center text-slate-500">Loading...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <!-- 
       Header Comment: Action: Implementing static backdrop to prevent accidental data loss during student editing.
@@ -394,6 +485,10 @@ import {
   updateStudentWithFormData,
   uploadStudentPhoto,
   bulkImportStudents,
+  fetchSubjectHandled,
+  fetchSubjectHandledOptions,
+  createSubjectHandled,
+  deleteSubjectHandled,
 } from '../../services/studentService';
 import TeacherProfileModal from './TeacherProfileModal.vue';
 import AttendanceMonitor from '../AttendanceMonitor.vue';
@@ -437,6 +532,13 @@ const user = ref(null);
 const userPhotoError = ref(false);
 const isProfileOpen = ref(false);
 const showProfileModal = ref(false);
+const handledContexts = ref([]);
+const handledOptions = ref({ subjects: [], sections: [] });
+const handledForm = ref({ subject_id: null, section_id: null });
+const handledError = ref('');
+const loadingHandled = ref(false);
+const savingHandled = ref(false);
+const selectedContextKey = ref('own');
 
 function onProfileUpdated(updatedProfile) {
   if (user.value && updatedProfile) {
@@ -447,12 +549,14 @@ function onProfileUpdated(updatedProfile) {
 const pageTitle = computed(() => {
   if (currentTab.value === 'monitor') return 'ATTENDANCE MONITOR';
   if (currentTab.value === 'semestralAssessment') return 'SEMESTRAL ASSESSMENT';
+  if (currentTab.value === 'subjectHandled') return 'SUBJECT HANDLED';
   return 'LEARNERS';
 });
 
 const pageSubtitle = computed(() => {
   if (currentTab.value === 'monitor') return 'Real-time attendance tracking';
   if (currentTab.value === 'semestralAssessment') return 'Roster export and Excel import / analysis';
+  if (currentTab.value === 'subjectHandled') return 'Same-grade subject teacher assignments';
   if (isSubjectTeacher.value) return assignedClassLabel.value === 'Not assigned'
     ? 'View learner records'
     : `View ${assignedClassLabel.value} learner records`;
@@ -463,7 +567,7 @@ const pageSubtitle = computed(() => {
 
 const userRole = computed(() => user.value?.role?.name || user.value?.role_name || '');
 const isSubjectTeacher = computed(() => userRole.value === 'Subject Teacher');
-const canManageLearners = computed(() => ['Teacher', 'Adviser'].includes(userRole.value));
+const canManageLearners = computed(() => ['Teacher', 'Adviser'].includes(userRole.value) && !selectedHandledContext.value);
 
 const assignedClassLabel = computed(() => {
   const grade = String(user.value?.grade_level || '').trim();
@@ -473,6 +577,35 @@ const assignedClassLabel = computed(() => {
   if (grade) return grade;
   if (section) return section;
   return 'Not assigned';
+});
+
+function contextKey(context) {
+  return `handled:${context.id}`;
+}
+
+function contextLabel(context) {
+  return `${context.subject_name || 'Subject'} - ${context.grade_level || ''} / ${context.section_name || ''}`;
+}
+
+const selectedHandledContext = computed(() => {
+  if (!selectedContextKey.value.startsWith('handled:')) return null;
+  const id = Number(selectedContextKey.value.split(':')[1]);
+  return handledContexts.value.find((context) => Number(context.id) === id) || null;
+});
+
+const selectedContextLabel = computed(() => {
+  const handled = selectedHandledContext.value;
+  if (handled) return `Subject handled: ${contextLabel(handled)}`;
+  return `Advisory class: ${assignedClassLabel.value}`;
+});
+
+const activeRequestParams = computed(() => {
+  const handled = selectedHandledContext.value;
+  if (!handled) return {};
+  return {
+    handled_section_id: handled.section_id,
+    subject_id: handled.subject_id,
+  };
 });
 
 const showFormModal = ref(false);
@@ -518,6 +651,12 @@ const canSaveForm = computed(() => {
 
 let debounceTimer = null;
 
+watch(selectedContextKey, async () => {
+  currentPage.value = 1;
+  await load();
+  attendanceMonitorRef.value?.loadData?.();
+});
+
 function triggerBulkImport() {
   if (!canManageLearners.value) return;
   bulkImportError.value = '';
@@ -561,6 +700,7 @@ async function load() {
       page: currentPage.value,
       per_page: perPage.value,
       search: searchInput.value || undefined,
+      ...activeRequestParams.value,
     });
     students.value = res.data || [];
     currentPage.value = res.current_page ?? 1;
@@ -570,6 +710,56 @@ async function load() {
     students.value = [];
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadHandledSubjects() {
+  loadingHandled.value = true;
+  handledError.value = '';
+  try {
+    const [contexts, options] = await Promise.all([
+      fetchSubjectHandled(),
+      fetchSubjectHandledOptions(),
+    ]);
+    handledContexts.value = contexts;
+    handledOptions.value = {
+      subjects: options?.subjects || [],
+      sections: options?.sections || [],
+    };
+    if (selectedHandledContext.value === null && selectedContextKey.value !== 'own') {
+      selectedContextKey.value = 'own';
+    }
+  } catch (err) {
+    handledError.value = err?.response?.data?.message || 'Could not load handled subjects.';
+  } finally {
+    loadingHandled.value = false;
+  }
+}
+
+async function submitHandledSubject() {
+  handledError.value = '';
+  savingHandled.value = true;
+  try {
+    await createSubjectHandled(handledForm.value);
+    handledForm.value = { subject_id: null, section_id: null };
+    await loadHandledSubjects();
+  } catch (err) {
+    handledError.value = err?.response?.data?.message || 'Could not save handled subject.';
+  } finally {
+    savingHandled.value = false;
+  }
+}
+
+async function removeHandledSubject(context) {
+  if (!window.confirm(`Remove ${contextLabel(context)}?`)) return;
+  try {
+    await deleteSubjectHandled(context.id);
+    if (selectedContextKey.value === contextKey(context)) {
+      selectedContextKey.value = 'own';
+    }
+    await loadHandledSubjects();
+  } catch (err) {
+    handledError.value = err?.response?.data?.message || 'Could not remove handled subject.';
   }
 }
 
@@ -756,5 +946,6 @@ onMounted(async () => {
     const data = await fetchUser();
     user.value = data;
   } catch (_) {}
+  await loadHandledSubjects();
   await load();
 });</script>

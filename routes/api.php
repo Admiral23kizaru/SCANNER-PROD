@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\SectionController;
 use App\Http\Controllers\Api\SystemAdminController;
+use App\Http\Controllers\Api\TeacherSubjectSectionController;
 use App\Http\Controllers\Api\TeacherManagementController;
 use Illuminate\Support\Facades\Route;
 use App\Services\SchoolResolver;
@@ -139,6 +140,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/export', 'export');
             Route::get('/files', 'files');
             Route::post('/files', 'saveAnalyzedFile');
+            Route::get('/files/{id}/preview', 'previewAnalyzedFile');
             Route::get('/files/{id}/download', 'downloadAnalyzedFile');
             Route::delete('/files/{id}', 'deleteAnalyzedFile');
             Route::post('/import-analyze/export', 'importAnalyzeExport');
@@ -188,6 +190,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/export', 'export');
             Route::get('/files', 'files');
             Route::post('/files', 'saveAnalyzedFile');
+            Route::get('/files/{id}/preview', 'previewAnalyzedFile');
             Route::get('/files/{id}/download', 'downloadAnalyzedFile');
             Route::delete('/files/{id}', 'deleteAnalyzedFile');
             Route::post('/import-analyze/export', 'importAnalyzeExport');
@@ -269,6 +272,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/sections', [SectionController::class, 'formOptions']);
         Route::get('/subjects', [AdminSubjectController::class, 'index']);
+        Route::controller(TeacherSubjectSectionController::class)->prefix('subject-handled')->group(function () {
+            Route::get('/', 'index');
+            Route::get('/options', 'options');
+            Route::post('/', 'store');
+            Route::delete('/{id}', 'destroy');
+        });
         Route::get('/students/{id}/subjects', [AdminStudentSubjectController::class, 'show']);
         Route::put('/students/{id}/subjects', [AdminStudentSubjectController::class, 'sync']);
 
@@ -303,6 +312,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/export', 'export');
             Route::get('/files', 'files');
             Route::post('/files', 'saveAnalyzedFile');
+            Route::get('/files/{id}/preview', 'previewAnalyzedFile');
             Route::get('/files/{id}/download', 'downloadAnalyzedFile');
             Route::delete('/files/{id}', 'deleteAnalyzedFile');
             Route::post('/import-analyze/export', 'importAnalyzeExport');

@@ -136,7 +136,7 @@
               <button
                 type="button"
                 class="text-sm font-medium text-amber-900 underline decoration-amber-700"
-                @click="previewOpen = true"
+                @click="openCurrentPreview"
               >
                 Open preview
               </button>
@@ -196,6 +196,14 @@
                       <div class="flex justify-end gap-2">
                         <button
                           type="button"
+                          class="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                          :disabled="loadingPreviewFile"
+                          @click="openSavedPreview(file)"
+                        >
+                          Preview
+                        </button>
+                        <button
+                          type="button"
                           class="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50"
                           @click="downloadSavedFile(file)"
                         >
@@ -225,12 +233,12 @@
 
     <Teleport to="body">
       <div
-        v-if="previewOpen && analyzeResult"
+        v-if="previewOpen && activePreviewResult"
         class="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/45 p-4 sm:p-8"
         role="dialog"
         aria-modal="true"
         aria-labelledby="la-preview-title"
-        @click.self="previewOpen = false"
+        @click.self="closePreview"
       >
         <div
           class="relative w-full max-w-6xl rounded-xl bg-white shadow-2xl border border-stone-200 my-4 max-h-[90vh] flex flex-col"
@@ -238,9 +246,9 @@
         >
           <div class="flex items-start justify-between gap-3 px-5 py-4 border-b border-stone-200 bg-stone-50 shrink-0">
             <div>
-              <h3 id="la-preview-title" class="text-lg font-bold text-stone-900">Analysis preview</h3>
+              <h3 id="la-preview-title" class="text-lg font-bold text-stone-900">{{ previewHeading }}</h3>
               <p class="text-xs text-stone-500 mt-0.5">
-                {{ analyzeResult.student_count }} students · {{ analyzeResult.total_keyed_items }} items with an answer key ·
+                {{ activePreviewResult.student_count }} students · {{ activePreviewResult.total_keyed_items }} items with an answer key ·
                 Difficulty index = correct ÷ examinees (non-blank responses per item). Download Excel matches this preview.
               </p>
             </div>
@@ -248,7 +256,7 @@
               type="button"
               class="rounded-lg p-2 text-stone-500 hover:bg-stone-200 hover:text-stone-800 transition"
               aria-label="Close"
-              @click="previewOpen = false"
+              @click="closePreview"
             >
               ✕
             </button>
@@ -267,9 +275,9 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="(row, idx) in analyzeResult.students" :key="'stu-' + idx" class="border-b border-stone-100">
+                    <tr v-for="(row, idx) in activePreviewResult.students" :key="'stu-' + idx" class="border-b border-stone-100">
                       <td class="py-2 px-3 font-medium text-stone-900 max-w-[220px] truncate" :title="row.name">{{ row.name }}</td>
-                      <td class="py-2 px-3 tabular-nums">{{ row.score }} / {{ analyzeResult.total_keyed_items }}</td>
+                      <td class="py-2 px-3 tabular-nums">{{ row.score }} / {{ activePreviewResult.total_keyed_items }}</td>
                       <td class="py-2 px-3 tabular-nums">{{ row.percentage }}%</td>
                     </tr>
                   </tbody>
@@ -285,7 +293,7 @@
                     <tr>
                       <th class="py-2 px-2 border-b border-stone-200 sticky left-0 bg-stone-100 min-w-[160px]">Metric</th>
                       <th
-                        v-for="n in analyzeResult.item_numbers"
+                        v-for="n in activePreviewResult.item_numbers"
                         :key="'h-' + n"
                         class="py-2 px-1 border-b border-stone-200 text-center whitespace-nowrap min-w-[52px]"
                       >
@@ -297,7 +305,7 @@
                     <tr>
                       <td class="py-1.5 px-2 border-b border-stone-100 sticky left-0 bg-white font-medium">Total correct</td>
                       <td
-                        v-for="st in analyzeResult.item_stats"
+                        v-for="st in activePreviewResult.item_stats"
                         :key="'tc-' + st.item"
                         class="py-1.5 px-1 border-b border-stone-100 text-center tabular-nums"
                       >
@@ -307,7 +315,7 @@
                     <tr>
                       <td class="py-1.5 px-2 border-b border-stone-100 sticky left-0 bg-white font-medium">Examinees</td>
                       <td
-                        v-for="st in analyzeResult.item_stats"
+                        v-for="st in activePreviewResult.item_stats"
                         :key="'ex-' + st.item"
                         class="py-1.5 px-1 border-b border-stone-100 text-center tabular-nums"
                       >
@@ -317,7 +325,7 @@
                     <tr>
                       <td class="py-1.5 px-2 border-b border-stone-100 sticky left-0 bg-white font-medium">p (correct/total)</td>
                       <td
-                        v-for="st in analyzeResult.item_stats"
+                        v-for="st in activePreviewResult.item_stats"
                         :key="'p-' + st.item"
                         class="py-1.5 px-1 border-b border-stone-100 text-center tabular-nums"
                       >
@@ -327,7 +335,7 @@
                     <tr>
                       <td class="py-1.5 px-2 border-b border-stone-100 sticky left-0 bg-white font-medium">Difficulty %</td>
                       <td
-                        v-for="st in analyzeResult.item_stats"
+                        v-for="st in activePreviewResult.item_stats"
                         :key="'dp-' + st.item"
                         class="py-1.5 px-1 border-b border-stone-100 text-center tabular-nums"
                       >
@@ -337,7 +345,7 @@
                     <tr>
                       <td class="py-1.5 px-2 border-b border-stone-100 sticky left-0 bg-white font-medium">Level (DO 8)</td>
                       <td
-                        v-for="st in analyzeResult.item_stats"
+                        v-for="st in activePreviewResult.item_stats"
                         :key="'lv-' + st.item"
                         class="py-1.5 px-1 border-b border-stone-100 text-center whitespace-nowrap"
                       >
@@ -347,7 +355,7 @@
                     <tr>
                       <td class="py-1.5 px-2 border-b border-stone-100 sticky left-0 bg-white font-medium">What it means</td>
                       <td
-                        v-for="st in analyzeResult.item_stats"
+                        v-for="st in activePreviewResult.item_stats"
                         :key="'wm-' + st.item"
                         class="py-1.5 px-1 border-b border-stone-100 text-center text-[11px]"
                       >
@@ -357,7 +365,7 @@
                     <tr>
                       <td class="py-1.5 px-2 border-b border-stone-100 sticky left-0 bg-white font-medium">Recommended action</td>
                       <td
-                        v-for="st in analyzeResult.item_stats"
+                        v-for="st in activePreviewResult.item_stats"
                         :key="'ra-' + st.item"
                         class="py-1.5 px-1 border-b border-stone-100 text-center text-[11px]"
                       >
@@ -396,28 +404,10 @@
             </div>
 
             <div>
-              <h4 class="text-sm font-semibold text-stone-800 mb-2">Quick analysis</h4>
-              <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                <div class="rounded-lg border border-stone-200 bg-white p-3">
-                  <p class="text-xs font-semibold uppercase tracking-wide text-stone-500">Mastery level</p>
-                  <div class="mt-2 h-64">
-                    <Pie :data="masteryPieData" :options="pieChartOptions" />
-                  </div>
-                </div>
-                <div class="rounded-lg border border-stone-200 bg-white p-3">
-                  <p class="text-xs font-semibold uppercase tracking-wide text-stone-500">Item difficulty</p>
-                  <div class="mt-2 h-64">
-                    <Pie :data="difficultyPieData" :options="pieChartOptions" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div>
               <h4 class="text-sm font-semibold text-stone-800 mb-2">Difficulty Index chart</h4>
               <p class="text-xs text-stone-500 mb-2">Y-axis: index 0.00–1.00 (0.10 steps). X-axis: item numbers.</p>
               <div class="h-72 w-full min-h-[220px] rounded-lg border border-stone-200 bg-white p-2">
-                <Bar v-if="analyzeResult?.item_stats?.length" :data="difficultyChartData" :options="difficultyChartOptions" />
+                <Bar v-if="activePreviewResult?.item_stats?.length" :data="difficultyChartData" :options="difficultyChartOptions" />
               </div>
             </div>
           </div>
@@ -427,14 +417,14 @@
               type="button"
               class="inline-flex items-center justify-center rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-100 transition disabled:opacity-50"
               :disabled="exportingAnalyzed"
-              @click="downloadAnalyzedExcel"
+              @click="savedPreviewFile ? downloadSavedFile(savedPreviewFile) : downloadAnalyzedExcel()"
             >
               {{ exportingAnalyzed ? 'Downloading…' : 'Download Excel' }}
             </button>
             <button
               type="button"
               class="inline-flex items-center justify-center rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-100 transition"
-              @click="previewOpen = false"
+              @click="closePreview"
             >
               Close
             </button>
@@ -448,8 +438,8 @@
 <script setup>
 import axios from 'axios';
 import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
-import { computed, onMounted, ref } from 'vue';
-import { Bar, Pie } from 'vue-chartjs';
+import { computed, onMounted, ref, watch } from 'vue';
+import { Bar } from 'vue-chartjs';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -487,6 +477,9 @@ const exportingAnalyzed = ref(false);
 const savingAnalyzed = ref(false);
 const savedFiles = ref([]);
 const loadingSavedFiles = ref(false);
+const loadingPreviewFile = ref(false);
+const savedPreviewFile = ref(null);
+const savedPreviewResult = ref(null);
 const saveMessage = ref('');
 const saveTitle = ref('');
 const saveAnalyzedAt = ref(todayInputValue());
@@ -527,8 +520,13 @@ const INTERPRETATION_GUIDE = [
   },
 ];
 
+const activePreviewResult = computed(() => savedPreviewResult.value || analyzeResult.value);
+const previewHeading = computed(() => (
+  savedPreviewFile.value?.title ? `${savedPreviewFile.value.title} preview` : 'Analysis preview'
+));
+
 const difficultyChartData = computed(() => {
-  const r = analyzeResult.value;
+  const r = activePreviewResult.value;
   if (!r?.item_stats?.length) {
     return { labels: [], datasets: [] };
   }
@@ -580,73 +578,23 @@ const difficultyChartOptions = computed(() => ({
   },
 }));
 
-const masteryPieData = computed(() => {
-  const students = analyzeResult.value?.students || [];
-  const buckets = { Mastered: 0, 'Nearly Mastered': 0, 'Least Mastered': 0 };
-
-  students.forEach((student) => {
-    const percentage = Number(student.percentage || 0);
-    if (percentage >= 75) buckets.Mastered += 1;
-    else if (percentage >= 50) buckets['Nearly Mastered'] += 1;
-    else buckets['Least Mastered'] += 1;
-  });
-
-  return {
-    labels: Object.keys(buckets),
-    datasets: [
-      {
-        data: Object.values(buckets),
-        backgroundColor: ['#16a34a', '#f59e0b', '#dc2626'],
-        borderColor: '#ffffff',
-        borderWidth: 2,
-      },
-    ],
-  };
-});
-
-const difficultyPieData = computed(() => {
-  const stats = analyzeResult.value?.item_stats || [];
-  const buckets = { Easy: 0, Average: 0, Difficult: 0 };
-
-  stats.forEach((item) => {
-    const value = Number(item.difficulty_pct ?? 0);
-    if (value >= 80) buckets.Easy += 1;
-    else if (value >= 30) buckets.Average += 1;
-    else buckets.Difficult += 1;
-  });
-
-  return {
-    labels: Object.keys(buckets),
-    datasets: [
-      {
-        data: Object.values(buckets),
-        backgroundColor: ['#3b82f6', '#a855f7', '#ef4444'],
-        borderColor: '#ffffff',
-        borderWidth: 2,
-      },
-    ],
-  };
-});
-
-const pieChartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: 'bottom',
-      labels: {
-        boxWidth: 12,
-        padding: 14,
-      },
-    },
-  },
-};
-
 function mergedParams(extra = {}) {
   return {
     ...props.requestParams,
     ...extra,
   };
+}
+
+function openCurrentPreview() {
+  savedPreviewFile.value = null;
+  savedPreviewResult.value = null;
+  previewOpen.value = true;
+}
+
+function closePreview() {
+  previewOpen.value = false;
+  savedPreviewFile.value = null;
+  savedPreviewResult.value = null;
 }
 
 async function loadMeta() {
@@ -683,7 +631,7 @@ async function onAnalyzeFile(ev) {
     saveTitle.value = subject?.name ? `${subject.name} Item Analysis` : 'Semestral Assessment Item Analysis';
     saveAnalyzedAt.value = todayInputValue();
     saveMessage.value = '';
-    previewOpen.value = true;
+    openCurrentPreview();
   } catch (err) {
     analyzeError.value = err?.response?.data?.message || 'Could not analyze that file.';
     analyzeResult.value = null;
@@ -791,6 +739,29 @@ async function downloadSavedFile(file) {
     await downloadBlobResponse(res, file.filename || 'Semestral_Assessment_Analyzed.xlsx');
   } catch (err) {
     errorMessage.value = await parseBlobError(err, 'Could not download saved analyzed file.');
+  }
+}
+
+async function openSavedPreview(file) {
+  loadingPreviewFile.value = true;
+  errorMessage.value = '';
+
+  try {
+    const { data } = await axios.get(`${props.apiBase}/files/${file.id}/preview`, {
+      params: mergedParams(),
+      headers: { ...getAuthHeaders(), Accept: 'application/json' },
+    });
+    savedPreviewFile.value = data?.file || file;
+    savedPreviewResult.value = data?.analysis || null;
+    if (!savedPreviewResult.value) {
+      errorMessage.value = 'Saved analysis preview is unavailable.';
+      return;
+    }
+    previewOpen.value = true;
+  } catch (err) {
+    errorMessage.value = err?.response?.data?.message || 'Could not preview saved analyzed file.';
+  } finally {
+    loadingPreviewFile.value = false;
   }
 }
 
@@ -907,7 +878,7 @@ onMounted(async () => {
     filters.value.section = meta.value.default_section;
   }
   if (!filters.value.subject_id && meta.value.subjects?.length) {
-    filters.value.subject_id = meta.value.subjects[0].id;
+    filters.value.subject_id = meta.value.default_subject_id || props.requestParams.subject_id || meta.value.subjects[0].id;
   }
   if (filters.value.grade_level) {
     await loadMeta();
@@ -917,4 +888,19 @@ onMounted(async () => {
   }
   await loadSavedFiles();
 });
+
+watch(
+  () => props.requestParams,
+  async () => {
+    filters.value.grade_level = '';
+    filters.value.section = '';
+    filters.value.subject_id = null;
+    await loadMeta();
+    filters.value.grade_level = meta.value.default_grade_level || '';
+    filters.value.section = meta.value.default_section || '';
+    filters.value.subject_id = meta.value.default_subject_id || props.requestParams.subject_id || meta.value.subjects?.[0]?.id || null;
+    await loadSavedFiles();
+  },
+  { deep: true }
+);
 </script>
