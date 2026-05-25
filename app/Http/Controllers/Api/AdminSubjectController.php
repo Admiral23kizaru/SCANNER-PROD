@@ -209,7 +209,12 @@ class AdminSubjectController extends Controller
 
     public function subjectAreas(): JsonResponse
     {
-        return response()->json(['data' => $this->subjectAreaNames()]);
+        $areas = $this->subjectAreaNames();
+
+        return response()->json([
+            'data' => $areas,
+            'areas' => $areas,
+        ]);
     }
 
     private function createSubjectRecord(string $name, ?int $schoolId): Subject
@@ -241,21 +246,44 @@ class AdminSubjectController extends Controller
 
     private function subjectAreaNames()
     {
+        $connection = 'ehris';
+
         try {
-            if (!Schema::hasTable('tbl_subject_area') || !Schema::hasColumn('tbl_subject_area', 'subject_area')) {
+            if (! Schema::connection($connection)->hasTable('tbl_subject_area')) {
+                Log::warning('tbl_subject_area not found on ehris connection.', [
+                    'method' => __METHOD__,
+                    'database' => config('database.connections.ehris.database'),
+                ]);
+
                 return collect();
             }
 
-            return DB::table('tbl_subject_area')
-                ->whereRaw("TRIM(COALESCE(subject_area, '')) <> ''")
-                ->orderBy('subject_area')
-                ->pluck('subject_area')
+            $column = 'subject_area';
+            if (! Schema::connection($connection)->hasColumn('tbl_subject_area', $column)) {
+                $column = Schema::connection($connection)->hasColumn('tbl_subject_area', 'name') ? 'name' : null;
+            }
+
+            if ($column === null) {
+                Log::warning('tbl_subject_area has no subject_area or name column on ehris.', [
+                    'method' => __METHOD__,
+                ]);
+
+                return collect();
+            }
+
+            return DB::connection($connection)
+                ->table('tbl_subject_area')
+                ->whereRaw("TRIM(COALESCE({$column}, '')) <> ''")
+                ->orderBy($column)
+                ->pluck($column)
                 ->map(fn ($name) => trim((string) $name))
                 ->filter()
+                ->unique()
                 ->values();
         } catch (Throwable $exception) {
             Log::error('Admin subject area lookup failed.', [
                 'method' => __METHOD__,
+                'connection' => $connection,
                 'table' => 'tbl_subject_area',
                 'error' => $exception->getMessage(),
             ]);

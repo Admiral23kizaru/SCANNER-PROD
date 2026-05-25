@@ -9,6 +9,7 @@ use App\Models\LearningAssessmentScore;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\Subject;
+use App\Models\TeacherSubjectSection;
 use App\Services\LearningAssessmentExcelAnalyzer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,7 +22,7 @@ use Maatwebsite\Excel\Excel as ExcelWriter;
 class LearningAssessmentController extends BaseController
 {
     /**
-     * Return the authenticated school_id for Learning Assessment operations.
+     * Return the authenticated school_id for Semestral Assessment operations.
      */
     private function schoolScope(?Request $request = null): int
     {
@@ -31,7 +32,7 @@ class LearningAssessmentController extends BaseController
         if ($user?->role?->name === 'System Admin') {
             $schoolId = (int) $request->input('school_id');
             if (! $schoolId || ! School::whereKey($schoolId)->exists()) {
-                abort(422, 'Select a valid school before using Learning Assessment.');
+                abort(422, 'Select a valid school before using Semestral Assessment.');
             }
 
             return $schoolId;
@@ -50,17 +51,45 @@ class LearningAssessmentController extends BaseController
 
         $query = Student::query()->where('school_id', $schoolId);
 
-        if ($user->role?->name === 'Teacher') {
-            if ($user->grade_level && $user->section) {
+        if (in_array($user->role?->name, ['Teacher', 'Adviser', 'Subject Teacher'], true)) {
+            if ($handled = $this->handledAssignment($request)) {
+                $sectionName = $handled->section?->name;
+                $query->where('grade', $handled->grade_level)
+                    ->where(function ($q) use ($handled, $sectionName) {
+                        $q->where('section_id', $handled->section_id)
+                            ->orWhere('section', $sectionName);
+                    });
+            } elseif ($user->grade_level && $user->section) {
                 $query->where('grade', $user->grade_level)->where('section', $user->section);
-            } else {
+            } elseif ($user->role?->name !== 'Subject Teacher') {
                 $query->where(function ($q) use ($user) {
                     $q->where('teacher_id', $user->id)->orWhere('created_by', $user->id);
                 });
+            } else {
+                $query->whereRaw('1 = 0');
             }
         }
 
         return $query;
+    }
+
+    private function handledAssignment(Request $request): ?TeacherSubjectSection
+    {
+        if (! $request->filled('handled_section_id')) {
+            return null;
+        }
+
+        $query = TeacherSubjectSection::query()
+            ->with('section:id,name,grade_level')
+            ->where('school_id', $this->schoolScope($request))
+            ->where('teacher_id', $request->user()->id)
+            ->where('section_id', (int) $request->input('handled_section_id'));
+
+        if ($request->filled('subject_id')) {
+            $query->where('subject_id', (int) $request->input('subject_id'));
+        }
+
+        return $query->first();
     }
 
     private function parseWrongItems(string $raw, int $totalItems): array
@@ -105,12 +134,15 @@ class LearningAssessmentController extends BaseController
         $schoolId = $this->schoolScope($request);
         $subjects = $this->subjectOptions($request, $schoolId);
 
+        $handled = $this->handledAssignment($request);
+
         return response()->json([
             'grades' => $grades,
             'sections' => $sections,
             'subjects' => $subjects,
-            'default_grade_level' => $request->user()->grade_level,
-            'default_section' => $request->user()->section,
+            'default_grade_level' => $handled?->grade_level ?? $request->user()->grade_level,
+            'default_section' => $handled?->section?->name ?? $request->user()->section,
+            'default_subject_id' => $handled?->subject_id,
         ]);
     }
 
@@ -273,7 +305,7 @@ class LearningAssessmentController extends BaseController
         $totalItems = (int) ($request->input('total_items') ?? 50);
 
         $schoolId = $this->schoolScope($request);
-        $sheetTitle = 'Learning Assessment';
+        $sheetTitle = 'Semestral Assessment';
         if ($request->filled('subject_id')) {
             $subjectName = $this->subjectName($request, (int) $request->input('subject_id'), $schoolId);
             if (trim($subjectName) !== '') {
@@ -283,7 +315,7 @@ class LearningAssessmentController extends BaseController
 
         $gradeLabel = $request->input('grade_level') ? ('G' . preg_replace('/\D+/', '', (string) $request->input('grade_level'))) : 'AllGrades';
         $sectionLabel = $request->input('section') ? preg_replace('/\s+/', '', (string) $request->input('section')) : 'AllSections';
-        $filename = "Learning_Assessment_Template_{$gradeLabel}_{$sectionLabel}.xlsx";
+        $filename = "Semestral_Assessment_Template_{$gradeLabel}_{$sectionLabel}.xlsx";
 
         return Excel::download(new LearningAssessmentTemplateExport($students, $totalItems, $sheetTitle), $filename);
     }
@@ -322,7 +354,7 @@ class LearningAssessmentController extends BaseController
         }
 
         [$validated, $sheetTitle] = $result;
-        $filename = 'Learning_Assessment_Analyzed_' . now()->format('Y-m-d_His') . '.xlsx';
+        $filename = 'Semestral_Assessment_Analyzed_' . now()->format('Y-m-d_His') . '.xlsx';
 
         return Excel::download(new LearningAssessmentAnalyzedExport($validated, $sheetTitle), $filename);
     }
@@ -333,6 +365,11 @@ class LearningAssessmentController extends BaseController
 
         $files = LearningAssessmentFile::query()
             ->where('school_id', $schoolId)
+            ->when($this->handledAssignment($request), function ($q, TeacherSubjectSection $handled) {
+                $q->where('subject_id', $handled->subject_id)
+                    ->where('grade_level', $handled->grade_level)
+                    ->where('section', $handled->section?->name);
+            })
             ->latest('analyzed_at')
             ->latest('id')
             ->limit(100)
@@ -363,8 +400,9 @@ class LearningAssessmentController extends BaseController
 
         [$validated, $sheetTitle] = $result;
         $schoolId = $this->schoolScope($request);
+        $handled = $this->handledAssignment($request);
         $title = trim((string) $request->input('title'));
-        $safeTitle = preg_replace('/[^A-Za-z0-9_-]+/', '_', $title) ?: 'Learning_Assessment';
+        $safeTitle = preg_replace('/[^A-Za-z0-9_-]+/', '_', $title) ?: 'Semestral_Assessment';
         $filename = $safeTitle . '_Analyzed_' . now()->format('Y-m-d_His') . '.xlsx';
         $path = 'learning-assessment/analyzed/' . $schoolId . '/' . $filename;
 
@@ -377,12 +415,12 @@ class LearningAssessmentController extends BaseController
         $file = LearningAssessmentFile::create([
             'school_id' => $schoolId,
             'created_by' => $request->user()?->id,
-            'subject_id' => $request->input('subject_id'),
+            'subject_id' => $handled?->subject_id ?? $request->input('subject_id'),
             'title' => $title,
             'analyzed_at' => $request->date('analyzed_at')?->toDateString() ?? now()->toDateString(),
             'sheet_title' => $sheetTitle,
-            'grade_level' => $request->input('grade_level'),
-            'section' => $request->input('section'),
+            'grade_level' => $handled?->grade_level ?? $request->input('grade_level'),
+            'section' => $handled?->section?->name ?? $request->input('section'),
             'student_count' => count($validated['students']),
             'item_count' => count($validated['item_numbers']),
             'filename' => $filename,
@@ -398,7 +436,7 @@ class LearningAssessmentController extends BaseController
 
     public function downloadAnalyzedFile(Request $request, int $id)
     {
-        $file = LearningAssessmentFile::where('school_id', $this->schoolScope($request))->find($id);
+        $file = $this->fileQuery($request)->find($id);
         if (! $file) {
             return response()->json(['message' => 'Analyzed file not found.'], 404);
         }
@@ -410,9 +448,30 @@ class LearningAssessmentController extends BaseController
         return Storage::disk('local')->download($file->file_path, $file->filename);
     }
 
+    public function previewAnalyzedFile(Request $request, int $id): JsonResponse
+    {
+        $file = $this->fileQuery($request)->find($id);
+        if (! $file) {
+            return response()->json(['message' => 'Analyzed file not found.'], 404);
+        }
+
+        $payload = $file->analysis_payload;
+        if (! is_array($payload) || empty($payload['item_numbers']) || empty($payload['students'])) {
+            return response()->json(['message' => 'Saved analysis preview is unavailable.'], 404);
+        }
+
+        $payload['total_keyed_items'] = count(array_filter($payload['answer_key'] ?? [], fn ($v) => trim((string) $v) !== ''));
+        $payload['student_count'] = count($payload['students'] ?? []);
+
+        return response()->json([
+            'file' => $this->fileToArray($file),
+            'analysis' => $payload,
+        ]);
+    }
+
     public function deleteAnalyzedFile(Request $request, int $id): JsonResponse
     {
-        $file = LearningAssessmentFile::where('school_id', $this->schoolScope($request))->find($id);
+        $file = $this->fileQuery($request)->find($id);
         if (! $file) {
             return response()->json(['message' => 'Analyzed file not found.'], 404);
         }
@@ -452,7 +511,7 @@ class LearningAssessmentController extends BaseController
         }
 
         $validated = $validator->validated();
-        $sheetTitle = (string) ($validated['sheet_title'] ?? 'Learning Assessment');
+        $sheetTitle = (string) ($validated['sheet_title'] ?? 'Semestral Assessment');
         unset($validated['sheet_title']);
 
         $n = count($validated['item_numbers']);
@@ -473,6 +532,17 @@ class LearningAssessmentController extends BaseController
         return [$validated, $sheetTitle];
     }
 
+    private function fileQuery(Request $request)
+    {
+        return LearningAssessmentFile::query()
+            ->where('school_id', $this->schoolScope($request))
+            ->when($this->handledAssignment($request), function ($q, TeacherSubjectSection $handled) {
+                $q->where('subject_id', $handled->subject_id)
+                    ->where('grade_level', $handled->grade_level)
+                    ->where('section', $handled->section?->name);
+            });
+    }
+
     private function fileToArray(LearningAssessmentFile $file): array
     {
         return [
@@ -491,6 +561,14 @@ class LearningAssessmentController extends BaseController
 
     private function subjectOptions(Request $request, int $schoolId)
     {
+        if ($handled = $this->handledAssignment($request)) {
+            return Subject::query()
+                ->where('school_id', $schoolId)
+                ->whereKey($handled->subject_id)
+                ->orderBy('name')
+                ->get(['id', 'name']);
+        }
+
         return Subject::query()
             ->where('school_id', $schoolId)
             ->orderBy('name')

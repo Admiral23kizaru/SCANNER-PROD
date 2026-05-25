@@ -73,14 +73,12 @@
 
         <SystemAdminClasses v-else-if="currentPage === 'classes'" />
 
-        <SystemAdminAssessmentLogs v-else-if="currentPage === 'assessment'" />
-
         <SystemAdminLeastMasteredSkills v-else-if="currentPage === 'least-mastered-skills'" />
 
         <SystemAdminAttendance v-else-if="currentPage === 'attendance'" />
 
         <SystemAdminLearningAssessment
-          v-else-if="currentPage === 'learningAssessment'"
+          v-else-if="currentPage === 'semestralAssessment'"
           :schools="schools"
         />
 
@@ -113,7 +111,6 @@ import {
   fetchSystemAdminSchools,
 } from '../../services/systemAdminService';
 import SystemAdminAccountsDirectory from './SystemAdminAccountsDirectory.vue';
-import SystemAdminAssessmentLogs from './SystemAdminAssessmentLogs.vue';
 import SystemAdminAttendance from './SystemAdminAttendance.vue';
 import SystemAdminClasses from './SystemAdminClasses.vue';
 import SystemAdminDivisionCharts from './SystemAdminDivisionCharts.vue';
@@ -155,10 +152,9 @@ const pageTitle = computed(() => {
   if (currentPage.value === 'teachers') return 'Teacher Directory';
   if (currentPage.value === 'parents' || currentPage.value === 'guardians') return 'Parents & Guardians';
   if (currentPage.value === 'classes') return 'Classes';
-  if (currentPage.value === 'assessment') return 'Semestral Assessment';
   if (currentPage.value === 'attendance') return 'Attendance';
   if (currentPage.value === 'least-mastered-skills') return 'Least Mastered Skills';
-  if (currentPage.value === 'learningAssessment') return 'Learning Assessment';
+  if (currentPage.value === 'semestralAssessment') return 'Semestral Assessment';
   if (currentPage.value === 'accounts') return 'School Admins';
   if (currentPage.value === 'subjects') return 'Learning Areas';
   return 'Division Dashboard';
@@ -172,10 +168,9 @@ const pageSubtitle = computed(() => {
   if (currentPage.value === 'teachers') return 'Division-wide teacher and school head directory';
   if (currentPage.value === 'parents' || currentPage.value === 'guardians') return 'Parent and guardian records grouped by school';
   if (currentPage.value === 'classes') return 'Grade and section overview by school';
-  if (currentPage.value === 'assessment') return 'Assessment logs across DepEd Ozamiz schools';
   if (currentPage.value === 'attendance') return 'Attendance overview across all connected schools';
   if (currentPage.value === 'least-mastered-skills') return 'Pie-chart analysis filtered by school year, subject, grade, and section';
-  if (currentPage.value === 'learningAssessment') return 'Export templates and analyze assessment files for any school';
+  if (currentPage.value === 'semestralAssessment') return 'Export templates and analyze semestral assessment files for any school';
   if (currentPage.value === 'accounts') return 'School head and assigned admin directory';
   if (currentPage.value === 'subjects') return 'Review learning areas configured by each school';
   return 'Overview of Ozamiz Schools QR-ID activity';
