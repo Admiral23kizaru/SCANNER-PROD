@@ -208,10 +208,8 @@ class SystemAdminDashboardService
                         'job_title' => $teacher->job_title,
                         'grade_level' => $teacher->grade_level,
                         'section' => $teacher->section,
-                        'subjects' => $teacherSubjects !== '' ? $teacherSubjects : $schoolSubjectList,
-                        'subjects_source' => $teacherSubjects !== ''
-                            ? 'teacher_assignment'
-                            : ($schoolSubjectList !== '' ? 'school_subjects' : 'none'),
+                        'subjects' => $teacherSubjects,
+                        'subjects_source' => $teacherSubjects !== '' ? 'teacher_assignment' : 'none',
                         'learner_count' => (int) ($learnerCounts[$teacher->id] ?? 0),
                     ];
                 })
@@ -408,6 +406,16 @@ class SystemAdminDashboardService
     {
         $schoolIds = $this->scanupSchoolIds();
         $skillCounts = [];
+        $masteryCounts = [
+            'Mastered' => 0,
+            'Nearly Mastered' => 0,
+            'Least Mastered' => 0,
+        ];
+        $difficultyCounts = [
+            'Easy' => 0,
+            'Average' => 0,
+            'Difficult' => 0,
+        ];
 
         $logs = AssessmentLog::query()
             ->whereIn('school_id', $schoolIds)
@@ -440,6 +448,11 @@ class SystemAdminDashboardService
         foreach ($files as $file) {
             foreach (($file->analysis_payload['item_stats'] ?? []) as $item) {
                 $difficulty = (float) ($item['difficulty_pct'] ?? 100);
+                $masteryLabel = $this->masteryLabelForDifficulty($difficulty);
+                $difficultyLabel = $this->difficultyLabelForItem($item, $difficulty);
+                $masteryCounts[$masteryLabel] = ($masteryCounts[$masteryLabel] ?? 0) + 1;
+                $difficultyCounts[$difficultyLabel] = ($difficultyCounts[$difficultyLabel] ?? 0) + 1;
+
                 if ($difficulty < 50) {
                     $label = 'Item ' . ($item['item'] ?? '?');
                     $skillCounts[$label] = ($skillCounts[$label] ?? 0) + 1;
@@ -448,6 +461,11 @@ class SystemAdminDashboardService
         }
 
         arsort($skillCounts);
+
+        if (array_sum($masteryCounts) === 0 && array_sum($skillCounts) > 0) {
+            $masteryCounts['Least Mastered'] = array_sum($skillCounts);
+            $difficultyCounts['Difficult'] = array_sum($skillCounts);
+        }
 
         return [
             'filters' => [
@@ -461,7 +479,57 @@ class SystemAdminDashboardService
                 'skill' => $skill,
                 'count' => $count,
             ])->values()->all(),
+            'quick_analysis' => [
+                'mastery_levels' => collect($masteryCounts)->map(fn ($count, $label) => [
+                    'label' => $label,
+                    'count' => (int) $count,
+                ])->values()->all(),
+                'item_difficulty' => collect($difficultyCounts)->map(fn ($count, $label) => [
+                    'label' => $label,
+                    'count' => (int) $count,
+                ])->values()->all(),
+            ],
         ];
+    }
+
+    private function masteryLabelForDifficulty(float $difficulty): string
+    {
+        if ($difficulty >= 75) {
+            return 'Mastered';
+        }
+
+        if ($difficulty >= 50) {
+            return 'Nearly Mastered';
+        }
+
+        return 'Least Mastered';
+    }
+
+    private function difficultyLabelForItem(array $item, float $difficulty): string
+    {
+        $level = strtolower(trim((string) ($item['difficulty_level'] ?? '')));
+
+        if (str_contains($level, 'easy')) {
+            return 'Easy';
+        }
+
+        if (str_contains($level, 'difficult')) {
+            return 'Difficult';
+        }
+
+        if (str_contains($level, 'average')) {
+            return 'Average';
+        }
+
+        if ($difficulty >= 75) {
+            return 'Easy';
+        }
+
+        if ($difficulty >= 50) {
+            return 'Average';
+        }
+
+        return 'Difficult';
     }
 
     /**

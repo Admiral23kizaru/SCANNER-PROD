@@ -61,6 +61,10 @@
 
         <SystemAdminLearningAreas v-else-if="currentPage === 'subjects'" />
 
+        <SystemAdminLearnerAnalytics v-else-if="currentPage === 'learner-analytics'" />
+
+        <SystemAdminTeacherAnalytics v-else-if="currentPage === 'teacher-analytics'" />
+
         <SystemAdminLearners v-else-if="currentPage === 'learners'" />
 
         <SystemAdminTeachers v-else-if="currentPage === 'teachers'" />
@@ -116,8 +120,10 @@ import SystemAdminDivisionCharts from './SystemAdminDivisionCharts.vue';
 import SystemAdminGuardians from './SystemAdminGuardians.vue';
 import SystemAdminLearningAreas from './SystemAdminLearningAreas.vue';
 import SystemAdminLearningAssessment from './SystemAdminLearningAssessment.vue';
+import SystemAdminLearnerAnalytics from './SystemAdminLearnerAnalytics.vue';
 import SystemAdminLearners from './SystemAdminLearners.vue';
 import SystemAdminLeastMasteredSkills from './SystemAdminLeastMasteredSkills.vue';
+import SystemAdminTeacherAnalytics from './SystemAdminTeacherAnalytics.vue';
 import SystemAdminTeachers from './SystemAdminTeachers.vue';
 import SystemAdminOverviewCards from './SystemAdminOverviewCards.vue';
 import SystemAdminSchoolDashboardModal from './SystemAdminSchoolDashboardModal.vue';
@@ -143,10 +149,11 @@ let themeTimer = null;
 
 const pageTitle = computed(() => {
   if (currentPage.value === 'school' || currentPage.value === 'schools') return 'Schools Monitor';
-  if (currentPage.value === 'learners') return 'Learners';
-  if (currentPage.value === 'teachers') return 'Teachers';
-  if (currentPage.value === 'parents') return 'Parents';
-  if (currentPage.value === 'guardians') return 'Guardian';
+  if (currentPage.value === 'learner-analytics') return 'Learner Analytics';
+  if (currentPage.value === 'teacher-analytics') return 'Teacher Analytics';
+  if (currentPage.value === 'learners') return 'Learner List';
+  if (currentPage.value === 'teachers') return 'Teacher Directory';
+  if (currentPage.value === 'parents' || currentPage.value === 'guardians') return 'Parents & Guardians';
   if (currentPage.value === 'classes') return 'Classes';
   if (currentPage.value === 'assessment') return 'Semestral Assessment';
   if (currentPage.value === 'attendance') return 'Attendance';
@@ -159,10 +166,11 @@ const pageTitle = computed(() => {
 
 const pageSubtitle = computed(() => {
   if (currentPage.value === 'school' || currentPage.value === 'schools') return 'Monitor each school dashboard in read-only mode';
-  if (currentPage.value === 'learners') return 'Division-wide learner counts by school';
-  if (currentPage.value === 'teachers') return 'Division-wide teacher counts by school';
-  if (currentPage.value === 'parents') return 'Parent records will be grouped by school';
-  if (currentPage.value === 'guardians') return 'Guardian records will be grouped by school';
+  if (currentPage.value === 'learner-analytics') return 'Pie-chart analysis of learner distribution';
+  if (currentPage.value === 'teacher-analytics') return 'Pie-chart analysis of teacher distribution';
+  if (currentPage.value === 'learners') return 'Division-wide learner records list';
+  if (currentPage.value === 'teachers') return 'Division-wide teacher and school head directory';
+  if (currentPage.value === 'parents' || currentPage.value === 'guardians') return 'Parent and guardian records grouped by school';
   if (currentPage.value === 'classes') return 'Grade and section overview by school';
   if (currentPage.value === 'assessment') return 'Assessment logs across DepEd Ozamiz schools';
   if (currentPage.value === 'attendance') return 'Attendance overview across all connected schools';

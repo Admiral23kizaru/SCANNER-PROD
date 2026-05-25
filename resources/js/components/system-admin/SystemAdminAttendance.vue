@@ -30,7 +30,8 @@
               <tr>
                 <th class="px-4 py-3 text-left">School</th>
                 <th class="px-4 py-3 text-right">Scans</th>
-                <th class="px-4 py-3 text-right">Learners</th>
+                <th class="px-4 py-3 text-right">Present Learners</th>
+                <th class="px-4 py-3 text-right">On Time</th>
                 <th class="px-4 py-3 text-right">Late</th>
               </tr>
             </thead>
@@ -42,10 +43,11 @@
                 </td>
                 <td class="px-4 py-3 text-right font-semibold">{{ numberValue(row.scans_today) }}</td>
                 <td class="px-4 py-3 text-right">{{ numberValue(row.learners_scanned) }}</td>
+                <td class="px-4 py-3 text-right">{{ numberValue(row.on_time_count) }}</td>
                 <td class="px-4 py-3 text-right">{{ numberValue(row.late_count) }}</td>
               </tr>
               <tr v-if="!loading && filteredSummary.length === 0">
-                <td colspan="4" class="px-4 py-10 text-center text-slate-500">No attendance scans today.</td>
+                <td colspan="5" class="px-4 py-10 text-center text-slate-500">No attendance scans today.</td>
               </tr>
             </tbody>
           </table>
@@ -69,7 +71,7 @@
                 <td class="px-4 py-3 text-slate-700">{{ row.school_name }}</td>
                 <td class="px-4 py-3">
                   <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="row.status === 'late' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'">
-                    {{ row.status || 'on_time' }}
+                    {{ statusLabel(row.status) }}
                   </span>
                 </td>
               </tr>
@@ -109,9 +111,13 @@ function formatDate(value) {
 const cards = computed(() => [
   { label: 'Schools with scans', value: summary.value.length },
   { label: 'Total scans today', value: summary.value.reduce((sum, row) => sum + Number(row.scans_today || 0), 0) },
-  { label: 'Learners scanned', value: summary.value.reduce((sum, row) => sum + Number(row.learners_scanned || 0), 0) },
+  { label: 'Present learners', value: summary.value.reduce((sum, row) => sum + Number(row.learners_scanned || 0), 0) },
   { label: 'Late scans', value: summary.value.reduce((sum, row) => sum + Number(row.late_count || 0), 0) },
 ]);
+
+function statusLabel(status) {
+  return status === 'late' ? 'Late' : 'Present';
+}
 
 const filteredSummary = computed(() => {
   const term = search.value.trim().toLowerCase();

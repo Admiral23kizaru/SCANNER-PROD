@@ -57,11 +57,7 @@
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600">School Head</p>
             <h3 class="text-lg font-bold text-slate-950">{{ selectedSchool.school_head?.name || 'Not set' }}</h3>
-            <p class="text-sm text-slate-500">{{ selectedSchool.deped_school_id }} · {{ selectedSchool.school_name }}</p>
-            <p class="mt-2 max-w-3xl text-xs text-slate-500">
-              School subjects:
-              <span class="font-medium text-slate-700">{{ selectedSchool.school_subjects || 'No local subjects synced yet' }}</span>
-            </p>
+            <p class="text-sm text-slate-500">{{ selectedSchool.deped_school_id }} - {{ selectedSchool.school_name }}</p>
           </div>
           <button class="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold" @click="selectedSchool = null">Close</button>
         </header>
@@ -84,8 +80,7 @@
                 <td class="px-3 py-3 text-slate-700">{{ teacher.role }} <span class="text-xs text-slate-400">{{ teacher.grade_level }} {{ teacher.section }}</span></td>
                 <td class="max-w-[320px] px-3 py-3 text-slate-700">
                   <p>{{ teacher.subjects || 'No subject assignment found' }}</p>
-                  <p v-if="teacher.subjects_source === 'school_subjects'" class="mt-1 text-[11px] uppercase tracking-wide text-amber-600">From school subject list</p>
-                  <p v-else-if="teacher.subjects_source === 'teacher_assignment'" class="mt-1 text-[11px] uppercase tracking-wide text-emerald-600">Teacher assignment</p>
+                  <p v-if="teacher.subjects_source === 'teacher_assignment'" class="mt-1 text-[11px] uppercase tracking-wide text-emerald-600">Teacher assignment</p>
                 </td>
                 <td class="px-3 py-3 text-right font-semibold text-slate-900">{{ teacher.learner_count }}</td>
               </tr>

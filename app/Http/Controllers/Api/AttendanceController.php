@@ -332,7 +332,7 @@ class AttendanceController extends Controller
 
         $stats = (clone $query)->selectRaw("
             COUNT(*) as total_today,
-            SUM(status = 'on_time') as present_count,
+            SUM(status = 'on_time') as on_time_count,
             SUM(status = 'late') as late_count
         ")->first();
 
@@ -346,7 +346,8 @@ class AttendanceController extends Controller
 
         return response()->json([
             'total_today'   => (int) ($stats->total_today ?? 0),
-            'present_count' => (int) ($stats->present_count ?? 0),
+            'present_count' => $markedToday,
+            'on_time_count' => (int) ($stats->on_time_count ?? 0),
             'late_count'    => (int) ($stats->late_count ?? 0),
             'absent_count'  => $absent,
         ]);
@@ -763,7 +764,7 @@ class AttendanceController extends Controller
             ->whereDate('scanned_at', $today);
 
         $totalToday = (clone $attendanceToday)->count();
-        $present = (clone $attendanceToday)->where('status', 'on_time')->count();
+        $onTime = (clone $attendanceToday)->where('status', 'on_time')->count();
         $late = (clone $attendanceToday)->where('status', 'late')->count();
 
         $enrolled = Student::where('school_id', $schoolId)->count();
@@ -775,10 +776,12 @@ class AttendanceController extends Controller
 
         return [
             'total_today'   => $totalToday,
-            'present_count' => $present,
+            'present_count' => $markedToday,
+            'on_time_count' => $onTime,
             'late_count'    => $late,
             'absent_count'  => $absent,
-            'present'       => $present,
+            'present'       => $markedToday,
+            'on_time'       => $onTime,
             'late'          => $late,
             'absent'        => $absent,
         ];
