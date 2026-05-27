@@ -106,6 +106,8 @@ class SystemAdminDashboardService
             return [
                 'school_id' => $schoolId,
                 'deped_school_id' => $depedId,
+                'district_code' => (string) ($department->business_id ?? ''),
+                'district' => $this->districtNameFor((string) ($department->business_id ?? '')),
                 'school_name' => $school?->name ?: ($assignment['school_name'] ?: (string) $department->department_name),
                 'school_head' => $this->schoolHeadFor($depedId),
                 'assigned_admin' => $this->assignedAdminFor($depedId),
@@ -191,8 +193,9 @@ class SystemAdminDashboardService
 
         $schoolSubjects = $this->schoolSubjectsBySchoolId($schoolIds);
         $subjectsByHrid = $this->teacherSubjectsByHrid();
+        $ehrisTeachers = $this->ehrisTeachersByDepartment($schoolRows->pluck('deped_school_id')->map(fn ($id) => (string) $id)->values());
 
-        return $schoolRows->map(function (array $school) use ($teachers, $learnerCounts, $subjectsByHrid, $schoolSubjects) {
+        return $schoolRows->map(function (array $school) use ($teachers, $learnerCounts, $subjectsByHrid, $schoolSubjects, $ehrisTeachers) {
             $schoolSubjectList = (string) ($schoolSubjects[$school['school_id']] ?? '');
             $schoolTeachers = collect($teachers->get($school['school_id'], collect()))
                 ->map(function (User $teacher) use ($learnerCounts, $subjectsByHrid, $schoolSubjectList) {
@@ -211,18 +214,96 @@ class SystemAdminDashboardService
                         'subjects' => $teacherSubjects,
                         'subjects_source' => $teacherSubjects !== '' ? 'teacher_assignment' : 'none',
                         'learner_count' => (int) ($learnerCounts[$teacher->id] ?? 0),
+                        'source' => 'scanup',
                     ];
                 })
-                ->values()
-                ->all();
+                ->values();
+
+            if ($schoolTeachers->isEmpty()) {
+                $schoolTeachers = collect($ehrisTeachers->get((string) $school['deped_school_id'], collect()));
+            }
 
             return array_merge($school, [
                 'school_subjects' => $schoolSubjectList,
-                'teacher_count' => count($schoolTeachers),
+                'teacher_count' => $schoolTeachers->count(),
                 'learner_count' => (int) ($school['students'] ?? 0),
-                'teacher_rows' => $schoolTeachers,
+                'teacher_rows' => $schoolTeachers->values()->all(),
             ]);
         })->values()->all();
+    }
+
+    private function ehrisTeachersByDepartment(Collection $departmentIds): Collection
+    {
+        try {
+            $departmentIds = $departmentIds->map(fn ($id) => trim((string) $id))->filter()->unique()->values();
+            if ($departmentIds->isEmpty()) {
+                return collect();
+            }
+
+            $connection = (new EhrisUser())->getConnectionName() ?: config('database.default');
+            $schema = Schema::connection($connection);
+
+            if (
+                !$schema->hasTable('tbl_user') ||
+                !$schema->hasColumn('tbl_user', 'department_id') ||
+                !$schema->hasColumn('tbl_user', 'role')
+            ) {
+                Log::warning('System Admin EHRIS teacher lookup unavailable.', [
+                    'method' => __METHOD__,
+                    'connection' => $connection,
+                    'table' => 'tbl_user',
+                ]);
+
+                return collect();
+            }
+
+            $subjectsByHrid = $this->teacherSubjectsByHrid();
+
+            return EhrisUser::active()
+                ->whereIn('department_id', $departmentIds->all())
+                ->where(function ($query) {
+                    $query->where('role', 'Teacher')
+                        ->orWhere('job_title', 'like', '%Teacher%');
+                })
+                ->orderBy('lastname')
+                ->orderBy('firstname')
+                ->get(['userId', 'hrId', 'email', 'lastname', 'firstname', 'middlename', 'job_title', 'role', 'department_id'])
+                ->groupBy(fn (EhrisUser $teacher) => (string) $teacher->department_id)
+                ->map(function (Collection $teachers) use ($subjectsByHrid) {
+                    return $teachers->map(function (EhrisUser $teacher) use ($subjectsByHrid) {
+                        $hrid = trim((string) ($teacher->hrId ?: $teacher->userId));
+                        $name = trim(implode(' ', array_filter([
+                            $teacher->firstname,
+                            $teacher->middlename,
+                            $teacher->lastname,
+                        ]))) ?: (string) $teacher->userId;
+                        $teacherSubjects = $hrid !== '' ? (string) ($subjectsByHrid[$hrid] ?? '') : '';
+
+                        return [
+                            'id' => 'ehris-' . $teacher->userId,
+                            'name' => $name,
+                            'email' => (string) ($teacher->email ?? ''),
+                            'role' => (string) ($teacher->role ?? 'Teacher'),
+                            'hrid' => $hrid,
+                            'job_title' => (string) ($teacher->job_title ?? ''),
+                            'grade_level' => null,
+                            'section' => null,
+                            'subjects' => $teacherSubjects,
+                            'subjects_source' => $teacherSubjects !== '' ? 'teacher_assignment' : 'none',
+                            'learner_count' => 0,
+                            'source' => 'ehris',
+                        ];
+                    })->values();
+                });
+        } catch (Throwable $exception) {
+            Log::error('System Admin EHRIS teacher lookup failed.', [
+                'method' => __METHOD__,
+                'table' => 'tbl_user',
+                'error' => $exception->getMessage(),
+            ]);
+
+            return collect();
+        }
     }
 
     private function schoolSubjectsBySchoolId(Collection $schoolIds): Collection
@@ -980,6 +1061,75 @@ class SystemAdminDashboardService
             })
             ->orderBy('department_name')
             ->get();
+    }
+
+    /**
+     * Resolve the district name from EHRIS tbl_district using tbl_depart.business_id.
+     */
+    private function districtNameFor(string $districtCode): string
+    {
+        static $districts = null;
+
+        if ($districts === null) {
+            try {
+                $connection = (new EhrisDepartment())->getConnectionName() ?: config('database.default');
+                $schema = Schema::connection($connection);
+
+                if (
+                    !$schema->hasTable('tbl_district') ||
+                    !$schema->hasColumn('tbl_district', 'district_code') ||
+                    !$schema->hasColumn('tbl_district', 'district_name')
+                ) {
+                    $districts = collect();
+                } else {
+                    $districts = DB::connection($connection)
+                        ->table('tbl_district')
+                        ->pluck('district_name', 'district_code');
+                }
+            } catch (Throwable $exception) {
+                Log::warning('System Admin district lookup failed.', [
+                    'method' => __METHOD__,
+                    'table' => 'tbl_district',
+                    'error' => $exception->getMessage(),
+                ]);
+
+                $districts = collect();
+            }
+        }
+
+        $code = trim($districtCode);
+        if ($code === '') {
+            return 'Unassigned District';
+        }
+
+        return $this->normalizeDistrictName((string) ($districts[$code] ?? $this->districtNameFromCode($code)), $code);
+    }
+
+    private function districtNameFromCode(string $districtCode): string
+    {
+        if (preg_match('/^920(\d{2})$/', $districtCode, $matches)) {
+            return 'District ' . (int) $matches[1];
+        }
+
+        if (preg_match('/(\d+)$/', $districtCode, $matches)) {
+            return 'District ' . (int) $matches[1];
+        }
+
+        return 'District ' . $districtCode;
+    }
+
+    private function normalizeDistrictName(string $districtName, string $districtCode): string
+    {
+        $name = trim($districtName);
+        if (preg_match('/^District\s+920(\d{2})$/i', $name, $matches)) {
+            return 'District ' . (int) $matches[1];
+        }
+
+        if ($name !== '') {
+            return $name;
+        }
+
+        return $this->districtNameFromCode($districtCode);
     }
 
     /**

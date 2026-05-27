@@ -456,12 +456,34 @@ class LearningAssessmentController extends BaseController
         }
 
         $payload = $file->analysis_payload;
-        if (! is_array($payload) || empty($payload['item_numbers']) || empty($payload['students'])) {
+        if (! is_array($payload) || empty($payload['item_numbers']) || empty($payload['item_stats'])) {
             return response()->json(['message' => 'Saved analysis preview is unavailable.'], 404);
         }
 
-        $payload['total_keyed_items'] = count(array_filter($payload['answer_key'] ?? [], fn ($v) => trim((string) $v) !== ''));
-        $payload['student_count'] = count($payload['students'] ?? []);
+        $payload['answer_key'] = is_array($payload['answer_key'] ?? null) ? $payload['answer_key'] : [];
+        $payload['students'] = is_array($payload['students'] ?? null) ? $payload['students'] : [];
+        $payload['item_stats'] = collect($payload['item_stats'])->map(function ($item) {
+            $totalCorrect = (int) ($item['total_correct'] ?? 0);
+            $examinees = max(0, (int) ($item['examinees'] ?? 0));
+            $difficultyPct = $item['difficulty_pct'] ?? ($examinees > 0 ? round(($totalCorrect / $examinees) * 100, 2) : null);
+            $pValue = $item['p_value'] ?? ($difficultyPct !== null ? round(((float) $difficultyPct) / 100, 4) : null);
+
+            return [
+                ...$item,
+                'total_correct' => $totalCorrect,
+                'examinees' => $examinees,
+                'difficulty_pct' => $difficultyPct,
+                'p_value' => $pValue,
+                'difficulty_level' => $item['difficulty_level'] ?? 'Unspecified',
+                'interpretation' => $item['interpretation'] ?? ($item['difficulty_level'] ?? 'Unspecified'),
+            ];
+        })->values()->all();
+
+        $payload['total_keyed_items'] = count(array_filter($payload['answer_key'], fn ($v) => trim((string) $v) !== ''));
+        if ($payload['total_keyed_items'] === 0) {
+            $payload['total_keyed_items'] = count($payload['item_numbers']);
+        }
+        $payload['student_count'] = count($payload['students']);
 
         return response()->json([
             'file' => $this->fileToArray($file),

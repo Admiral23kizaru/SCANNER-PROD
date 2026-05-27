@@ -3,27 +3,49 @@
     <div class="flex flex-col gap-3 border-b border-slate-200 p-4">
       <div>
         <h2 class="text-lg font-bold text-slate-950">Learner Analytics</h2>
-        <p class="text-sm text-slate-500">Pie chart analysis of learner distribution by grade level.</p>
+        <p class="text-sm text-slate-500">Interactive learner distribution from encoded learner records.</p>
       </div>
-      <div class="grid gap-2 md:grid-cols-4">
-        <input
-          v-model="search"
-          type="search"
-          placeholder="Search school, learner, adviser"
-          class="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-        />
-        <select v-model="filters.school" class="rounded-md border border-slate-300 px-3 py-2 text-sm">
-          <option value="">All schools</option>
-          <option v-for="school in schoolOptions" :key="school" :value="school">{{ school }}</option>
-        </select>
-        <select v-model="filters.grade" class="rounded-md border border-slate-300 px-3 py-2 text-sm">
-          <option value="">All grades</option>
-          <option v-for="grade in gradeOptions" :key="grade" :value="grade">{{ grade }}</option>
-        </select>
-        <select v-model="filters.section" class="rounded-md border border-slate-300 px-3 py-2 text-sm">
-          <option value="">All sections</option>
-          <option v-for="section in sectionOptions" :key="section" :value="section">{{ section }}</option>
-        </select>
+      <div class="grid gap-3 md:grid-cols-5">
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 md:col-span-2">
+          Search
+          <input
+            v-model="search"
+            type="search"
+            placeholder="School, learner, adviser"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal normal-case tracking-normal text-slate-900 outline-none focus:border-blue-500"
+          />
+        </label>
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          School
+          <select v-model="filters.school" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal normal-case tracking-normal text-slate-900">
+            <option value="">All schools</option>
+            <option v-for="school in schoolOptions" :key="school" :value="school">{{ school }}</option>
+          </select>
+        </label>
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Grade
+          <select v-model="filters.grade" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal normal-case tracking-normal text-slate-900">
+            <option value="">All grades</option>
+            <option v-for="grade in gradeOptions" :key="grade" :value="grade">{{ grade }}</option>
+          </select>
+        </label>
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Section
+          <select v-model="filters.section" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal normal-case tracking-normal text-slate-900">
+            <option value="">All sections</option>
+            <option v-for="section in sectionOptions" :key="section" :value="section">{{ section }}</option>
+          </select>
+        </label>
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 md:col-span-2">
+          Analyze chart by
+          <select v-model="groupBy" class="mt-1 w-full rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-semibold normal-case tracking-normal text-blue-950">
+            <option value="grade">Grade level</option>
+            <option value="school">School</option>
+            <option value="section">Section</option>
+            <option value="gender">Gender</option>
+            <option value="adviser">Adviser</option>
+          </select>
+        </label>
       </div>
     </div>
 
@@ -31,13 +53,17 @@
 
     <div class="grid gap-5 p-4 xl:grid-cols-[520px_1fr]">
       <div class="rounded-lg border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-4">
+        <div class="mb-2 flex items-center justify-between gap-3">
+          <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Distribution {{ groupLabel }}</p>
+          <p class="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">{{ chartRows.length }} group(s)</p>
+        </div>
         <div class="relative h-80">
           <Doughnut v-if="chartRows.length" :data="chartData" :options="chartOptions" />
           <div v-if="chartRows.length" class="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div class="text-center">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Learners</p>
               <p class="text-3xl font-black text-slate-950">{{ chartTotal }}</p>
-              <p class="text-xs text-slate-500">current filter</p>
+              <p class="text-xs text-slate-500">{{ groupLabel }}</p>
             </div>
           </div>
           <div v-else class="flex h-full items-center justify-center text-sm text-slate-500">No learner data found.</div>
@@ -46,6 +72,10 @@
 
       <div class="grid content-start gap-2 sm:grid-cols-2 xl:grid-cols-3">
         <div class="grid grid-cols-2 gap-2 sm:col-span-2 xl:col-span-3">
+          <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Learners</p>
+            <p class="mt-1 text-2xl font-black text-slate-950">{{ searchRows.length }}</p>
+          </div>
           <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Schools</p>
             <p class="mt-1 text-2xl font-black text-slate-950">{{ activeSchools }}</p>
@@ -86,7 +116,7 @@
       <table class="min-w-full divide-y divide-slate-200 text-sm">
         <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
           <tr>
-            <th class="px-4 py-3 text-left">Grade Level</th>
+            <th class="px-4 py-3 text-left">{{ tableHeading }}</th>
             <th class="px-4 py-3 text-right">Learners</th>
           </tr>
         </thead>
@@ -116,6 +146,7 @@ const loading = ref(false);
 const error = ref('');
 const search = ref('');
 const selectedLabel = ref('');
+const groupBy = ref('grade');
 const filters = ref({ school: '', grade: '', section: '' });
 const colors = ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#7c3aed', '#0891b2', '#ea580c', '#475569', '#65a30d', '#db2777'];
 
@@ -136,7 +167,7 @@ const sectionOptions = computed(() => uniqueSorted(rows.value.map((row) => row.s
 
 const chartRows = computed(() => {
   const groups = searchRows.value.reduce((acc, row) => {
-    const key = gradeLabel(row);
+    const key = learnerGroupLabel(row);
     acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {});
@@ -149,6 +180,20 @@ const chartRows = computed(() => {
 const chartTotal = computed(() => chartRows.value.reduce((sum, row) => sum + row.value, 0));
 const activeSchools = computed(() => new Set(searchRows.value.map((row) => row.school_name).filter(Boolean)).size);
 const activeSections = computed(() => new Set(searchRows.value.map((row) => `${row.school_id}:${row.grade}:${row.section}`).filter(Boolean)).size);
+const groupLabel = computed(() => (({
+  grade: 'by grade',
+  school: 'by school',
+  section: 'by section',
+  gender: 'by gender',
+  adviser: 'by adviser',
+})[groupBy.value] || 'current filter'));
+const tableHeading = computed(() => (({
+  grade: 'Grade Level',
+  school: 'School',
+  section: 'Section',
+  gender: 'Gender',
+  adviser: 'Adviser',
+})[groupBy.value] || 'Group'));
 
 const schoolChartRows = computed(() => {
   const groups = searchRows.value.reduce((acc, row) => {
@@ -185,7 +230,8 @@ const chartOptions = computed(() => ({
     tooltip: {
       callbacks: {
         label(context) {
-          return ` ${context.label}: ${context.raw} learner(s)`;
+          const pct = chartTotal.value ? Math.round((Number(context.raw) / chartTotal.value) * 100) : 0;
+          return ` ${context.label}: ${context.raw} learner(s), ${pct}%`;
         },
       },
     },
@@ -230,6 +276,14 @@ function gradeLabel(row) {
   const grade = String(row.grade || '').trim();
   if (!grade) return 'Unspecified';
   return grade.toLowerCase().startsWith('grade') ? grade : `Grade ${grade}`;
+}
+
+function learnerGroupLabel(row) {
+  if (groupBy.value === 'school') return row.school_name || 'Unspecified school';
+  if (groupBy.value === 'section') return row.section || 'Unspecified section';
+  if (groupBy.value === 'gender') return row.gender || 'Unspecified gender';
+  if (groupBy.value === 'adviser') return row.adviser_name || 'Not assigned';
+  return gradeLabel(row);
 }
 
 function uniqueSorted(values) {

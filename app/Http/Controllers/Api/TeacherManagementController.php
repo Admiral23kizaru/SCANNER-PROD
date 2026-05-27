@@ -10,10 +10,13 @@ use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
+use Throwable;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -135,6 +138,7 @@ class TeacherManagementController extends BaseController
                 'email' => (string) ($row->email ?? ''),
                 'job_title' => $row->job_title ?? null,
                 'department_id' => (string) ($row->department_id ?? ''),
+                'subjects' => $this->subjectsForHrid($employeeId),
                 'is_synced' => isset($existingMap[$employeeId]),
             ];
         })->values();
@@ -694,16 +698,71 @@ class TeacherManagementController extends BaseController
             'id'            => $teacher->id,
             'user_id'       => $user?->id,
             'name'          => $name,
+            'first_name'    => $teacher->first_name,
+            'last_name'     => $teacher->last_name,
             'employee_id'   => $teacher->employee_id,
+            'email'         => $teacher->email,
+            'contact_number' => $user?->contact_number,
+            'status'        => $user?->status,
+            'designation'   => $teacher->designation,
             'school_name'   => $teacher->school_name,
             'job_title'     => $teacher->job_title,
             'grade_level'   => $user?->grade_level,
             'section'       => $user?->section,
+            'subjects'      => $this->subjectsForHrid((string) $teacher->employee_id),
             'profile_photo' => $teacher->profile_photo
                 ? ltrim(str_replace('storage/', '', $teacher->profile_photo), '/')
                 : null,
             'created_at'    => $teacher->created_at?->toIso8601String(),
         ];
+    }
+
+    private function subjectsForHrid(string $hrid): array
+    {
+        $hrid = trim($hrid);
+        if ($hrid === '') {
+            return [];
+        }
+
+        try {
+            $connection = (new EhrisUser())->getConnectionName() ?: config('database.default');
+            $schema = Schema::connection($connection);
+
+            if (
+                !$schema->hasTable('tbl_emp_official_subject_taught') ||
+                !$schema->hasColumn('tbl_emp_official_subject_taught', 'hrid') ||
+                !$schema->hasColumn('tbl_emp_official_subject_taught', 'subject_name')
+            ) {
+                return [];
+            }
+
+            $orderColumn = $schema->hasColumn('tbl_emp_official_subject_taught', 'sort_order')
+                ? 'sort_order'
+                : 'subject_name';
+
+            return DB::connection($connection)
+                ->table('tbl_emp_official_subject_taught')
+                ->where('hrid', $hrid)
+                ->whereRaw("TRIM(COALESCE(subject_name, '')) <> ''")
+                ->orderBy($orderColumn)
+                ->get(['subject_name', 'category', 'updated_at'])
+                ->map(fn ($row) => [
+                    'subject_name' => (string) $row->subject_name,
+                    'category' => (string) ($row->category ?? ''),
+                    'updated_at' => $row->updated_at,
+                ])
+                ->values()
+                ->all();
+        } catch (Throwable $exception) {
+            Log::warning('Admin teacher subject lookup failed.', [
+                'method' => __METHOD__,
+                'table' => 'tbl_emp_official_subject_taught',
+                'hrid' => $hrid,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return [];
+        }
     }
 
     /**
