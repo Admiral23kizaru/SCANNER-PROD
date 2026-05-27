@@ -117,8 +117,8 @@ const isDashboardOpen = ref(true);
 
 const dashboardItems = [
   { key: 'school', label: 'School' },
-  { key: 'students', label: 'Learner' },
-  { key: 'teachers', label: 'Teacher' },
+  { key: 'learner-analytics', label: 'Learner' },
+  { key: 'teacher-analytics', label: 'Teacher' },
   { key: 'parents', label: 'Parent' },
   { key: 'least-mastered-skills', label: 'Least Mastered Skills' },
 ];

@@ -100,7 +100,7 @@
           <input
             v-model="search"
             type="search"
-            placeholder="Search teacher, school, HRID, subject"
+            placeholder="Search teacher, school, HRID, advisory"
             class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 lg:w-96"
           />
           <button class="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700" @click="loadRows">
@@ -116,7 +116,7 @@
               <th class="px-4 py-3 text-left">Teacher</th>
               <th class="px-4 py-3 text-left">HRID</th>
               <th class="px-4 py-3 text-left">School</th>
-              <th class="px-4 py-3 text-left">Subject</th>
+              <th class="px-4 py-3 text-left">Advisory</th>
               <th class="px-4 py-3 text-right">Learners</th>
             </tr>
           </thead>
@@ -132,8 +132,8 @@
                 <p class="text-xs text-slate-500">{{ teacher.district }}</p>
               </td>
               <td class="max-w-[340px] px-4 py-3 text-slate-700">
-                <p>{{ teacher.subjects || 'No subject assignment found' }}</p>
-                <p v-if="teacher.subjects_source === 'teacher_assignment'" class="mt-1 text-[11px] uppercase tracking-wide text-emerald-600">Teacher assignment</p>
+                <p>{{ advisoryLabel(teacher) }}</p>
+                <p v-if="advisoryLabel(teacher) !== 'No advisory'" class="mt-1 text-[11px] uppercase tracking-wide text-emerald-600">Advisory class</p>
               </td>
               <td class="px-4 py-3 text-right font-semibold text-slate-900">{{ teacher.learner_count }}</td>
             </tr>
@@ -240,7 +240,7 @@ const filteredTeachers = computed(() => {
       teacher.district,
       teacher.job_title,
       teacher.role,
-      teacher.subjects,
+      advisoryLabel(teacher),
     ].join(' ').toLowerCase().includes(term);
   });
 });
@@ -266,6 +266,19 @@ function clearSchoolFilter() {
   selectedSchoolId.value = '';
   expandedDistrict.value = '';
   schoolDropdownOpen.value = false;
+}
+
+function advisoryLabel(teacher) {
+  const grade = gradeLabel(teacher?.grade_level);
+  const section = String(teacher?.section || '').trim();
+  if (grade === 'No advisory' && !section) return 'No advisory';
+  return section ? `${grade} - ${section}` : grade;
+}
+
+function gradeLabel(value) {
+  const grade = String(value || '').trim();
+  if (!grade) return 'No advisory';
+  return grade.toLowerCase().startsWith('grade') ? grade : `Grade ${grade}`;
 }
 
 function districtNameFromCode(code) {

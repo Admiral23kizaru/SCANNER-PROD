@@ -498,46 +498,66 @@ class SystemAdminDashboardService
             'Difficult' => 0,
         ];
 
-        $logs = AssessmentLog::query()
-            ->whereIn('school_id', $schoolIds)
-            ->when($filters['school_id'] ?? null, fn ($q, $value) => $q->where('school_id', $value))
-            ->when($filters['subject_id'] ?? null, fn ($q, $value) => $q->where('subject_id', $value))
-            ->when($filters['grade_level'] ?? null, fn ($q, $value) => $q->where('grade_level', $value))
-            ->when($filters['section'] ?? null, fn ($q, $value) => $q->where('section', $value))
-            ->when($filters['school_year'] ?? null, fn ($q, $value) => $q->where('school_year', $value))
-            ->get(['least_mastered_skills']);
+        if (Schema::hasTable('tbl_scanup_assessment_logs')) {
+            try {
+                $logs = AssessmentLog::query()
+                    ->whereIn('school_id', $schoolIds)
+                    ->when($filters['school_id'] ?? null, fn ($q, $value) => $q->where('school_id', $value))
+                    ->when($filters['subject_id'] ?? null, fn ($q, $value) => $q->where('subject_id', $value))
+                    ->when($filters['grade_level'] ?? null, fn ($q, $value) => $q->where('grade_level', $value))
+                    ->when($filters['section'] ?? null, fn ($q, $value) => $q->where('section', $value))
+                    ->when($filters['school_year'] ?? null, fn ($q, $value) => $q->where('school_year', $value))
+                    ->get(['least_mastered_skills']);
 
-        foreach ($logs as $log) {
-            foreach (($log->least_mastered_skills ?? []) as $skill) {
-                $label = trim((string) $skill);
-                if ($label !== '') {
-                    $skillCounts[$label] = ($skillCounts[$label] ?? 0) + 1;
+                foreach ($logs as $log) {
+                    foreach (($log->least_mastered_skills ?? []) as $skill) {
+                        $label = trim((string) $skill);
+                        if ($label !== '') {
+                            $skillCounts[$label] = ($skillCounts[$label] ?? 0) + 1;
+                        }
+                    }
                 }
+            } catch (Throwable $exception) {
+                Log::error('System Admin assessment log least mastered lookup failed.', [
+                    'method' => __METHOD__,
+                    'table' => 'tbl_scanup_assessment_logs',
+                    'error' => $exception->getMessage(),
+                ]);
             }
         }
 
-        $files = LearningAssessmentFile::query()
-            ->whereIn('school_id', $schoolIds)
-            ->when($filters['school_id'] ?? null, fn ($q, $value) => $q->where('school_id', $value))
-            ->when($filters['subject_id'] ?? null, fn ($q, $value) => $q->where('subject_id', $value))
-            ->when($filters['grade_level'] ?? null, fn ($q, $value) => $q->where('grade_level', $value))
-            ->when($filters['section'] ?? null, fn ($q, $value) => $q->where('section', $value))
-            ->latest('analyzed_at')
-            ->limit(200)
-            ->get(['analysis_payload']);
+        if (Schema::hasTable('tbl_scanup_learning_assessment_files')) {
+            try {
+                $files = LearningAssessmentFile::query()
+                    ->whereIn('school_id', $schoolIds)
+                    ->when($filters['school_id'] ?? null, fn ($q, $value) => $q->where('school_id', $value))
+                    ->when($filters['subject_id'] ?? null, fn ($q, $value) => $q->where('subject_id', $value))
+                    ->when($filters['grade_level'] ?? null, fn ($q, $value) => $q->where('grade_level', $value))
+                    ->when($filters['section'] ?? null, fn ($q, $value) => $q->where('section', $value))
+                    ->latest('analyzed_at')
+                    ->limit(200)
+                    ->get(['analysis_payload']);
 
-        foreach ($files as $file) {
-            foreach (($file->analysis_payload['item_stats'] ?? []) as $item) {
-                $difficulty = (float) ($item['difficulty_pct'] ?? 100);
-                $masteryLabel = $this->masteryLabelForDifficulty($difficulty);
-                $difficultyLabel = $this->difficultyLabelForItem($item, $difficulty);
-                $masteryCounts[$masteryLabel] = ($masteryCounts[$masteryLabel] ?? 0) + 1;
-                $difficultyCounts[$difficultyLabel] = ($difficultyCounts[$difficultyLabel] ?? 0) + 1;
+                foreach ($files as $file) {
+                    foreach (($file->analysis_payload['item_stats'] ?? []) as $item) {
+                        $difficulty = (float) ($item['difficulty_pct'] ?? 100);
+                        $masteryLabel = $this->masteryLabelForDifficulty($difficulty);
+                        $difficultyLabel = $this->difficultyLabelForItem($item, $difficulty);
+                        $masteryCounts[$masteryLabel] = ($masteryCounts[$masteryLabel] ?? 0) + 1;
+                        $difficultyCounts[$difficultyLabel] = ($difficultyCounts[$difficultyLabel] ?? 0) + 1;
 
-                if ($difficulty < 50) {
-                    $label = 'Item ' . ($item['item'] ?? '?');
-                    $skillCounts[$label] = ($skillCounts[$label] ?? 0) + 1;
+                        if ($difficulty < 50) {
+                            $label = 'Item ' . ($item['item'] ?? '?');
+                            $skillCounts[$label] = ($skillCounts[$label] ?? 0) + 1;
+                        }
+                    }
                 }
+            } catch (Throwable $exception) {
+                Log::error('System Admin learning assessment least mastered lookup failed.', [
+                    'method' => __METHOD__,
+                    'table' => 'tbl_scanup_learning_assessment_files',
+                    'error' => $exception->getMessage(),
+                ]);
             }
         }
 
@@ -551,8 +571,14 @@ class SystemAdminDashboardService
         return [
             'filters' => [
                 'schools' => School::whereIn('id', $schoolIds)->orderBy('name')->get(['id', 'name']),
-                'school_years' => AssessmentLog::whereIn('school_id', $schoolIds)->whereNotNull('school_year')->distinct()->orderBy('school_year')->pluck('school_year')->values(),
-                'subjects' => Subject::whereIn('school_id', $schoolIds)->orWhereNull('school_id')->orderBy('name')->get(['id', 'name']),
+                'school_years' => Schema::hasTable('tbl_scanup_assessment_logs')
+                    ? AssessmentLog::whereIn('school_id', $schoolIds)->whereNotNull('school_year')->distinct()->orderBy('school_year')->pluck('school_year')->values()
+                    : collect(),
+                'subjects' => Schema::hasTable('tbl_scanup_subjects')
+                    ? Subject::where(function ($query) use ($schoolIds) {
+                        $query->whereIn('school_id', $schoolIds)->orWhereNull('school_id');
+                    })->orderBy('name')->get(['id', 'name'])
+                    : collect(),
                 'grades' => Student::whereIn('school_id', $schoolIds)->whereNotNull('grade')->distinct()->orderBy('grade')->pluck('grade')->values(),
                 'sections' => Student::whereIn('school_id', $schoolIds)->whereNotNull('section')->distinct()->orderBy('section')->pluck('section')->values(),
             ],

@@ -13,6 +13,7 @@ use App\Models\TeacherSubjectSection;
 use App\Services\LearningAssessmentExcelAnalyzer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use InvalidArgumentException;
@@ -583,6 +584,10 @@ class LearningAssessmentController extends BaseController
 
     private function subjectOptions(Request $request, int $schoolId)
     {
+        if (! Schema::hasTable('tbl_scanup_subjects')) {
+            return collect();
+        }
+
         if ($handled = $this->handledAssignment($request)) {
             return Subject::query()
                 ->where('school_id', $schoolId)
@@ -599,6 +604,10 @@ class LearningAssessmentController extends BaseController
 
     private function subjectName(Request $request, int $subjectId, int $schoolId): string
     {
+        if (! Schema::hasTable('tbl_scanup_subjects')) {
+            return '';
+        }
+
         return (string) Subject::query()
             ->where('school_id', $schoolId)
             ->whereKey($subjectId)
@@ -607,6 +616,10 @@ class LearningAssessmentController extends BaseController
 
     private function subjectForScore(Request $request, int $subjectId, int $schoolId): ?Subject
     {
+        if (! Schema::hasTable('tbl_scanup_subjects')) {
+            return null;
+        }
+
         return Subject::query()
             ->where('school_id', $schoolId)
             ->find($subjectId);
