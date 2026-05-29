@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Throwable;
 
@@ -177,8 +178,12 @@ class AdminFeatureController extends BaseController
         arsort($items);
 
         $filters = [
-            'school_years' => AssessmentLog::where('school_id', $schoolId)->whereNotNull('school_year')->distinct()->orderBy('school_year')->pluck('school_year')->values(),
-            'subjects' => Subject::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']),
+            'school_years' => Schema::hasTable('tbl_scanup_assessment_logs')
+                ? AssessmentLog::where('school_id', $schoolId)->whereNotNull('school_year')->distinct()->orderBy('school_year')->pluck('school_year')->values()
+                : collect(),
+            'subjects' => Schema::hasTable('tbl_scanup_subjects')
+                ? Subject::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name'])
+                : collect(),
             'grades' => Student::where('school_id', $schoolId)->whereNotNull('grade')->distinct()->orderBy('grade')->pluck('grade')->values(),
             'sections' => Student::where('school_id', $schoolId)->whereNotNull('section')->distinct()->orderBy('section')->pluck('section')->values(),
         ];

@@ -34,6 +34,8 @@
         <div class="max-w-[1500px] mx-auto space-y-6">
           <AdminDashboardStats v-if="currentPage === 'dashboard'" @navigate="(page) => { currentPage = page; }" />
           <AdminSchoolPage v-else-if="currentPage === 'school'" />
+          <AdminLearnerAnalytics v-else-if="currentPage === 'learner-analytics'" />
+          <AdminTeacherAnalytics v-else-if="currentPage === 'teacher-analytics'" />
           <AdminTeachersPage v-else-if="currentPage === 'teachers'" />
           <AdminStudentsPage v-else-if="currentPage === 'students'" />
           <AdminGuardiansPage v-else-if="currentPage === 'guardians' || currentPage === 'parents'" />
@@ -58,6 +60,8 @@ import { useLogout } from '../../composables/useLogout';
 import AdminHeader from '../admin/AdminHeader.vue';
 import AdminSidebar from '../admin/AdminSidebar.vue';
 import AdminDashboardStats from '../admin/AdminDashboardStats.vue';
+import AdminLearnerAnalytics from '../admin/AdminLearnerAnalytics.vue';
+import AdminTeacherAnalytics from '../admin/AdminTeacherAnalytics.vue';
 import AdminTeachersPage from '../admin/AdminTeachersPage.vue';
 import AdminStudentsPage from '../admin/AdminStudentsPage.vue';
 import ManageSubjects from '../admin/ManageSubjects.vue';
@@ -88,6 +92,8 @@ function onProfileUpdated(updatedProfile) {
 const pageTitle = computed(() => {
   if (currentPage.value === 'teachers') return 'TEACHERS';
   if (currentPage.value === 'students') return 'LEARNERS';
+  if (currentPage.value === 'learner-analytics') return 'LEARNER ANALYTICS';
+  if (currentPage.value === 'teacher-analytics') return 'TEACHER ANALYTICS';
   if (currentPage.value === 'school') return 'SCHOOL';
   if (currentPage.value === 'parents') return 'PARENTS';
   if (currentPage.value === 'guardians') return 'GUARDIANS';
@@ -102,6 +108,8 @@ const pageTitle = computed(() => {
 const pageSubtitle = computed(() => {
   if (currentPage.value === 'teachers') return 'Manage teacher accounts and profiles';
   if (currentPage.value === 'students') return 'Master list and records for learners';
+  if (currentPage.value === 'learner-analytics') return 'Pie-chart analysis of learners in your school';
+  if (currentPage.value === 'teacher-analytics') return 'Pie-chart analysis of teachers in your school';
   if (currentPage.value === 'school') return 'Grade and section count with adviser assignment';
   if (currentPage.value === 'parents') return 'Parent contact records';
   if (currentPage.value === 'guardians') return 'Guardian contact records';

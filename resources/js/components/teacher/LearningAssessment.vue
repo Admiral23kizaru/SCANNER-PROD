@@ -280,6 +280,11 @@
                       <td class="py-2 px-3 tabular-nums">{{ row.score }} / {{ activePreviewResult.total_keyed_items }}</td>
                       <td class="py-2 px-3 tabular-nums">{{ row.percentage }}%</td>
                     </tr>
+                    <tr v-if="!activePreviewResult.students.length">
+                      <td colspan="3" class="py-4 px-3 text-center text-stone-500">
+                        No student score rows were saved for this analysis. Item analysis is available below.
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -520,7 +525,20 @@ const INTERPRETATION_GUIDE = [
   },
 ];
 
-const activePreviewResult = computed(() => savedPreviewResult.value || analyzeResult.value);
+const activePreviewResult = computed(() => {
+  const result = savedPreviewResult.value || analyzeResult.value;
+  if (!result) return null;
+
+  return {
+    ...result,
+    students: Array.isArray(result.students) ? result.students : [],
+    item_numbers: Array.isArray(result.item_numbers) ? result.item_numbers : [],
+    item_stats: Array.isArray(result.item_stats) ? result.item_stats : [],
+    answer_key: Array.isArray(result.answer_key) ? result.answer_key : [],
+    student_count: Number(result.student_count ?? result.students?.length ?? 0),
+    total_keyed_items: Number(result.total_keyed_items ?? result.item_numbers?.length ?? 0),
+  };
+});
 const previewHeading = computed(() => (
   savedPreviewFile.value?.title ? `${savedPreviewFile.value.title} preview` : 'Analysis preview'
 ));

@@ -12,6 +12,7 @@ use App\Models\Subject;
 use App\Services\LearningAssessmentExcelAnalyzer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use InvalidArgumentException;
@@ -420,12 +421,34 @@ class LearningAssessmentController extends BaseController
         }
 
         $payload = $file->analysis_payload;
-        if (! is_array($payload) || empty($payload['item_numbers']) || empty($payload['students'])) {
+        if (! is_array($payload) || empty($payload['item_numbers']) || empty($payload['item_stats'])) {
             return response()->json(['message' => 'Saved analysis preview is unavailable.'], 404);
         }
 
-        $payload['total_keyed_items'] = count(array_filter($payload['answer_key'] ?? [], fn ($v) => trim((string) $v) !== ''));
-        $payload['student_count'] = count($payload['students'] ?? []);
+        $payload['answer_key'] = is_array($payload['answer_key'] ?? null) ? $payload['answer_key'] : [];
+        $payload['students'] = is_array($payload['students'] ?? null) ? $payload['students'] : [];
+        $payload['item_stats'] = collect($payload['item_stats'])->map(function ($item) {
+            $totalCorrect = (int) ($item['total_correct'] ?? 0);
+            $examinees = max(0, (int) ($item['examinees'] ?? 0));
+            $difficultyPct = $item['difficulty_pct'] ?? ($examinees > 0 ? round(($totalCorrect / $examinees) * 100, 2) : null);
+            $pValue = $item['p_value'] ?? ($difficultyPct !== null ? round(((float) $difficultyPct) / 100, 4) : null);
+
+            return [
+                ...$item,
+                'total_correct' => $totalCorrect,
+                'examinees' => $examinees,
+                'difficulty_pct' => $difficultyPct,
+                'p_value' => $pValue,
+                'difficulty_level' => $item['difficulty_level'] ?? 'Unspecified',
+                'interpretation' => $item['interpretation'] ?? ($item['difficulty_level'] ?? 'Unspecified'),
+            ];
+        })->values()->all();
+
+        $payload['total_keyed_items'] = count(array_filter($payload['answer_key'], fn ($v) => trim((string) $v) !== ''));
+        if ($payload['total_keyed_items'] === 0) {
+            $payload['total_keyed_items'] = count($payload['item_numbers']);
+        }
+        $payload['student_count'] = count($payload['students']);
 
         return response()->json([
             'file' => $this->fileToArray($file),
@@ -520,6 +543,21 @@ class LearningAssessmentController extends BaseController
 
     private function subjectOptions(Request $request, int $schoolId)
     {
+<<<<<<< HEAD
+=======
+        if (! Schema::hasTable('tbl_scanup_subjects')) {
+            return collect();
+        }
+
+        if ($handled = $this->handledAssignment($request)) {
+            return Subject::query()
+                ->where('school_id', $schoolId)
+                ->whereKey($handled->subject_id)
+                ->orderBy('name')
+                ->get(['id', 'name']);
+        }
+
+>>>>>>> 9a98f5b83738a67c648055722d36274a9ee10432
         return Subject::query()
             ->where('school_id', $schoolId)
             ->orderBy('name')
@@ -528,6 +566,10 @@ class LearningAssessmentController extends BaseController
 
     private function subjectName(Request $request, int $subjectId, int $schoolId): string
     {
+        if (! Schema::hasTable('tbl_scanup_subjects')) {
+            return '';
+        }
+
         return (string) Subject::query()
             ->where('school_id', $schoolId)
             ->whereKey($subjectId)
@@ -536,6 +578,10 @@ class LearningAssessmentController extends BaseController
 
     private function subjectForScore(Request $request, int $subjectId, int $schoolId): ?Subject
     {
+        if (! Schema::hasTable('tbl_scanup_subjects')) {
+            return null;
+        }
+
         return Subject::query()
             ->where('school_id', $schoolId)
             ->find($subjectId);

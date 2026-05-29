@@ -38,18 +38,43 @@
         </button>
       </div>
 
-      <button
-        v-for="item in mainItems"
-        :key="item.key"
-        type="button"
-        class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition"
-        :class="currentPage === item.key ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-300 hover:bg-white/10 hover:text-white'"
-        @click="updatePage(item.key)"
-      >
-        <component :is="item.icon" class="h-4 w-4" />
-        <span class="flex-1 text-left">{{ item.label }}</span>
-        <ChevronRight class="h-4 w-4 opacity-70" />
-      </button>
+      <template v-for="item in mainItems" :key="item.key">
+        <button
+          type="button"
+          class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition"
+          :class="currentPage === item.key ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-300 hover:bg-white/10 hover:text-white'"
+          @click="updatePage(item.key)"
+        >
+          <component :is="item.icon" class="h-4 w-4" />
+          <span class="flex-1 text-left">{{ item.label }}</span>
+          <ChevronRight class="h-4 w-4 opacity-70" />
+        </button>
+
+        <div v-if="item.key === 'teachers'" class="space-y-1">
+          <button
+            type="button"
+            class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition"
+            :class="isParentsActive ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-300 hover:bg-white/10 hover:text-white'"
+            @click="isParentsOpen = !isParentsOpen"
+          >
+            <UserRoundCheck class="h-4 w-4" />
+            <span class="flex-1 text-left">Parents</span>
+            <ChevronDown class="h-4 w-4 transition-transform" :class="isParentsOpen ? 'rotate-180' : ''" />
+          </button>
+
+          <div v-if="isParentsOpen" class="ml-6 border-l border-white/10 py-1 pl-4">
+            <button
+              type="button"
+              class="group flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium transition"
+              :class="currentPage === 'guardians' ? 'text-white' : 'text-slate-300 hover:text-white'"
+              @click="updatePage('guardians')"
+            >
+              <span class="h-2 w-2 rounded-full" :class="currentPage === 'guardians' ? 'bg-white' : 'bg-slate-400 group-hover:bg-white'"></span>
+              <span>Guardian</span>
+            </button>
+          </div>
+        </div>
+      </template>
     </nav>
 
     <div class="border-t border-slate-800 p-4 text-xs text-slate-400">
@@ -86,25 +111,25 @@ const props = defineProps({
 
 const emit = defineEmits(['update:currentPage']);
 const isDashboardOpen = ref(true);
+const isParentsOpen = ref(true);
 
 const dashboardItems = [
   { key: 'school', label: 'School' },
-  { key: 'learners', label: 'Learner' },
-  { key: 'teachers', label: 'Teacher' },
-  { key: 'parents', label: 'Parent' },
+  { key: 'learner-analytics', label: 'Learner' },
+  { key: 'teacher-analytics', label: 'Teacher' },
   { key: 'least-mastered-skills', label: 'Least Mastered Skills' },
 ];
 
 const mainItems = [
-  { key: 'learners', label: 'Learners', icon: GraduationCap },
-  { key: 'teachers', label: 'Teachers', icon: Users },
-  { key: 'guardians', label: 'Guardian', icon: UserRoundCheck },
+  { key: 'learners', label: 'Learner List', icon: GraduationCap },
+  { key: 'teachers', label: 'Teacher Directory', icon: Users },
   { key: 'classes', label: 'Classes', icon: FolderPlus },
   { key: 'attendance', label: 'Attendance', icon: CalendarCheck },
   { key: 'semestralAssessment', label: 'Semestral Assessment', icon: ClipboardList },
 ];
 
 const isDashboardActive = computed(() => ['dashboard', ...dashboardItems.map((item) => item.key)].includes(props.currentPage));
+const isParentsActive = computed(() => ['parents', 'guardians'].includes(props.currentPage));
 
 function toggleDashboard() {
   isDashboardOpen.value = !isDashboardOpen.value;

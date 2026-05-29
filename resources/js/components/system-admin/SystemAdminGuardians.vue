@@ -2,7 +2,7 @@
   <section class="rounded-lg border border-slate-200 bg-white shadow-sm">
     <div class="flex flex-col gap-3 border-b border-slate-200 p-4 lg:flex-row lg:items-end lg:justify-between">
       <div>
-        <h2 class="text-lg font-bold text-slate-950">Parent / Guardian</h2>
+        <h2 class="text-lg font-bold text-slate-950">Parents & Guardians</h2>
         <p class="text-sm text-slate-500">Records from tbl_scanup_parent_guardians grouped across schools.</p>
       </div>
       <input v-model="search" type="search" placeholder="Search guardian, learner, school, contact"
@@ -16,7 +16,7 @@
         </thead>
         <tbody class="divide-y divide-slate-100">
           <tr v-for="row in filteredRows" :key="row.id" class="hover:bg-blue-50/60">
-            <td class="px-4 py-3"><p class="font-semibold text-slate-950">{{ row.name }}</p><p class="text-xs text-slate-500">{{ row.relationship }}{{ row.is_primary ? ' · Primary' : '' }}</p></td>
+            <td class="px-4 py-3"><p class="font-semibold text-slate-950">{{ row.name }}</p><p class="text-xs text-slate-500">{{ row.relationship }}{{ row.is_primary ? ' - Primary' : '' }}</p></td>
             <td class="px-4 py-3 text-slate-700">{{ row.learner_name }} <span class="text-xs text-slate-400">{{ row.grade }} {{ row.section }}</span></td>
             <td class="px-4 py-3"><p class="text-slate-700">{{ row.school_name }}</p><p class="text-xs text-slate-500">{{ row.deped_school_id }}</p></td>
             <td class="px-4 py-3 text-slate-700">{{ row.contact_number || '-' }}<p class="text-xs text-slate-500">{{ row.email || '' }}</p></td>

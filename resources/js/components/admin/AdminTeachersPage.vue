@@ -1,6 +1,102 @@
 <template>
   <div>
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden">
+    <div v-if="selectedProfileTeacher" class="space-y-5">
+      <button
+        type="button"
+        class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        @click="closeTeacherProfile"
+      >
+        Back to Teacher List
+      </button>
+
+      <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <section class="p-5">
+          <h2 class="mb-4 text-lg font-bold text-slate-900">My Details</h2>
+          <div class="grid gap-5 lg:grid-cols-[210px_1fr]">
+            <div class="flex h-44 w-full items-center justify-center overflow-hidden rounded-lg bg-slate-200 lg:w-44">
+              <img
+                v-if="selectedProfileTeacher.profile_photo && !photoLoadError[`profile-${selectedProfileTeacher.id}`]"
+                :src="getPhotoUrl(selectedProfileTeacher.profile_photo)"
+                alt=""
+                class="h-full w-full object-cover"
+                @error="handlePhotoError(`profile-${selectedProfileTeacher.id}`)"
+              />
+              <div v-else class="flex h-full w-full items-center justify-center bg-slate-300 text-6xl font-bold text-slate-500">
+                {{ selectedProfileTeacher.name?.charAt(0) || 'T' }}
+              </div>
+            </div>
+
+            <div class="grid max-w-2xl gap-3">
+              <div class="grid gap-2 sm:grid-cols-[140px_1fr] sm:items-center">
+                <label class="text-sm font-semibold text-slate-700">Employee Name</label>
+                <input :value="selectedProfileTeacher.name || 'N/A'" readonly class="rounded-xl border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700" />
+              </div>
+              <div class="grid gap-2 sm:grid-cols-[140px_1fr] sm:items-center">
+                <label class="text-sm font-semibold text-slate-700">HR ID</label>
+                <input :value="selectedProfileTeacher.employee_id || 'N/A'" readonly class="rounded-xl border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700" />
+              </div>
+              <div class="grid gap-2 sm:grid-cols-[140px_1fr] sm:items-center">
+                <label class="text-sm font-semibold text-slate-700">Employee No</label>
+                <input :value="selectedProfileTeacher.employee_id || 'N/A'" readonly class="rounded-xl border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700" />
+              </div>
+              <div class="grid gap-2 sm:grid-cols-[140px_1fr] sm:items-center">
+                <label class="text-sm font-semibold text-slate-700">Email</label>
+                <input :value="selectedProfileTeacher.email || 'N/A'" readonly class="rounded-xl border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-blue-700" />
+              </div>
+              <div class="grid gap-2 sm:grid-cols-[140px_1fr] sm:items-center">
+                <label class="text-sm font-semibold text-slate-700">Contact No</label>
+                <input :value="selectedProfileTeacher.contact_number || 'N/A'" readonly class="rounded-xl border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700" />
+              </div>
+              <div class="grid gap-2 sm:grid-cols-[140px_1fr] sm:items-center">
+                <label class="text-sm font-semibold text-slate-700">School</label>
+                <input :value="selectedProfileTeacher.school_name || 'N/A'" readonly class="rounded-xl border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700" />
+              </div>
+              <div class="grid gap-2 sm:grid-cols-[140px_1fr] sm:items-center">
+                <label class="text-sm font-semibold text-slate-700">Teacher Advisory</label>
+                <input :value="teacherAdvisory(selectedProfileTeacher)" readonly class="rounded-xl border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700" />
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="mb-5 text-xl font-bold text-slate-900">Subjects Taught &amp; Grade</h2>
+
+        <div class="grid gap-5 lg:grid-cols-[320px_1fr]">
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Teacher Advisory</p>
+            <p class="mt-2 text-lg font-bold text-slate-900">{{ teacherAdvisory(selectedProfileTeacher) }}</p>
+            <p class="mt-1 text-sm text-slate-500">{{ selectedProfileTeacher.school_name || 'No school assigned' }}</p>
+          </div>
+
+          <div class="rounded-xl border border-slate-200 p-4">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="px-3 py-2 text-left">Subject</th>
+                  <th class="px-3 py-2 text-left">Grade / Section</th>
+                  <th class="px-3 py-2 text-left">Assignment Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="subject in profileSubjectRows" :key="subject.subject_name + subject.category" class="border-t border-slate-100">
+                  <td class="px-3 py-3 font-semibold text-slate-800">{{ subject.subject_name }}</td>
+                  <td class="px-3 py-3 text-slate-700">{{ subject.grade_section }}</td>
+                  <td class="px-3 py-3 text-slate-700">{{ subject.category || 'Subject Teacher' }}</td>
+                </tr>
+                <tr v-if="profileSubjectRows.length === 0">
+                  <td colspan="3" class="px-3 py-8 text-center text-slate-500">No subject assignment found.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <div v-else class="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden">
       <!-- Toolbar (match screenshot layout) -->
       <div class="p-4 sm:p-5 border-b border-slate-200 bg-white flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
@@ -141,8 +237,8 @@
               <td class="py-3 px-4">
                 <div 
                   class="flex items-center gap-3 cursor-pointer group" 
-                  @click="viewTeacherStudents(t)" 
-                  title="Click to view enrolled students"
+                  @click="openTeacherProfile(t)" 
+                  title="Click to view teacher profile"
                 >
                   <div
                     class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-200 shrink-0 shadow-sm transition group-hover:ring-2 group-hover:ring-indigo-100 group-hover:scale-105"
@@ -683,6 +779,15 @@ const showDeleteModal = ref(false);
 const deleteTarget = ref(null);
 const deleting = ref(false);
 const deleteError = ref('');
+const selectedProfileTeacher = ref(null);
+const profileSubjects = computed(() => Array.isArray(selectedProfileTeacher.value?.subjects) ? selectedProfileTeacher.value.subjects : []);
+const profileSubjectRows = computed(() => {
+  const gradeSection = formatTeacherGradeSection(selectedProfileTeacher.value);
+  return profileSubjects.value.map((subject) => ({
+    ...subject,
+    grade_section: gradeSection === '-' ? 'No grade assigned' : gradeSection,
+  }));
+});
 
 /**
  * Action: Implementing Section-based Teacher Assignment and Gender-specific Dashboard Analytics.
@@ -700,6 +805,29 @@ function formatTeacherGradeSection(t) {
   if (grade) return grade;
   if (section) return section;
   return '-';
+}
+
+function teacherAdvisory(teacher) {
+  const gradeSection = formatTeacherGradeSection(teacher);
+  return gradeSection === '-' ? 'No advisory' : gradeSection;
+}
+
+function teacherNameParts(teacher) {
+  const parts = String(teacher?.name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return { first: 'N/A', last: 'N/A' };
+  if (parts.length === 1) return { first: parts[0], last: 'N/A' };
+  return {
+    first: parts.slice(0, -1).join(' '),
+    last: parts[parts.length - 1],
+  };
+}
+
+function teacherFirstName(teacher) {
+  return teacherNameParts(teacher).first;
+}
+
+function teacherLastName(teacher) {
+  return teacherNameParts(teacher).last;
 }
 
 const gradeFilterOptions = computed(() => {
@@ -774,6 +902,15 @@ const emptyTeachersMessage = computed(() => {
 function clearGradeSectionFilters() {
   filterGrade.value = '';
   filterSection.value = '';
+}
+
+function openTeacherProfile(teacher) {
+  selectedProfileTeacher.value = teacher;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function closeTeacherProfile() {
+  selectedProfileTeacher.value = null;
 }
 
 async function loadSchoolSections() {

@@ -106,6 +106,8 @@ class SystemAdminDashboardService
             return [
                 'school_id' => $schoolId,
                 'deped_school_id' => $depedId,
+                'district_code' => (string) ($department->business_id ?? ''),
+                'district' => $this->districtNameFor((string) ($department->business_id ?? '')),
                 'school_name' => $school?->name ?: ($assignment['school_name'] ?: (string) $department->department_name),
                 'school_head' => $this->schoolHeadFor($depedId),
                 'assigned_admin' => $this->assignedAdminFor($depedId),
@@ -191,8 +193,9 @@ class SystemAdminDashboardService
 
         $schoolSubjects = $this->schoolSubjectsBySchoolId($schoolIds);
         $subjectsByHrid = $this->teacherSubjectsByHrid();
+        $ehrisTeachers = $this->ehrisTeachersByDepartment($schoolRows->pluck('deped_school_id')->map(fn ($id) => (string) $id)->values());
 
-        return $schoolRows->map(function (array $school) use ($teachers, $learnerCounts, $subjectsByHrid, $schoolSubjects) {
+        return $schoolRows->map(function (array $school) use ($teachers, $learnerCounts, $subjectsByHrid, $schoolSubjects, $ehrisTeachers) {
             $schoolSubjectList = (string) ($schoolSubjects[$school['school_id']] ?? '');
             $schoolTeachers = collect($teachers->get($school['school_id'], collect()))
                 ->map(function (User $teacher) use ($learnerCounts, $subjectsByHrid, $schoolSubjectList) {
@@ -208,23 +211,99 @@ class SystemAdminDashboardService
                         'job_title' => $teacher->job_title,
                         'grade_level' => $teacher->grade_level,
                         'section' => $teacher->section,
-                        'subjects' => $teacherSubjects !== '' ? $teacherSubjects : $schoolSubjectList,
-                        'subjects_source' => $teacherSubjects !== ''
-                            ? 'teacher_assignment'
-                            : ($schoolSubjectList !== '' ? 'school_subjects' : 'none'),
+                        'subjects' => $teacherSubjects,
+                        'subjects_source' => $teacherSubjects !== '' ? 'teacher_assignment' : 'none',
                         'learner_count' => (int) ($learnerCounts[$teacher->id] ?? 0),
+                        'source' => 'scanup',
                     ];
                 })
-                ->values()
-                ->all();
+                ->values();
+
+            if ($schoolTeachers->isEmpty()) {
+                $schoolTeachers = collect($ehrisTeachers->get((string) $school['deped_school_id'], collect()));
+            }
 
             return array_merge($school, [
                 'school_subjects' => $schoolSubjectList,
-                'teacher_count' => count($schoolTeachers),
+                'teacher_count' => $schoolTeachers->count(),
                 'learner_count' => (int) ($school['students'] ?? 0),
-                'teacher_rows' => $schoolTeachers,
+                'teacher_rows' => $schoolTeachers->values()->all(),
             ]);
         })->values()->all();
+    }
+
+    private function ehrisTeachersByDepartment(Collection $departmentIds): Collection
+    {
+        try {
+            $departmentIds = $departmentIds->map(fn ($id) => trim((string) $id))->filter()->unique()->values();
+            if ($departmentIds->isEmpty()) {
+                return collect();
+            }
+
+            $connection = (new EhrisUser())->getConnectionName() ?: config('database.default');
+            $schema = Schema::connection($connection);
+
+            if (
+                !$schema->hasTable('tbl_user') ||
+                !$schema->hasColumn('tbl_user', 'department_id') ||
+                !$schema->hasColumn('tbl_user', 'role')
+            ) {
+                Log::warning('System Admin EHRIS teacher lookup unavailable.', [
+                    'method' => __METHOD__,
+                    'connection' => $connection,
+                    'table' => 'tbl_user',
+                ]);
+
+                return collect();
+            }
+
+            $subjectsByHrid = $this->teacherSubjectsByHrid();
+
+            return EhrisUser::active()
+                ->whereIn('department_id', $departmentIds->all())
+                ->where(function ($query) {
+                    $query->where('role', 'Teacher')
+                        ->orWhere('job_title', 'like', '%Teacher%');
+                })
+                ->orderBy('lastname')
+                ->orderBy('firstname')
+                ->get(['userId', 'hrId', 'email', 'lastname', 'firstname', 'middlename', 'job_title', 'role', 'department_id'])
+                ->groupBy(fn (EhrisUser $teacher) => (string) $teacher->department_id)
+                ->map(function (Collection $teachers) use ($subjectsByHrid) {
+                    return $teachers->map(function (EhrisUser $teacher) use ($subjectsByHrid) {
+                        $hrid = trim((string) ($teacher->hrId ?: $teacher->userId));
+                        $name = trim(implode(' ', array_filter([
+                            $teacher->firstname,
+                            $teacher->middlename,
+                            $teacher->lastname,
+                        ]))) ?: (string) $teacher->userId;
+                        $teacherSubjects = $hrid !== '' ? (string) ($subjectsByHrid[$hrid] ?? '') : '';
+
+                        return [
+                            'id' => 'ehris-' . $teacher->userId,
+                            'name' => $name,
+                            'email' => (string) ($teacher->email ?? ''),
+                            'role' => (string) ($teacher->role ?? 'Teacher'),
+                            'hrid' => $hrid,
+                            'job_title' => (string) ($teacher->job_title ?? ''),
+                            'grade_level' => null,
+                            'section' => null,
+                            'subjects' => $teacherSubjects,
+                            'subjects_source' => $teacherSubjects !== '' ? 'teacher_assignment' : 'none',
+                            'learner_count' => 0,
+                            'source' => 'ehris',
+                        ];
+                    })->values();
+                });
+        } catch (Throwable $exception) {
+            Log::error('System Admin EHRIS teacher lookup failed.', [
+                'method' => __METHOD__,
+                'table' => 'tbl_user',
+                'error' => $exception->getMessage(),
+            ]);
+
+            return collect();
+        }
     }
 
     private function schoolSubjectsBySchoolId(Collection $schoolIds): Collection
@@ -408,52 +487,98 @@ class SystemAdminDashboardService
     {
         $schoolIds = $this->scanupSchoolIds();
         $skillCounts = [];
+        $masteryCounts = [
+            'Mastered' => 0,
+            'Nearly Mastered' => 0,
+            'Least Mastered' => 0,
+        ];
+        $difficultyCounts = [
+            'Easy' => 0,
+            'Average' => 0,
+            'Difficult' => 0,
+        ];
 
-        $logs = AssessmentLog::query()
-            ->whereIn('school_id', $schoolIds)
-            ->when($filters['school_id'] ?? null, fn ($q, $value) => $q->where('school_id', $value))
-            ->when($filters['subject_id'] ?? null, fn ($q, $value) => $q->where('subject_id', $value))
-            ->when($filters['grade_level'] ?? null, fn ($q, $value) => $q->where('grade_level', $value))
-            ->when($filters['section'] ?? null, fn ($q, $value) => $q->where('section', $value))
-            ->when($filters['school_year'] ?? null, fn ($q, $value) => $q->where('school_year', $value))
-            ->get(['least_mastered_skills']);
+        if (Schema::hasTable('tbl_scanup_assessment_logs')) {
+            try {
+                $logs = AssessmentLog::query()
+                    ->whereIn('school_id', $schoolIds)
+                    ->when($filters['school_id'] ?? null, fn ($q, $value) => $q->where('school_id', $value))
+                    ->when($filters['subject_id'] ?? null, fn ($q, $value) => $q->where('subject_id', $value))
+                    ->when($filters['grade_level'] ?? null, fn ($q, $value) => $q->where('grade_level', $value))
+                    ->when($filters['section'] ?? null, fn ($q, $value) => $q->where('section', $value))
+                    ->when($filters['school_year'] ?? null, fn ($q, $value) => $q->where('school_year', $value))
+                    ->get(['least_mastered_skills']);
 
-        foreach ($logs as $log) {
-            foreach (($log->least_mastered_skills ?? []) as $skill) {
-                $label = trim((string) $skill);
-                if ($label !== '') {
-                    $skillCounts[$label] = ($skillCounts[$label] ?? 0) + 1;
+                foreach ($logs as $log) {
+                    foreach (($log->least_mastered_skills ?? []) as $skill) {
+                        $label = trim((string) $skill);
+                        if ($label !== '') {
+                            $skillCounts[$label] = ($skillCounts[$label] ?? 0) + 1;
+                        }
+                    }
                 }
+            } catch (Throwable $exception) {
+                Log::error('System Admin assessment log least mastered lookup failed.', [
+                    'method' => __METHOD__,
+                    'table' => 'tbl_scanup_assessment_logs',
+                    'error' => $exception->getMessage(),
+                ]);
             }
         }
 
-        $files = LearningAssessmentFile::query()
-            ->whereIn('school_id', $schoolIds)
-            ->when($filters['school_id'] ?? null, fn ($q, $value) => $q->where('school_id', $value))
-            ->when($filters['subject_id'] ?? null, fn ($q, $value) => $q->where('subject_id', $value))
-            ->when($filters['grade_level'] ?? null, fn ($q, $value) => $q->where('grade_level', $value))
-            ->when($filters['section'] ?? null, fn ($q, $value) => $q->where('section', $value))
-            ->latest('analyzed_at')
-            ->limit(200)
-            ->get(['analysis_payload']);
+        if (Schema::hasTable('tbl_scanup_learning_assessment_files')) {
+            try {
+                $files = LearningAssessmentFile::query()
+                    ->whereIn('school_id', $schoolIds)
+                    ->when($filters['school_id'] ?? null, fn ($q, $value) => $q->where('school_id', $value))
+                    ->when($filters['subject_id'] ?? null, fn ($q, $value) => $q->where('subject_id', $value))
+                    ->when($filters['grade_level'] ?? null, fn ($q, $value) => $q->where('grade_level', $value))
+                    ->when($filters['section'] ?? null, fn ($q, $value) => $q->where('section', $value))
+                    ->latest('analyzed_at')
+                    ->limit(200)
+                    ->get(['analysis_payload']);
 
-        foreach ($files as $file) {
-            foreach (($file->analysis_payload['item_stats'] ?? []) as $item) {
-                $difficulty = (float) ($item['difficulty_pct'] ?? 100);
-                if ($difficulty < 50) {
-                    $label = 'Item ' . ($item['item'] ?? '?');
-                    $skillCounts[$label] = ($skillCounts[$label] ?? 0) + 1;
+                foreach ($files as $file) {
+                    foreach (($file->analysis_payload['item_stats'] ?? []) as $item) {
+                        $difficulty = (float) ($item['difficulty_pct'] ?? 100);
+                        $masteryLabel = $this->masteryLabelForDifficulty($difficulty);
+                        $difficultyLabel = $this->difficultyLabelForItem($item, $difficulty);
+                        $masteryCounts[$masteryLabel] = ($masteryCounts[$masteryLabel] ?? 0) + 1;
+                        $difficultyCounts[$difficultyLabel] = ($difficultyCounts[$difficultyLabel] ?? 0) + 1;
+
+                        if ($difficulty < 50) {
+                            $label = 'Item ' . ($item['item'] ?? '?');
+                            $skillCounts[$label] = ($skillCounts[$label] ?? 0) + 1;
+                        }
+                    }
                 }
+            } catch (Throwable $exception) {
+                Log::error('System Admin learning assessment least mastered lookup failed.', [
+                    'method' => __METHOD__,
+                    'table' => 'tbl_scanup_learning_assessment_files',
+                    'error' => $exception->getMessage(),
+                ]);
             }
         }
 
         arsort($skillCounts);
 
+        if (array_sum($masteryCounts) === 0 && array_sum($skillCounts) > 0) {
+            $masteryCounts['Least Mastered'] = array_sum($skillCounts);
+            $difficultyCounts['Difficult'] = array_sum($skillCounts);
+        }
+
         return [
             'filters' => [
                 'schools' => School::whereIn('id', $schoolIds)->orderBy('name')->get(['id', 'name']),
-                'school_years' => AssessmentLog::whereIn('school_id', $schoolIds)->whereNotNull('school_year')->distinct()->orderBy('school_year')->pluck('school_year')->values(),
-                'subjects' => Subject::whereIn('school_id', $schoolIds)->orWhereNull('school_id')->orderBy('name')->get(['id', 'name']),
+                'school_years' => Schema::hasTable('tbl_scanup_assessment_logs')
+                    ? AssessmentLog::whereIn('school_id', $schoolIds)->whereNotNull('school_year')->distinct()->orderBy('school_year')->pluck('school_year')->values()
+                    : collect(),
+                'subjects' => Schema::hasTable('tbl_scanup_subjects')
+                    ? Subject::where(function ($query) use ($schoolIds) {
+                        $query->whereIn('school_id', $schoolIds)->orWhereNull('school_id');
+                    })->orderBy('name')->get(['id', 'name'])
+                    : collect(),
                 'grades' => Student::whereIn('school_id', $schoolIds)->whereNotNull('grade')->distinct()->orderBy('grade')->pluck('grade')->values(),
                 'sections' => Student::whereIn('school_id', $schoolIds)->whereNotNull('section')->distinct()->orderBy('section')->pluck('section')->values(),
             ],
@@ -461,7 +586,57 @@ class SystemAdminDashboardService
                 'skill' => $skill,
                 'count' => $count,
             ])->values()->all(),
+            'quick_analysis' => [
+                'mastery_levels' => collect($masteryCounts)->map(fn ($count, $label) => [
+                    'label' => $label,
+                    'count' => (int) $count,
+                ])->values()->all(),
+                'item_difficulty' => collect($difficultyCounts)->map(fn ($count, $label) => [
+                    'label' => $label,
+                    'count' => (int) $count,
+                ])->values()->all(),
+            ],
         ];
+    }
+
+    private function masteryLabelForDifficulty(float $difficulty): string
+    {
+        if ($difficulty >= 75) {
+            return 'Mastered';
+        }
+
+        if ($difficulty >= 50) {
+            return 'Nearly Mastered';
+        }
+
+        return 'Least Mastered';
+    }
+
+    private function difficultyLabelForItem(array $item, float $difficulty): string
+    {
+        $level = strtolower(trim((string) ($item['difficulty_level'] ?? '')));
+
+        if (str_contains($level, 'easy')) {
+            return 'Easy';
+        }
+
+        if (str_contains($level, 'difficult')) {
+            return 'Difficult';
+        }
+
+        if (str_contains($level, 'average')) {
+            return 'Average';
+        }
+
+        if ($difficulty >= 75) {
+            return 'Easy';
+        }
+
+        if ($difficulty >= 50) {
+            return 'Average';
+        }
+
+        return 'Difficult';
     }
 
     /**
@@ -912,6 +1087,75 @@ class SystemAdminDashboardService
             })
             ->orderBy('department_name')
             ->get();
+    }
+
+    /**
+     * Resolve the district name from EHRIS tbl_district using tbl_depart.business_id.
+     */
+    private function districtNameFor(string $districtCode): string
+    {
+        static $districts = null;
+
+        if ($districts === null) {
+            try {
+                $connection = (new EhrisDepartment())->getConnectionName() ?: config('database.default');
+                $schema = Schema::connection($connection);
+
+                if (
+                    !$schema->hasTable('tbl_district') ||
+                    !$schema->hasColumn('tbl_district', 'district_code') ||
+                    !$schema->hasColumn('tbl_district', 'district_name')
+                ) {
+                    $districts = collect();
+                } else {
+                    $districts = DB::connection($connection)
+                        ->table('tbl_district')
+                        ->pluck('district_name', 'district_code');
+                }
+            } catch (Throwable $exception) {
+                Log::warning('System Admin district lookup failed.', [
+                    'method' => __METHOD__,
+                    'table' => 'tbl_district',
+                    'error' => $exception->getMessage(),
+                ]);
+
+                $districts = collect();
+            }
+        }
+
+        $code = trim($districtCode);
+        if ($code === '') {
+            return 'Unassigned District';
+        }
+
+        return $this->normalizeDistrictName((string) ($districts[$code] ?? $this->districtNameFromCode($code)), $code);
+    }
+
+    private function districtNameFromCode(string $districtCode): string
+    {
+        if (preg_match('/^920(\d{2})$/', $districtCode, $matches)) {
+            return 'District ' . (int) $matches[1];
+        }
+
+        if (preg_match('/(\d+)$/', $districtCode, $matches)) {
+            return 'District ' . (int) $matches[1];
+        }
+
+        return 'District ' . $districtCode;
+    }
+
+    private function normalizeDistrictName(string $districtName, string $districtCode): string
+    {
+        $name = trim($districtName);
+        if (preg_match('/^District\s+920(\d{2})$/i', $name, $matches)) {
+            return 'District ' . (int) $matches[1];
+        }
+
+        if ($name !== '') {
+            return $name;
+        }
+
+        return $this->districtNameFromCode($districtCode);
     }
 
     /**
