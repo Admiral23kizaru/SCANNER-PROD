@@ -38,13 +38,7 @@ const apiBase = '/api';
  */
 export async function fetchStudents(params = {}) {
     const { data } = await axios.get(base + '/students', {
-        params: {
-            page: params.page,
-            per_page: params.per_page,
-            search: params.search,
-            handled_section_id: params.handled_section_id,
-            subject_id: params.subject_id,
-        },
+        params: { page: params.page, per_page: params.per_page, search: params.search },
         headers: { ...getAuthHeaders(), Accept: 'application/json' },
     });
     return data;
@@ -227,33 +221,5 @@ export async function syncTeacherStudentSubjects(studentId, subjectIds) {
             },
         }
     );
-    return data;
-}
-
-export async function fetchSubjectHandled() {
-    const { data } = await axios.get(`${base}/subject-handled`, {
-        headers: { ...getAuthHeaders(), Accept: 'application/json' },
-    });
-    return data?.data ?? [];
-}
-
-export async function fetchSubjectHandledOptions() {
-    const { data } = await axios.get(`${base}/subject-handled/options`, {
-        headers: { ...getAuthHeaders(), Accept: 'application/json' },
-    });
-    return data;
-}
-
-export async function createSubjectHandled(payload) {
-    const { data } = await axios.post(`${base}/subject-handled`, payload, {
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json', Accept: 'application/json' },
-    });
-    return data;
-}
-
-export async function deleteSubjectHandled(id) {
-    const { data } = await axios.delete(`${base}/subject-handled/${id}`, {
-        headers: { ...getAuthHeaders(), Accept: 'application/json' },
-    });
     return data;
 }

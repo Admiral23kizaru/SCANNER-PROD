@@ -42,16 +42,6 @@
       <button
         type="button"
         class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all cursor-pointer"
-        :class="currentTab === 'subjectHandled' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-300 hover:bg-white/10 hover:text-white'"
-        @click="$emit('update:currentTab', 'subjectHandled'); $emit('update:isSidebarOpen', false)"
-      >
-        <BookOpenCheck class="h-4 w-4" />
-        <span>Subject Handled</span>
-      </button>
-
-      <button
-        type="button"
-        class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all cursor-pointer"
         :class="currentTab === 'semestralAssessment' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-300 hover:bg-white/10 hover:text-white'"
         @click="$emit('update:currentTab', 'semestralAssessment'); $emit('update:isSidebarOpen', false)"
       >
@@ -69,7 +59,7 @@
 </template>
 
 <script setup>
-import { Users, ClipboardList, ClipboardPen, BookOpenCheck } from 'lucide-vue-next';
+import { Users, ClipboardList, ClipboardPen } from 'lucide-vue-next';
 
 defineProps({
   isSidebarOpen: {

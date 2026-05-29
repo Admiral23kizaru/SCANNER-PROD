@@ -262,17 +262,13 @@
  *           with high-contrast badges, and auto-refreshes every 30 seconds.
  */
 
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { fetchTeacherMonitor } from '../services/attendanceService';
 
 const props = defineProps({
   apiEndpoint: {
     type: String,
     default: '/api/teacher/attendance/monitor',
-  },
-  requestParams: {
-    type: Object,
-    default: () => ({}),
   },
 });
 
@@ -327,7 +323,7 @@ async function loadData() {
   loading.value = true;
   errorMsg.value = '';
   try {
-    const res = await fetchTeacherMonitor(props.apiEndpoint, props.requestParams);
+    const res = await fetchTeacherMonitor(props.apiEndpoint);
     presentStudents.value = res.presentStudents || [];
     absentStudents.value = res.absentStudents || [];
     totalStudents.value = res.totalStudents || 0;
@@ -368,14 +364,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   stopPolling();
 });
-
-watch(
-  () => props.requestParams,
-  () => {
-    loadData();
-  },
-  { deep: true }
-);
 
 // Expose loadData so parent can trigger refresh if needed
 defineExpose({ loadData });

@@ -11,7 +11,6 @@ use App\Models\School;
 use App\Models\SchoolSetting;
 use App\Models\SchoolYear;
 use App\Models\Student;
-use App\Models\TeacherSubjectSection;
 use App\Models\User;
 use App\Services\MailerService;
 use App\Services\SchoolResolver;
@@ -668,14 +667,7 @@ class AttendanceController extends Controller
                     $q->where('school_id', $schoolId);
                 });
             if (in_array($user->role?->name, ['Teacher', 'Adviser', 'Subject Teacher'], true)) {
-                if ($handled = $this->handledAssignment($request)) {
-                    $sectionName = $handled->section?->name;
-                    $query->where('grade', $handled->grade_level)
-                        ->where(function ($q) use ($handled, $sectionName) {
-                            $q->where('section_id', $handled->section_id)
-                                ->orWhere('section', $sectionName);
-                        });
-                } elseif ($user->grade_level && $user->section) {
+                if ($user->grade_level && $user->section) {
                     $query->where('grade', $user->grade_level)
                           ->where('section', $user->section);
                 } elseif ($user->role?->name !== 'Subject Teacher') {
@@ -846,30 +838,6 @@ class AttendanceController extends Controller
         $guardRole = Role::where('name', 'Guard')->first();
 
         return $guardRole ? User::where('role_id', $guardRole->id)->first() : null;
-    }
-
-    private function handledAssignment(Request $request): ?TeacherSubjectSection
-    {
-        if (! $request->filled('handled_section_id')) {
-            return null;
-        }
-
-        $user = $request->user();
-        if (! $user?->school_id) {
-            return null;
-        }
-
-        $query = TeacherSubjectSection::query()
-            ->with('section:id,name,grade_level')
-            ->where('school_id', $user->school_id)
-            ->where('teacher_id', $user->id)
-            ->where('section_id', (int) $request->input('handled_section_id'));
-
-        if ($request->filled('subject_id')) {
-            $query->where('subject_id', (int) $request->input('subject_id'));
-        }
-
-        return $query->first();
     }
 
     /** Format a single Attendance record for the recent-scan feed. */

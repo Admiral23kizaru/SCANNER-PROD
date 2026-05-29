@@ -9,7 +9,6 @@ use App\Models\LearningAssessmentScore;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\Subject;
-use App\Models\TeacherSubjectSection;
 use App\Services\LearningAssessmentExcelAnalyzer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -52,14 +51,7 @@ class LearningAssessmentController extends BaseController
         $query = Student::query()->where('school_id', $schoolId);
 
         if (in_array($user->role?->name, ['Teacher', 'Adviser', 'Subject Teacher'], true)) {
-            if ($handled = $this->handledAssignment($request)) {
-                $sectionName = $handled->section?->name;
-                $query->where('grade', $handled->grade_level)
-                    ->where(function ($q) use ($handled, $sectionName) {
-                        $q->where('section_id', $handled->section_id)
-                            ->orWhere('section', $sectionName);
-                    });
-            } elseif ($user->grade_level && $user->section) {
+            if ($user->grade_level && $user->section) {
                 $query->where('grade', $user->grade_level)->where('section', $user->section);
             } elseif ($user->role?->name !== 'Subject Teacher') {
                 $query->where(function ($q) use ($user) {
@@ -71,25 +63,6 @@ class LearningAssessmentController extends BaseController
         }
 
         return $query;
-    }
-
-    private function handledAssignment(Request $request): ?TeacherSubjectSection
-    {
-        if (! $request->filled('handled_section_id')) {
-            return null;
-        }
-
-        $query = TeacherSubjectSection::query()
-            ->with('section:id,name,grade_level')
-            ->where('school_id', $this->schoolScope($request))
-            ->where('teacher_id', $request->user()->id)
-            ->where('section_id', (int) $request->input('handled_section_id'));
-
-        if ($request->filled('subject_id')) {
-            $query->where('subject_id', (int) $request->input('subject_id'));
-        }
-
-        return $query->first();
     }
 
     private function parseWrongItems(string $raw, int $totalItems): array
@@ -134,15 +107,12 @@ class LearningAssessmentController extends BaseController
         $schoolId = $this->schoolScope($request);
         $subjects = $this->subjectOptions($request, $schoolId);
 
-        $handled = $this->handledAssignment($request);
-
         return response()->json([
             'grades' => $grades,
             'sections' => $sections,
             'subjects' => $subjects,
-            'default_grade_level' => $handled?->grade_level ?? $request->user()->grade_level,
-            'default_section' => $handled?->section?->name ?? $request->user()->section,
-            'default_subject_id' => $handled?->subject_id,
+            'default_grade_level' => $request->user()->grade_level,
+            'default_section' => $request->user()->section,
         ]);
     }
 
@@ -365,11 +335,6 @@ class LearningAssessmentController extends BaseController
 
         $files = LearningAssessmentFile::query()
             ->where('school_id', $schoolId)
-            ->when($this->handledAssignment($request), function ($q, TeacherSubjectSection $handled) {
-                $q->where('subject_id', $handled->subject_id)
-                    ->where('grade_level', $handled->grade_level)
-                    ->where('section', $handled->section?->name);
-            })
             ->latest('analyzed_at')
             ->latest('id')
             ->limit(100)
@@ -400,7 +365,6 @@ class LearningAssessmentController extends BaseController
 
         [$validated, $sheetTitle] = $result;
         $schoolId = $this->schoolScope($request);
-        $handled = $this->handledAssignment($request);
         $title = trim((string) $request->input('title'));
         $safeTitle = preg_replace('/[^A-Za-z0-9_-]+/', '_', $title) ?: 'Semestral_Assessment';
         $filename = $safeTitle . '_Analyzed_' . now()->format('Y-m-d_His') . '.xlsx';
@@ -415,12 +379,12 @@ class LearningAssessmentController extends BaseController
         $file = LearningAssessmentFile::create([
             'school_id' => $schoolId,
             'created_by' => $request->user()?->id,
-            'subject_id' => $handled?->subject_id ?? $request->input('subject_id'),
+            'subject_id' => $request->input('subject_id'),
             'title' => $title,
             'analyzed_at' => $request->date('analyzed_at')?->toDateString() ?? now()->toDateString(),
             'sheet_title' => $sheetTitle,
-            'grade_level' => $handled?->grade_level ?? $request->input('grade_level'),
-            'section' => $handled?->section?->name ?? $request->input('section'),
+            'grade_level' => $request->input('grade_level'),
+            'section' => $request->input('section'),
             'student_count' => count($validated['students']),
             'item_count' => count($validated['item_numbers']),
             'filename' => $filename,
@@ -535,12 +499,7 @@ class LearningAssessmentController extends BaseController
     private function fileQuery(Request $request)
     {
         return LearningAssessmentFile::query()
-            ->where('school_id', $this->schoolScope($request))
-            ->when($this->handledAssignment($request), function ($q, TeacherSubjectSection $handled) {
-                $q->where('subject_id', $handled->subject_id)
-                    ->where('grade_level', $handled->grade_level)
-                    ->where('section', $handled->section?->name);
-            });
+            ->where('school_id', $this->schoolScope($request));
     }
 
     private function fileToArray(LearningAssessmentFile $file): array
@@ -561,14 +520,6 @@ class LearningAssessmentController extends BaseController
 
     private function subjectOptions(Request $request, int $schoolId)
     {
-        if ($handled = $this->handledAssignment($request)) {
-            return Subject::query()
-                ->where('school_id', $schoolId)
-                ->whereKey($handled->subject_id)
-                ->orderBy('name')
-                ->get(['id', 'name']);
-        }
-
         return Subject::query()
             ->where('school_id', $schoolId)
             ->orderBy('name')

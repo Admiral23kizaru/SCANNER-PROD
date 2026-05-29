@@ -438,7 +438,7 @@
 <script setup>
 import axios from 'axios';
 import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { Bar } from 'vue-chartjs';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -878,7 +878,7 @@ onMounted(async () => {
     filters.value.section = meta.value.default_section;
   }
   if (!filters.value.subject_id && meta.value.subjects?.length) {
-    filters.value.subject_id = meta.value.default_subject_id || props.requestParams.subject_id || meta.value.subjects[0].id;
+    filters.value.subject_id = meta.value.subjects[0].id;
   }
   if (filters.value.grade_level) {
     await loadMeta();
@@ -888,19 +888,4 @@ onMounted(async () => {
   }
   await loadSavedFiles();
 });
-
-watch(
-  () => props.requestParams,
-  async () => {
-    filters.value.grade_level = '';
-    filters.value.section = '';
-    filters.value.subject_id = null;
-    await loadMeta();
-    filters.value.grade_level = meta.value.default_grade_level || '';
-    filters.value.section = meta.value.default_section || '';
-    filters.value.subject_id = meta.value.default_subject_id || props.requestParams.subject_id || meta.value.subjects?.[0]?.id || null;
-    await loadSavedFiles();
-  },
-  { deep: true }
-);
 </script>

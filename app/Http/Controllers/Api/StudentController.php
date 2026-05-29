@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Student;
-use App\Models\TeacherSubjectSection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -41,14 +40,7 @@ class StudentController extends Controller
         $query = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId));
 
         if (in_array($user->role?->name, ['Teacher', 'Adviser', 'Subject Teacher'], true)) {
-            if ($handled = $this->handledAssignment($request)) {
-                $sectionName = $handled->section?->name;
-                $query->where('grade', $handled->grade_level)
-                    ->where(function ($q) use ($handled, $sectionName) {
-                        $q->where('section_id', $handled->section_id)
-                            ->orWhere('section', $sectionName);
-                    });
-            } elseif ($user->grade_level && $user->section) {
+            if ($user->grade_level && $user->section) {
                 $query->where('grade', $user->grade_level)
                       ->where('section', $user->section);
             } elseif ($user->role?->name !== 'Subject Teacher') {
@@ -176,7 +168,7 @@ class StudentController extends Controller
             return response()->json(['message' => 'Student not found.'], 404);
         }
 
-        if (in_array($user->role?->name, ['Teacher', 'Adviser'], true) && ! $this->canAccessOwnClassStudent($user, $student)) {
+        if (in_array($user->role?->name, ['Teacher', 'Adviser'], true) && $student->teacher_id !== $user->id && $student->created_by !== $user->id) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -336,7 +328,7 @@ class StudentController extends Controller
             return response()->json(['message' => 'Student not found.'], 404);
         }
 
-        if (in_array($user->role?->name, ['Teacher', 'Adviser'], true) && ! $this->canAccessOwnClassStudent($user, $student)) {
+        if (in_array($user->role?->name, ['Teacher', 'Adviser'], true) && $student->teacher_id !== $user->id && $student->created_by !== $user->id) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -432,39 +424,7 @@ class StudentController extends Controller
 
     private function canManageLearners(Request $request): bool
     {
-        return in_array($request->user()?->role?->name, ['Teacher', 'Adviser'], true)
-            && ! $request->filled('handled_section_id');
-    }
-
-    private function handledAssignment(Request $request): ?TeacherSubjectSection
-    {
-        if (! $request->filled('handled_section_id')) {
-            return null;
-        }
-
-        $query = TeacherSubjectSection::query()
-            ->with('section:id,name,grade_level')
-            ->where('school_id', $this->schoolScope())
-            ->where('teacher_id', $request->user()->id)
-            ->where('section_id', (int) $request->input('handled_section_id'));
-
-        if ($request->filled('subject_id')) {
-            $query->where('subject_id', (int) $request->input('subject_id'));
-        }
-
-        return $query->first();
-    }
-
-    private function canAccessOwnClassStudent($user, Student $student): bool
-    {
-        if ($student->teacher_id === $user->id || $student->created_by === $user->id) {
-            return true;
-        }
-
-        return $user->grade_level
-            && $user->section
-            && (string) $student->grade === (string) $user->grade_level
-            && (string) $student->section === (string) $user->section;
+        return in_array($request->user()?->role?->name, ['Teacher', 'Adviser'], true);
     }
 
     /** Serialize a Student model into the standard API response shape. */
