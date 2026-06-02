@@ -655,6 +655,7 @@ function handleSearch(e) {
     window.open(
       `https://ozamiz.deped.gov.ph/?s=${encodeURIComponent(searchQuery.value)}`,
       '_blank',
+      'noopener,noreferrer',
     );
   }
 }

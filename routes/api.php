@@ -14,7 +14,6 @@ use App\Http\Controllers\Api\IdCardController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\SetupController;
 use App\Http\Controllers\Api\SchoolController;
-use App\Http\Controllers\Api\ScannerHeartbeatController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\SectionController;
@@ -28,17 +27,21 @@ use App\Services\SchoolResolver;
 /* ====================================================================== */
 
 Route::controller(AuthController::class)->group(function () {
-    Route::post('/login', 'login');
+    Route::post('/login', 'login')->middleware('throttle:10,1');
 });
 
 // 1. Public endpoint — Guard Terminal fetches school name for display
 Route::get('/school/{id}/info', function ($id) {
     $school = \App\Models\School::findOrFail($id);
     return response()->json(['id' => $school->id, 'name' => $school->name]);
-});
+})->middleware('throttle:30,1');
 
 // 2. Public endpoint — Guard Terminal resolves DepEd school ID to internal school_id + name
 Route::get('/school/by-deped-id/{depedId}', function ($depedId) {
+    if (! is_string($depedId) || strlen($depedId) > 50 || ! preg_match('/^[A-Za-z0-9\-]+$/', $depedId)) {
+        abort(404);
+    }
+
     $school = app(SchoolResolver::class)->resolveForScanUpWrite($depedId);
 
     if (! $school) {
@@ -49,10 +52,11 @@ Route::get('/school/by-deped-id/{depedId}', function ($depedId) {
         'id'   => $school->id,
         'name' => $school->name,
     ]);
-});
+})->middleware('throttle:30,1');
 
 // PUBLIC — BAT Step 1: check DepEd school ID before POST /guard/login
-Route::get('/school/check/{deped_id}', [SchoolController::class, 'check']);
+Route::get('/school/check/{deped_id}', [SchoolController::class, 'check'])
+    ->middleware('throttle:30,1');
 
 // 2. Bat file launcher — register a new school, admin user, settings, and school year
 Route::post('/setup/register-school', [SetupController::class, 'registerSchool'])
@@ -60,26 +64,22 @@ Route::post('/setup/register-school', [SetupController::class, 'registerSchool']
 
 // PUBLIC — BAT file login (no auth)
 Route::post('/guard/login', [GuardAuthController::class, 'login'])
-    ->middleware('throttle:30,1');
+    ->middleware('throttle:10,1');
 
-// PUBLIC — scanner attendance (Guard Terminal kiosk; Bearer optional after bat login)
+// PUBLIC — scanner attendance (Guard Terminal kiosk; launcher Bearer token required)
 Route::post('/attendance/scan', [AttendanceController::class, 'scanPublic'])
-    ->middleware('throttle:240,1');
-
-// PUBLIC — scanner terminal heartbeat for System Admin live monitor cards.
-Route::post('/scanner/heartbeat', [ScannerHeartbeatController::class, 'store'])
     ->middleware('throttle:60,1');
 
-Route::controller(PasswordResetController::class)->prefix('password')->group(function () {
+Route::controller(PasswordResetController::class)->prefix('password')->middleware('throttle:10,1')->group(function () {
     Route::post('/request-otp', 'requestOtp');
     Route::post('/verify-otp', 'verifyOtp');
     Route::post('/reset', 'reset');
 });
 
 Route::controller(AttendanceController::class)->group(function () {
-    Route::get('/attendance/public/recent', 'publicRecent')->middleware('throttle:120,1');
-    Route::get('/attendance/public/stats', 'publicStats')->middleware('throttle:120,1');  // public stats for Guard Terminal
-    Route::get('/attendance/public/division-stats', 'divisionPublicStats')->middleware('throttle:120,1');
+    Route::get('/attendance/public/recent', 'publicRecent')->middleware('throttle:60,1');
+    Route::get('/attendance/public/stats', 'publicStats')->middleware('throttle:60,1');  // scanner stats for Guard Terminal
+    Route::get('/attendance/public/division-stats', 'divisionPublicStats')->middleware('throttle:60,1');
 });
 
 /* ====================================================================== */

@@ -17,13 +17,22 @@ class SchoolController extends Controller
     /** BAT Step 1 — verify DepEd ID exists before POST /guard/login. */
     public function check(string $deped_id): JsonResponse
     {
+        $deped_id = trim($deped_id);
+        if ($deped_id === '' || strlen($deped_id) > 50 || ! preg_match('/^[A-Za-z0-9\-]+$/', $deped_id)) {
+            return response()->json([
+                'exists'      => false,
+                'school_name' => null,
+                'error'       => 'Department ID not found.',
+            ], 404);
+        }
+
         $resolved = $this->schools->findExistingOrEhrisDepartment($deped_id);
 
         if (!$resolved) {
             return response()->json([
                 'exists'      => false,
                 'school_name' => null,
-                'error'       => 'School ID not found.',
+                'error'       => 'Department ID not found.',
             ], 404);
         }
 

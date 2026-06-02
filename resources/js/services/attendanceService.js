@@ -3,7 +3,7 @@
  * Handles all Axios API calls related to QR scan attendance events.
  *
  * Two layers of API access exist:
- *   - PUBLIC  → No authentication. Used by the Guard Terminal (/guard route).
+ *   - PUBLIC  → Scanner token from the ScanUp launcher. Used by the Guard Terminal.
  *   - PRIVATE → Requires Bearer token. Used by teachers on the teacher dashboard.
  */
 
@@ -13,7 +13,7 @@ import axios from 'axios';
 
 /**
  * Build the Authorization header from the token stored in localStorage.
- * Returns an empty object if the user is not authenticated (public scanner).
+ * Returns an empty object if the scanner/user is not authenticated.
  *
  * @returns {{ Authorization?: string }} Axios-compatible header object.
  */
@@ -73,9 +73,9 @@ export async function scanAttendancePublic(data) {
             school_name: data.school_name,
             session: sessionName
         },
-        { 
-            headers: jsonHeaders,
-            withCredentials: false 
+        {
+            headers: { ...jsonHeaders, ...getAuthHeaders() },
+            withCredentials: false
         }
     );
     return res.data;
@@ -97,7 +97,7 @@ export async function fetchRecentAttendancePublic(depedIdOverride = null) {
 
     const { data } = await axios.get(`${API_BASE}/api/attendance/public/recent`, {
         params: { deped_id: depedId },
-        headers: { Accept: 'application/json' },
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
         withCredentials: false,
     });
     return data;
@@ -118,32 +118,9 @@ export async function fetchGuardStatsPublic(depedIdOverride = null) {
 
     const { data } = await axios.get(`${API_BASE}/api/attendance/public/stats`, {
         params: { deped_id: depedId },
-        headers: { Accept: 'application/json' },
+        headers: { ...getAuthHeaders(), Accept: 'application/json' },
         withCredentials: false,
     });
-    return data;
-}
-
-/**
- * Send a lightweight scanner heartbeat for the System Admin live monitor.
- */
-export async function sendScannerHeartbeat(cameraStatus = 'active', depedIdOverride = null) {
-    const depedId = depedIdOverride || getStoredDepedId();
-    if (!depedId) return null;
-
-    const { data } = await axios.post(
-        `${API_BASE}/api/scanner/heartbeat`,
-        {
-            deped_id: depedId,
-            scanner_key: 'main-terminal',
-            camera_status: cameraStatus,
-        },
-        {
-            headers: jsonHeaders,
-            withCredentials: false,
-        }
-    );
-
     return data;
 }
 

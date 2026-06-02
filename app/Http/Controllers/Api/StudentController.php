@@ -4,11 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Student;
+use App\Support\SafeImageUpload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -105,7 +103,7 @@ class StudentController extends Controller
             'guardian'       => ['nullable', 'string', 'max:255'],
             'guardian_email' => ['nullable', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
-            'photo'          => ['nullable', 'file', 'mimes:png', 'max:5120'],
+            'photo'          => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
             'school_id'      => ['nullable', 'exists:tbl_scanup_schools,id'],
             'notification_preference' => ['nullable', 'integer', 'in:0,1,2'],
         ], [
@@ -187,7 +185,7 @@ class StudentController extends Controller
             'guardian'       => ['nullable', 'string', 'max:255'],
             'guardian_email' => ['nullable', 'email', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:64'],
-            'photo'          => ['nullable', 'file', 'mimes:png', 'max:5120'],
+            'photo'          => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
             'notification_preference' => ['nullable', 'integer', 'in:0,1,2'],
         ], [
             'student_number.unique' => 'LRN already exists.',
@@ -214,7 +212,7 @@ class StudentController extends Controller
         $student->fill($data)->save();
 
         if ($request->hasFile('photo')) {
-            $path = $this->saveStudentPhoto($request->file('photo'), $student->student_number);
+            $path = $this->saveStudentPhoto($request->file('photo'), $student->student_number, $student->photo_path);
             $student->update(['photo_path' => $path]);
         }
 
@@ -332,9 +330,9 @@ class StudentController extends Controller
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
-        $request->validate(['photo' => ['required', 'file', 'mimes:jpg,jpeg,png', 'max:5120']]);
+        $request->validate(['photo' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:2048']]);
 
-        $path = $this->saveStudentPhoto($request->file('photo'), $student->student_number);
+        $path = $this->saveStudentPhoto($request->file('photo'), $student->student_number, $student->photo_path);
         $student->update(['photo_path' => $path]);
 
         return response()->json(['message' => 'Photo updated.', 'photo_path' => $path]);
@@ -357,23 +355,9 @@ class StudentController extends Controller
     /* ====================================================================== */
 
     /** Persist a student photo to public storage and return its relative path. */
-    private function saveStudentPhoto(\Illuminate\Http\UploadedFile $file, string $studentNumber): string
+    private function saveStudentPhoto(\Illuminate\Http\UploadedFile $file, string $studentNumber, ?string $previousRelativePath = null): string
     {
-        $dir = 'students';
-        $base = public_path('storage' . DIRECTORY_SEPARATOR . $dir);
-        if (!File::exists($base)) {
-            File::makeDirectory($base, 0755, true);
-        }
-
-        $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
-        $filename = $studentNumber . '.' . $ext;
-        $abs = $base . DIRECTORY_SEPARATOR . $filename;
-        if (File::exists($abs)) {
-            $filename = $studentNumber . '-' . Str::lower(Str::random(6)) . '.' . $ext;
-        }
-
-        $file->move($base, $filename);
-        return $dir . '/' . $filename;
+        return SafeImageUpload::storePublic($file, 'students', $previousRelativePath, $studentNumber);
     }
 
     /** Derive grade_section from input fields with fallback logic. */

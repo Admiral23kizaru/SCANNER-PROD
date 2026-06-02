@@ -933,7 +933,7 @@ const form = ref({
 const formError = ref('');
 
 const editTargetId = ref(null);
-const editForm = ref({ name: '', employee_id: '', grade_level: '', section: '', password: '', password_confirmation: '' });
+const editForm = ref({ name: '', employee_id: '', grade_level: '', section: '', user_id: null, password: '', password_confirmation: '' });
 const editError = ref('');
 
 const createPhotoFile = ref(null);
@@ -948,13 +948,16 @@ const editPhotoInput = ref(null);
 
 const photoLoadError = ref({});
 
-function getAvailableSections(grade) {
+function getAvailableSections(grade, currentTeacherUserId = null) {
   const all = schoolSections.value || [];
   const scoped = grade
     ? all.filter((s) => (s.grade_level || '') === grade)
     : all;
 
-  const namesFromApi = scoped.map((s) => s.name).filter(Boolean);
+  const namesFromApi = scoped
+    .filter((s) => !s.teacher_id || (currentTeacherUserId && Number(s.teacher_id) === Number(currentTeacherUserId)))
+    .map((s) => s.name)
+    .filter(Boolean);
   const unique = Array.from(new Set(namesFromApi));
 
   if (unique.length) {
@@ -966,7 +969,7 @@ function getAvailableSections(grade) {
 }
 
 const createSectionOptions = computed(() => getAvailableSections(form.value.grade_level));
-const editSectionOptions = computed(() => getAvailableSections(editForm.value.grade_level));
+const editSectionOptions = computed(() => getAvailableSections(editForm.value.grade_level, editForm.value.user_id));
 
 watch(
   () => form.value.grade_level,
@@ -1081,6 +1084,7 @@ function openEditModal(t) {
     employee_id: t.employee_id || '',
     grade_level: t.grade_level || '',
     section: t.section || '',
+    user_id: t.user_id || null,
     profile_photo: t.profile_photo || null,
     password: '',
     password_confirmation: '',

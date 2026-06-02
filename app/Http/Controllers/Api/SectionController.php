@@ -93,6 +93,12 @@ class SectionController extends BaseController
             }
         }
 
+        if ($request->filled('teacher_id') && $this->teacherHasOtherSection($schoolId, (int) $request->teacher_id)) {
+            return response()->json([
+                'message' => 'Selected teacher is already assigned as adviser to another section.'
+            ], 422);
+        }
+
         $section = Section::create([
             'name'        => $request->name,
             'grade_level' => $request->grade_level,
@@ -123,6 +129,7 @@ class SectionController extends BaseController
     {
         $schoolId = $this->getAuthSchoolId();
         $section = $this->findSectionOrFail($id, $schoolId);
+        $previousTeacherId = $section->teacher_id ? (int) $section->teacher_id : null;
 
         $validator = Validator::make($request->all(), [
             'name'        => ['sometimes', 'required', 'string', 'max:100'],
@@ -146,7 +153,17 @@ class SectionController extends BaseController
             }
         }
 
+        if ($request->filled('teacher_id') && $this->teacherHasOtherSection($schoolId, (int) $request->teacher_id, $section->id)) {
+            return response()->json([
+                'message' => 'Selected teacher is already assigned as adviser to another section.'
+            ], 422);
+        }
+
         $section->update($request->only(['name', 'grade_level', 'teacher_id']));
+
+        if ($request->has('teacher_id') && $previousTeacherId && (int) $request->teacher_id !== $previousTeacherId) {
+            $this->clearTeacherAssignment($previousTeacherId, $schoolId);
+        }
 
         // Assigns a specific teacher to a section and updates all related students.
         if ($request->has('teacher_id') && $request->teacher_id) {
@@ -170,8 +187,13 @@ class SectionController extends BaseController
     {
         $schoolId = $this->getAuthSchoolId();
         $section = $this->findSectionOrFail($id, $schoolId);
+        $teacherId = $section->teacher_id ? (int) $section->teacher_id : null;
 
         $section->delete();
+
+        if ($teacherId) {
+            $this->clearTeacherAssignment($teacherId, $schoolId);
+        }
 
         Cache::forget('admin.sections.index.school.' . $schoolId);
 
@@ -311,8 +333,24 @@ class SectionController extends BaseController
     public function teachers(Request $request): JsonResponse
     {
         $schoolId = $this->getAuthSchoolId();
+        $currentSectionId = (int) $request->query('current_section_id', 0);
+
+        if ($currentSectionId > 0) {
+            $this->findSectionOrFail($currentSectionId, $schoolId);
+        }
+
+        $assignedTeacherIds = Section::query()
+            ->where('school_id', $schoolId)
+            ->whereNotNull('teacher_id')
+            ->when($currentSectionId > 0, fn ($query) => $query->where('id', '!=', $currentSectionId))
+            ->pluck('teacher_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
 
         $teachers = $this->assignableTeacherQuery($schoolId)
+            ->when($assignedTeacherIds !== [], fn ($query) => $query->whereNotIn('id', $assignedTeacherIds))
             ->select('id', 'name', 'email', 'employee_id', 'grade_level', 'section')
             ->orderBy('name')
             ->get();
@@ -374,5 +412,28 @@ class SectionController extends BaseController
             'grade_level' => $section->grade_level,
             'section'     => $section->name,
         ]);
+    }
+
+    private function teacherHasOtherSection(int $schoolId, int $teacherId, ?int $exceptSectionId = null): bool
+    {
+        return Section::query()
+            ->where('school_id', $schoolId)
+            ->where('teacher_id', $teacherId)
+            ->when($exceptSectionId, fn ($query) => $query->where('id', '!=', $exceptSectionId))
+            ->exists();
+    }
+
+    private function clearTeacherAssignment(int $teacherId, int $schoolId): void
+    {
+        if ($this->teacherHasOtherSection($schoolId, $teacherId)) {
+            return;
+        }
+
+        $this->assignableTeacherQuery($schoolId)
+            ->where('id', $teacherId)
+            ->update([
+                'grade_level' => null,
+                'section' => null,
+            ]);
     }
 }

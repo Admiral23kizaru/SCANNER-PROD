@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Jobs\SendSmsNotification;
 use App\Jobs\SendEmailNotification;
 use App\Models\Attendance;
-use App\Models\Role;
 use App\Models\School;
 use App\Models\SchoolSetting;
 use App\Models\SchoolYear;
@@ -77,6 +76,13 @@ class AttendanceController extends Controller
                 ], 403);
             }
 
+            $guardUser = $this->authorizedScannerUser($request, $school);
+            if (!$guardUser) {
+                return response()->json([
+                    'message' => 'Scanner session expired. Please reopen the scanner from the ScanUp launcher.',
+                ], 401);
+            }
+
             $schoolId = $school->id;
             $input    = trim((string) $request->student_id);
             $person   = null;
@@ -134,7 +140,6 @@ class AttendanceController extends Controller
                 }
             }
 
-            $guardUser  = $request->user('sanctum') ?? $this->getDefaultGuardUser();
             $scannedBy  = $guardUser?->id;
             // schoolId is already fetched from request->input('school_id')
             $settings   = SchoolSetting::where('school_id', $schoolId)->first();
@@ -301,6 +306,12 @@ class AttendanceController extends Controller
             ], 403);
         }
 
+        if (!$this->authorizedScannerUser($request, $school)) {
+            return response()->json([
+                'message' => 'Scanner session expired. Please reopen the scanner from the ScanUp launcher.',
+            ], 401);
+        }
+
         $items = Attendance::with('student')
             ->whereDate('scanned_at', today())
             ->where('school_id', $school->id)
@@ -325,6 +336,12 @@ class AttendanceController extends Controller
             return response()->json([
                 'message' => 'School context could not be determined.'
             ], 403);
+        }
+
+        if (!$this->authorizedScannerUser($request, $school)) {
+            return response()->json([
+                'message' => 'Scanner session expired. Please reopen the scanner from the ScanUp launcher.',
+            ], 401);
         }
 
         $query = Attendance::whereDate('scanned_at', today())
@@ -661,12 +678,17 @@ class AttendanceController extends Controller
                 ], 401);
             }
 
+            if (!$schoolId) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Authenticated user is not assigned to a school.',
+                ], 403);
+            }
+
             // Fetch students in the caller's school. Teachers are narrowed to
             // their own class/records; admins can monitor the whole school.
             $query = Student::query()
-                ->when($schoolId, function ($q) use ($schoolId) {
-                    $q->where('school_id', $schoolId);
-                });
+                ->where('school_id', $schoolId);
             if (in_array($user->role?->name, ['Teacher', 'Adviser', 'Subject Teacher'], true)) {
                 if ($user->grade_level && $user->section) {
                     $query->where('grade', $user->grade_level)
@@ -690,9 +712,7 @@ class AttendanceController extends Controller
             $studentIds = $students->pluck('id')->toArray();
 
             $todayAttendance = Attendance::whereIn('student_id', $studentIds)
-                ->when($schoolId, function ($q) use ($schoolId) {
-                    $q->where('school_id', $schoolId);
-                })
+                ->where('school_id', $schoolId)
                 ->whereDate('scanned_at', $today)
                 ->where('session', 'morning')
                 ->get()
@@ -835,12 +855,16 @@ class AttendanceController extends Controller
         return null;
     }
 
-    /** Find the fallback guard account when no authenticated user is available. */
-    private function getDefaultGuardUser(): ?User
+    /** Validate that the launcher token belongs to the school resolved from deped_id. */
+    private function authorizedScannerUser(Request $request, School $school): ?User
     {
-        $guardRole = Role::where('name', 'Guard')->first();
+        $tokenUser = $request->user('sanctum');
 
-        return $guardRole ? User::where('role_id', $guardRole->id)->first() : null;
+        if (!$tokenUser || !$tokenUser->school_id) {
+            return null;
+        }
+
+        return (int) $tokenUser->school_id === (int) $school->id ? $tokenUser : null;
     }
 
     /** Format a single Attendance record for the recent-scan feed. */

@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Models\Ehris\EhrisUser;
 use App\Models\Role;
 use App\Models\School;
+use App\Models\Section;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\User;
+use App\Support\SafeImageUpload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -325,6 +326,15 @@ class TeacherManagementController extends BaseController
             return response()->json(['message' => 'Validation failed.', 'errors' => $validator->errors()], 422);
         }
 
+        $sectionAssignmentError = $this->sectionAssignmentError(
+            $schoolId,
+            $request->input('grade_level'),
+            $request->input('section')
+        );
+        if ($sectionAssignmentError) {
+            return $sectionAssignmentError;
+        }
+
         // Split full name into first/last
         [$firstName, $lastName] = array_pad(explode(' ', $request->name, 2), 2, '');
 
@@ -356,7 +366,7 @@ class TeacherManagementController extends BaseController
         // Sync with the users table so the teacher can log in
         $teacherRole = Role::where('name', 'Teacher')->first();
         if ($teacherRole) {
-            User::updateOrCreate(['email' => $email], [
+            $user = User::updateOrCreate(['email' => $email], [
                 'role_id'     => $teacherRole->id,
                 'name'        => $request->name,
                 'password'    => $request->password,
@@ -367,6 +377,13 @@ class TeacherManagementController extends BaseController
                 'grade_level' => $request->input('grade_level'),
                 'section'     => $request->input('section'),
             ]);
+
+            $this->syncSectionAssignmentForUser(
+                $user,
+                $schoolId,
+                $request->input('grade_level'),
+                $request->input('section')
+            );
         }
 
         return response()->json(['message' => 'Teacher account created.', 'teacher' => $this->teacherToArray($teacher)], 201);
@@ -411,6 +428,13 @@ class TeacherManagementController extends BaseController
             return response()->json(['message' => 'Validation failed.', 'errors' => $validator->errors()], 422);
         }
 
+        $targetGradeLevel = $request->has('grade_level') ? $request->input('grade_level') : $linkedUser->grade_level;
+        $targetSection = $request->has('section') ? $request->input('section') : $linkedUser->section;
+        $sectionAssignmentError = $this->sectionAssignmentError($schoolId, $targetGradeLevel, $targetSection, $linkedUser->id);
+        if ($sectionAssignmentError) {
+            return $sectionAssignmentError;
+        }
+
         if ($request->has('name')) {
             [$teacher->first_name, $teacher->last_name] = array_pad(explode(' ', $request->name, 2), 2, '');
         }
@@ -431,6 +455,8 @@ class TeacherManagementController extends BaseController
             if ($request->has('section'))     $user->section = $request->input('section');
             if ($request->filled('password')) $user->password = $request->password;
             $user->save();
+
+            $this->syncSectionAssignmentForUser($user, $schoolId, $user->grade_level, $user->section);
         }
 
         return response()->json(['message' => 'Teacher updated.', 'teacher' => $this->teacherToArray($teacher)]);
@@ -468,6 +494,11 @@ class TeacherManagementController extends BaseController
 
         $user?->delete();
         $teacher->delete();
+        if ($user) {
+            Section::where('school_id', $schoolId)
+                ->where('teacher_id', $user->id)
+                ->update(['teacher_id' => null]);
+        }
 
         return response()->json(['message' => 'Teacher deleted.']);
     }
@@ -631,6 +662,75 @@ class TeacherManagementController extends BaseController
         return $attributes;
     }
 
+    private function sectionAssignmentError(
+        int $schoolId,
+        mixed $gradeLevel,
+        mixed $sectionName,
+        ?int $teacherUserId = null
+    ): ?JsonResponse {
+        $gradeLevel = trim((string) $gradeLevel);
+        $sectionName = trim((string) $sectionName);
+
+        if ($gradeLevel === '' && $sectionName === '') {
+            return null;
+        }
+
+        if ($gradeLevel === '' || $sectionName === '') {
+            return response()->json([
+                'message' => 'Select both grade level and section for teacher advisory.',
+            ], 422);
+        }
+
+        $section = Section::query()
+            ->where('school_id', $schoolId)
+            ->where('grade_level', $gradeLevel)
+            ->where('name', $sectionName)
+            ->first();
+
+        if (! $section) {
+            return response()->json([
+                'message' => 'Selected advisory section was not found in Manage Sections.',
+            ], 422);
+        }
+
+        if ($section->teacher_id && (! $teacherUserId || (int) $section->teacher_id !== $teacherUserId)) {
+            return response()->json([
+                'message' => 'Selected advisory section is already assigned to another teacher.',
+            ], 422);
+        }
+
+        return null;
+    }
+
+    private function syncSectionAssignmentForUser(User $user, int $schoolId, mixed $gradeLevel, mixed $sectionName): void
+    {
+        $gradeLevel = trim((string) $gradeLevel);
+        $sectionName = trim((string) $sectionName);
+
+        $currentAssignments = Section::query()
+            ->where('school_id', $schoolId)
+            ->where('teacher_id', $user->id);
+
+        if ($gradeLevel !== '' && $sectionName !== '') {
+            $currentAssignments->where(function ($query) use ($gradeLevel, $sectionName) {
+                $query->where('grade_level', '!=', $gradeLevel)
+                    ->orWhere('name', '!=', $sectionName);
+            });
+        }
+
+        $currentAssignments->update(['teacher_id' => null]);
+
+        if ($gradeLevel === '' || $sectionName === '') {
+            return;
+        }
+
+        Section::query()
+            ->where('school_id', $schoolId)
+            ->where('grade_level', $gradeLevel)
+            ->where('name', $sectionName)
+            ->update(['teacher_id' => $user->id]);
+    }
+
     private function teacherTableHasColumn(string $column): bool
     {
         return Schema::hasColumn((new Teacher())->getTable(), $column);
@@ -770,23 +870,6 @@ class TeacherManagementController extends BaseController
      */
     private function storePublicStorageImage(\Illuminate\Http\UploadedFile $file, string $dir, ?string $previousRelativePath = null): string
     {
-        $base = public_path('storage' . DIRECTORY_SEPARATOR . $dir);
-        if (!File::exists($base)) {
-            File::makeDirectory($base, 0755, true);
-        }
-
-        if ($previousRelativePath) {
-            $prevClean = ltrim(preg_replace('#^(public/|storage/|/storage/)#', '', $previousRelativePath) ?? $previousRelativePath, '/');
-            $prevAbs = public_path('storage' . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $prevClean));
-            if (File::exists($prevAbs)) {
-                @File::delete($prevAbs);
-            }
-        }
-
-        $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
-        $filename = Str::uuid()->toString() . '.' . $ext;
-        $file->move($base, $filename);
-
-        return $dir . '/' . $filename;
+        return SafeImageUpload::storePublic($file, $dir, $previousRelativePath);
     }
 }

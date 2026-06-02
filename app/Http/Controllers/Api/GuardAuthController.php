@@ -50,8 +50,8 @@ class GuardAuthController extends Controller
         }
 
         $validated = $request->validate([
-            'deped_school_id' => 'required|string',
-            'password'        => 'required|string',
+            'deped_school_id' => ['required', 'string', 'max:50', 'regex:/^[A-Za-z0-9\-]+$/'],
+            'password'        => ['required', 'string', 'max:255'],
         ]);
 
         $email = 'school' . $validated['deped_school_id'] . '@deped.ozamiz.edu.ph';

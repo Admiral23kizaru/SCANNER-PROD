@@ -7,6 +7,7 @@ use App\Exports\LearningAssessmentAnalyzedExport;
 use App\Models\LearningAssessmentFile;
 use App\Models\LearningAssessmentScore;
 use App\Models\School;
+use App\Models\Section;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Services\LearningAssessmentExcelAnalyzer;
@@ -97,6 +98,7 @@ class LearningAssessmentController extends BaseController
     public function meta(Request $request): JsonResponse
     {
         $query = $this->studentScopeQuery($request);
+        $schoolId = $this->schoolScope($request);
 
         $grades = (clone $query)->whereNotNull('grade')->distinct()->orderBy('grade')->pluck('grade')->values();
 
@@ -105,7 +107,19 @@ class LearningAssessmentController extends BaseController
             $sectionQuery->where('grade', $request->input('grade_level'));
         }
         $sections = $sectionQuery->distinct()->orderBy('section')->pluck('section')->values();
-        $schoolId = $this->schoolScope($request);
+
+        if (! in_array($request->user()?->role?->name, ['Teacher', 'Adviser', 'Subject Teacher'], true)) {
+            [$managedGrades, $managedSections] = $this->managedSectionOptions($schoolId, $request->input('grade_level'));
+
+            if ($managedGrades->isNotEmpty()) {
+                $grades = $managedGrades;
+            }
+
+            if ($managedSections->isNotEmpty()) {
+                $sections = $managedSections;
+            }
+        }
+
         $subjects = $this->subjectOptions($request, $schoolId);
 
         return response()->json([
@@ -543,25 +557,43 @@ class LearningAssessmentController extends BaseController
 
     private function subjectOptions(Request $request, int $schoolId)
     {
-<<<<<<< HEAD
-=======
         if (! Schema::hasTable('tbl_scanup_subjects')) {
             return collect();
         }
 
-        if ($handled = $this->handledAssignment($request)) {
-            return Subject::query()
-                ->where('school_id', $schoolId)
-                ->whereKey($handled->subject_id)
-                ->orderBy('name')
-                ->get(['id', 'name']);
-        }
-
->>>>>>> 9a98f5b83738a67c648055722d36274a9ee10432
         return Subject::query()
             ->where('school_id', $schoolId)
             ->orderBy('name')
             ->get(['id', 'name']);
+    }
+
+    private function managedSectionOptions(int $schoolId, mixed $gradeLevel): array
+    {
+        if (! Schema::hasTable('tbl_scanup_sections')) {
+            return [collect(), collect()];
+        }
+
+        $baseQuery = Section::query()
+            ->where('school_id', $schoolId)
+            ->whereNotNull('name')
+            ->where('name', '<>', '');
+
+        $grades = (clone $baseQuery)
+            ->whereNotNull('grade_level')
+            ->where('grade_level', '<>', '')
+            ->distinct()
+            ->orderBy('grade_level')
+            ->pluck('grade_level')
+            ->values();
+
+        $sections = (clone $baseQuery)
+            ->when(trim((string) $gradeLevel) !== '', fn ($query) => $query->where('grade_level', $gradeLevel))
+            ->distinct()
+            ->orderBy('name')
+            ->pluck('name')
+            ->values();
+
+        return [$grades, $sections];
     }
 
     private function subjectName(Request $request, int $subjectId, int $schoolId): string

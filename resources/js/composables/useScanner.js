@@ -12,7 +12,7 @@
 
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { Html5Qrcode } from 'html5-qrcode';
-import { scanAttendancePublic, fetchRecentAttendancePublic, fetchGuardStatsPublic, sendScannerHeartbeat } from '../services/attendanceService';
+import { scanAttendancePublic, fetchRecentAttendancePublic, fetchGuardStatsPublic } from '../services/attendanceService';
 import { assetPath } from './useAsset';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -25,9 +25,6 @@ const DEBOUNCE_MS = 2500;
 
 /** How often (ms) the live feed and stats are re-fetched in the background. */
 const REFRESH_INTERVAL_MS = 8000;
-
-/** How often (ms) the scanner tells System Admin it is still online. */
-const HEARTBEAT_INTERVAL_MS = 20000;
 
 /** Seconds to wait before automatically retrying after a camera failure. */
 const AUTO_RETRY_DELAY_S = 8;
@@ -90,7 +87,6 @@ export function useScanner(depedId, schoolName) {
     let highlightTimer    = null;
     let unknownTimer      = null;
     let refreshTimer      = null;
-    let heartbeatTimer    = null;
     let autoRetryTimer    = null;
     let countdownInterval = null;
     let destroyed         = false;
@@ -400,23 +396,6 @@ export function useScanner(depedId, schoolName) {
         if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
     }
 
-    async function sendHeartbeat() {
-        if (!hasSchoolContext()) return;
-        try {
-            await sendScannerHeartbeat(cameraStatus.value || 'unknown', depedId.value);
-        } catch (_) { /* heartbeat failure is non-blocking */ }
-    }
-
-    function startHeartbeatTimer() {
-        stopHeartbeatTimer();
-        sendHeartbeat();
-        heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
-    }
-
-    function stopHeartbeatTimer() {
-        if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
-    }
-
     // ── Camera lifecycle ────────────────────────────────────────────────────
 
     /**
@@ -484,10 +463,8 @@ export function useScanner(depedId, schoolName) {
             loadRecent();
             refreshStats();
             startRefreshTimer();
-            startHeartbeatTimer();
         } else {
             cameraStatus.value = 'error';
-            sendHeartbeat();
             scheduleAutoRetry();
         }
     }
@@ -538,7 +515,6 @@ export function useScanner(depedId, schoolName) {
         destroyed = true;
         clearInterval(clockInterval);
         stopRefreshTimer();
-        stopHeartbeatTimer();
         clearAutoRetry();
         await stopScannerAndRelease();
     });

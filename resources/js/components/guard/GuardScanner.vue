@@ -297,7 +297,8 @@ async function hydrateSchoolName(depedId) {
 onMounted(() => {
     // Read scanner scope and token from URL if present.
     const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get('token');
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const urlToken = urlParams.get('token') || hashParams.get('token') || hashParams.get('scanner_token');
     const urlDepedId = urlParams.get('deped_id');
     const urlSchoolName = urlParams.get('school_name');
     const storedDepedId = localStorage.getItem(DEPED_ID_KEY);

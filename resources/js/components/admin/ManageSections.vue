@@ -309,26 +309,30 @@ async function loadSections() {
 /**
  * // Description: loadTeachers - Fetches all teacher-role users for the dropdown.
  */
-async function loadTeachers() {
+async function loadTeachers(currentSectionId = null) {
   try {
-    const res = await axios.get('/api/admin/sections/teachers-list');
+    const res = await axios.get('/api/admin/sections/teachers-list', {
+      params: currentSectionId ? { current_section_id: currentSectionId } : {},
+    });
     teacherList.value = res.data.data || [];
   } catch { teacherList.value = []; }
 }
 
 // ─── Create / Edit Logic ────────────────────────────────────────────────────
 
-function openCreateModal() {
+async function openCreateModal() {
   editTarget.value = null;
   form.value = { name: '', grade_level: '', teacher_id: null };
   formError.value = '';
+  await loadTeachers();
   showModal.value = true;
 }
 
-function openEditModal(sec) {
+async function openEditModal(sec) {
   editTarget.value = sec;
   form.value = { name: sec.name, grade_level: sec.grade_level, teacher_id: sec.teacher_id || null };
   formError.value = '';
+  await loadTeachers(sec.id);
   showModal.value = true;
 }
 
@@ -450,6 +454,6 @@ async function executeDelete() {
 // ─── Lifecycle ──────────────────────────────────────────────────────────────
 
 onMounted(async () => {
-  await Promise.all([loadSections(), loadTeachers()]);
+  await loadSections();
 });
 </script>
