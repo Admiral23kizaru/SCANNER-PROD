@@ -63,6 +63,54 @@ class SectionController extends BaseController
     }
 
     /**
+     * Return school section options used by teacher learner forms.
+     */
+    public function formOptions(Request $request): JsonResponse
+    {
+        $schoolId = $request->user()?->school_id;
+        if (! $schoolId) {
+            return response()->json([
+                'message' => 'Account is not assigned to a school.',
+                'data' => [],
+            ], 422);
+        }
+
+        $user = $request->user();
+        $isTeacherRole = in_array($user?->role?->name, ['Teacher', 'Adviser', 'Subject Teacher'], true);
+
+        $query = Section::query()
+            ->where('school_id', $schoolId)
+            ->when($isTeacherRole && $user->grade_level, fn ($q) => $q->where('grade_level', $user->grade_level))
+            ->orderBy('grade_level')
+            ->orderBy('name');
+
+        $sections = $query->get(['id', 'name', 'grade_level']);
+
+        if ($sections->isEmpty()) {
+            $fallback = Student::query()
+                ->where('school_id', $schoolId)
+                ->whereNotNull('section')
+                ->where('section', '!=', '')
+                ->when($isTeacherRole && $user->grade_level, fn ($q) => $q->where('grade', $user->grade_level))
+                ->select('grade', 'section')
+                ->distinct()
+                ->orderBy('grade')
+                ->orderBy('section')
+                ->get()
+                ->map(fn (Student $student) => [
+                    'id' => null,
+                    'name' => (string) $student->section,
+                    'grade_level' => $student->grade,
+                ])
+                ->values();
+
+            return response()->json(['data' => $fallback]);
+        }
+
+        return response()->json(['data' => $sections]);
+    }
+
+    /**
      * PURPOSE: Create a section for the authenticated admin's school and optionally assign a teacher.
      * FIX: Enforces school ownership with getAuthSchoolId() before teacher validation and section creation.
      * LIMITATION: Teacher assignment still depends on user record school_id integrity.

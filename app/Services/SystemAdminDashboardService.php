@@ -656,6 +656,39 @@ class SystemAdminDashboardService
         $today = now()->toDateString();
         $teacherRoleId = Role::where('name', 'Teacher')->value('id');
         $assignment = $this->assignmentFor((string) $department->department_id);
+        $studentCount = $schoolId
+            ? $this->dashboardValue($depedSchoolId, 'student_count', 0, fn () => Student::where('school_id', $schoolId)->count())
+            : 0;
+        $teacherCount = ($schoolId && $teacherRoleId)
+            ? $this->dashboardValue(
+                $depedSchoolId,
+                'teacher_count',
+                0,
+                fn () => User::where('role_id', $teacherRoleId)->where('school_id', $schoolId)->count()
+            )
+            : 0;
+        $attendanceToday = $schoolId
+            ? $this->dashboardValue(
+                $depedSchoolId,
+                'attendance_today',
+                0,
+                fn () => Attendance::where('school_id', $schoolId)
+                    ->whereDate('scanned_at', $today)
+                    ->distinct('student_id')
+                    ->count('student_id')
+            )
+            : 0;
+        $lateToday = ($schoolId && Schema::hasColumn('tbl_scanup_attendance', 'status'))
+            ? $this->dashboardValue(
+                $depedSchoolId,
+                'late_today',
+                0,
+                fn () => Attendance::where('school_id', $schoolId)
+                    ->whereDate('scanned_at', $today)
+                    ->where('status', 'late')
+                    ->count()
+            )
+            : 0;
 
         return [
             'school_id' => $schoolId,
@@ -665,16 +698,10 @@ class SystemAdminDashboardService
             'assigned_admin' => $this->assignedAdminFor((string) $department->department_id),
             'setup_status' => $schoolId ? 'ready' : 'not_created',
             'stats' => [
-                'students' => $schoolId ? Student::where('school_id', $schoolId)->count() : 0,
-                'teachers' => ($schoolId && $teacherRoleId)
-                    ? User::where('role_id', $teacherRoleId)->where('school_id', $schoolId)->count()
-                    : 0,
-                'attendance_today' => $schoolId
-                    ? Attendance::where('school_id', $schoolId)->whereDate('scanned_at', $today)->distinct('student_id')->count('student_id')
-                    : 0,
-                'late_today' => $schoolId
-                    ? Attendance::where('school_id', $schoolId)->whereDate('scanned_at', $today)->where('status', 'late')->count()
-                    : 0,
+                'students' => $studentCount,
+                'teachers' => $teacherCount,
+                'attendance_today' => $attendanceToday,
+                'late_today' => $lateToday,
             ],
         ];
     }
@@ -713,55 +740,101 @@ class SystemAdminDashboardService
             ];
         }
 
-        $attendanceByGrade = DB::table('tbl_scanup_attendance as attendance')
-            ->join('tbl_scanup_students as students', 'attendance.student_id', '=', 'students.id')
-            ->where('attendance.school_id', $schoolId)
-            ->whereDate('attendance.scanned_at', $today)
-            ->select('students.grade', DB::raw('COUNT(DISTINCT attendance.student_id) as count'))
-            ->groupBy('students.grade')
-            ->orderBy('students.grade')
-            ->get();
+        $attendanceByGrade = $this->dashboardValue(
+            $depedSchoolId,
+            'attendance_by_grade',
+            collect(),
+            fn () => DB::table('tbl_scanup_attendance as attendance')
+                ->join('tbl_scanup_students as students', 'attendance.student_id', '=', 'students.id')
+                ->where('attendance.school_id', $schoolId)
+                ->whereDate('attendance.scanned_at', $today)
+                ->select('students.grade', DB::raw('COUNT(DISTINCT attendance.student_id) as count'))
+                ->groupBy('students.grade')
+                ->orderBy('students.grade')
+                ->get()
+        );
 
-        $attendanceTrends = $this->attendanceTrendsFor($schoolId, $filters);
-        $filterOptions = $this->dashboardFilterOptionsFor($schoolId);
+        $attendanceTrends = $this->dashboardValue(
+            $depedSchoolId,
+            'attendance_trends',
+            collect(),
+            fn () => $this->attendanceTrendsFor($schoolId, $filters)
+        );
+        $filterOptions = $this->dashboardValue(
+            $depedSchoolId,
+            'filter_options',
+            ['grades' => [], 'sections' => []],
+            fn () => $this->dashboardFilterOptionsFor($schoolId)
+        );
 
-        $presentStudentIds = Attendance::where('school_id', $schoolId)
-            ->whereDate('scanned_at', $today)
-            ->select('student_id');
-        $maleToday = Student::where('school_id', $schoolId)
-            ->where('gender', 'Male')
-            ->whereIn('id', $presentStudentIds)
-            ->count();
-        $presentStudentIds = Attendance::where('school_id', $schoolId)
-            ->whereDate('scanned_at', $today)
-            ->select('student_id');
-        $femaleToday = Student::where('school_id', $schoolId)
-            ->where('gender', 'Female')
-            ->whereIn('id', $presentStudentIds)
-            ->count();
+        $maleToday = 0;
+        $femaleToday = 0;
+        if (Schema::hasColumn('tbl_scanup_students', 'gender')) {
+            $maleToday = $this->dashboardValue(
+                $depedSchoolId,
+                'male_attendance_today',
+                0,
+                fn () => Student::where('school_id', $schoolId)
+                    ->where('gender', 'Male')
+                    ->whereIn('id', Attendance::where('school_id', $schoolId)
+                        ->whereDate('scanned_at', $today)
+                        ->select('student_id'))
+                    ->count()
+            );
+            $femaleToday = $this->dashboardValue(
+                $depedSchoolId,
+                'female_attendance_today',
+                0,
+                fn () => Student::where('school_id', $schoolId)
+                    ->where('gender', 'Female')
+                    ->whereIn('id', Attendance::where('school_id', $schoolId)
+                        ->whereDate('scanned_at', $today)
+                        ->select('student_id'))
+                    ->count()
+            );
+        }
         $absentToday = max(0, (int) $detail['stats']['students'] - (int) $detail['stats']['attendance_today']);
 
-        $recentActivity = Attendance::with('student')
-            ->where('school_id', $schoolId)
-            ->orderByDesc('scanned_at')
-            ->limit(8)
-            ->get()
-            ->map(fn (Attendance $attendance) => [
-                'type' => 'attendance',
-                'title' => 'Student scan recorded',
-                'subtitle' => trim(
-                    ($attendance->student?->first_name ?? '') . ' ' .
-                    ($attendance->student?->last_name ?? '') . ' - ' .
-                    ($attendance->student?->grade ?? 'No grade') . ' ' .
-                    ($attendance->student?->section ?? '')
-                ),
-                'time' => $attendance->scanned_at?->toIso8601String(),
-            ])
-            ->values()
-            ->all();
+        $recentActivity = $this->dashboardValue(
+            $depedSchoolId,
+            'recent_activity',
+            [],
+            fn () => Attendance::with('student')
+                ->where('school_id', $schoolId)
+                ->orderByDesc('scanned_at')
+                ->limit(8)
+                ->get()
+                ->map(fn (Attendance $attendance) => [
+                    'type' => 'attendance',
+                    'title' => 'Student scan recorded',
+                    'subtitle' => trim(
+                        ($attendance->student?->first_name ?? '') . ' ' .
+                        ($attendance->student?->last_name ?? '') . ' - ' .
+                        ($attendance->student?->grade ?? 'No grade') . ' ' .
+                        ($attendance->student?->section ?? '')
+                    ),
+                    'time' => $attendance->scanned_at?->toIso8601String(),
+                ])
+                ->values()
+                ->all()
+        );
 
-        $detail['sections'] = Section::where('school_id', $schoolId)->count();
-        $detail['subjects'] = Subject::where('school_id', $schoolId)->count();
+        $detail['sections'] = Schema::hasTable('tbl_scanup_sections')
+            ? $this->dashboardValue(
+                $depedSchoolId,
+                'section_count',
+                0,
+                fn () => Section::where('school_id', $schoolId)->count()
+            )
+            : 0;
+        $detail['subjects'] = Schema::hasTable('tbl_scanup_subjects')
+            ? $this->dashboardValue(
+                $depedSchoolId,
+                'subject_count',
+                0,
+                fn () => Subject::where('school_id', $schoolId)->count()
+            )
+            : 0;
         $detail['attendance_by_grade'] = $attendanceByGrade;
         $detail['attendance_trends'] = $attendanceTrends;
         $detail['filter_options'] = $filterOptions;
@@ -782,6 +855,22 @@ class SystemAdminDashboardService
         );
 
         return $detail;
+    }
+
+    private function dashboardValue(string $depedSchoolId, string $metric, mixed $fallback, callable $resolver): mixed
+    {
+        try {
+            return $resolver();
+        } catch (Throwable $exception) {
+            Log::warning('System Admin school dashboard metric failed.', [
+                'method' => __METHOD__,
+                'deped_school_id' => $depedSchoolId,
+                'metric' => $metric,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return $fallback;
+        }
     }
 
     /**
